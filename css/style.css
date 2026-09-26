@@ -1,0 +1,213 @@
+/* ==========================================================================
+   RODILLA — tokens de diseño
+   --------------------------------------------------------------------------
+   ÚNICO archivo donde se declaran colores. El resto del CSS solo debe
+   consumir var(--...). Si aparece un hex literal fuera de aquí, es un bug.
+
+   El tema vive en <html data-theme="dark"> o <html data-theme="light">.
+   Cambiar de tema = re-apuntar los tokens semánticos. Ningún componente
+   necesita saber qué tema está activo.
+
+   Paleta base: los 6 tonos de marca del proyecto original + las 3 categorías
+   de producto. Todo lo demás sale de los tokens semánticos de abajo.
+   ========================================================================== */
+
+:root {
+    /* --- Tonos de marca (no cambian con el tema) --- */
+    --brand-brown: #360e06;
+    --brand-green: #1e3932;
+    --brand-rose: #6d1834;
+    --brand-cream: #ffe8c9;
+    --brand-cream-soft: #fff4e6;
+    --white: #ffffff;
+    --black: #000000;
+
+    /* --- Categorías de producto (no cambian con el tema) --- */
+    --cat-bebidas: #a82b13;
+    --cat-postres: #720c61;
+    --cat-aperitivos: #234564;
+
+    /* --- Estados "crudos": rellenos sólidos con texto blanco encima --- */
+    --state-success: #2ecc71;
+    --state-danger: #e74c3c;
+    --state-warning: #f1c40f;
+    --state-info: #3498db;
+
+    /* --- Espaciado --- */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 40px;
+
+    /* --- Radios --- */
+    --radius-sm: 10px;
+    --radius-md: 20px;
+    --radius-lg: 30px;
+    --radius-full: 50px;
+
+    /* --- Sombras (la parte móvil vive en el tema) --- */
+    --shadow-sm: 0 2px 32px rgba(0, 0, 0, 0.025), 0 4px 5px rgba(0, 0, 0, 0.025);
+    --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.15);
+
+    /* --- Tipografía --- */
+    --font-family: "Miranda Sans", sans-serif;
+
+    /* --- Escala de z-index -------------------------------------------------
+       Antes: .modal-overlay, .block-menu, .carrito-panel, .notification y
+       .form-add-producto compartían 1000 / 9999 y empataban. El DOM
+       decidía cuál tapaba a cuál. Ahora cada capa tiene su valor.        */
+    --z-nav: 100;
+    --z-modal: 1000;
+    --z-drawer: 1100;
+    --z-fullscreen: 2000;
+    --z-panel: 2400;
+    --z-loader: 2500;
+    --z-toast: 3000;
+
+    /* --- Movimiento --- */
+    --transition: 0.3s ease;
+    --transition-slow: 0.4s ease;
+}
+
+/* ==========================================================================
+   TEMA OSCURO — el actual. <html data-theme="dark">
+   ========================================================================== */
+
+:root,
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    --bg: var(--brand-brown);
+    --bg-alt: var(--brand-green);
+
+    /* Superficies de control (inputs, botones, chips).
+       En tema claro --surface-strong llega a 0.85: sirve para que un input
+       se lea, pero no para vidrio. El vidrio tiene sus propios tokens
+       justo debajo, que se mantienen translucidos en los dos temas. */
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-strong: rgba(255, 255, 255, 0.1);
+    --surface-hover: rgba(255, 255, 255, 0.14);
+    --surface-solid: #1f1a17;
+
+    /* Vidrio. Siempre translucido: es una laminita sobre el fondo, nunca
+       una plancha opaca. */
+    --glass-surface: rgba(255, 255, 255, 0.1);
+    --glass-strong: rgba(255, 255, 255, 0.18);
+
+    --border: rgba(255, 255, 255, 0.15);
+    --border-strong: rgba(255, 255, 255, 0.42);
+
+    --text: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.6);
+    --text-subtle: rgba(255, 255, 255, 0.85);
+
+    /* Acción primaria: crema. El texto encima va en marrón. */
+    --accent: var(--brand-cream);
+    --accent-hover: #ffffff;
+    --accent-text: var(--brand-brown);
+    --link: var(--brand-cream);
+    --focus: var(--brand-cream);
+
+    --overlay: rgba(54, 14, 6, 0.55);
+    --menu-tint: rgba(54, 14, 6, 0.31);
+    --text-shadow: rgba(73, 41, 3, 0.575);
+
+    /* Estados legibles como texto/icono sobre fondo oscuro */
+    --danger: #ff9d8a;
+    --success: var(--state-success);
+    --warning: var(--state-warning);
+    --info: var(--state-info);
+
+    --table-head: rgba(255, 255, 255, 0.18);
+    --table-row-hover: rgba(255, 255, 255, 0.1);
+    --table-danger-row: rgba(216, 27, 68, 0.171);
+
+    --shadow-color: rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================================================
+   TEMA CLARO — <html data-theme="light">
+   Base crema suave #fff4e6 con texto verde, como ya usaban menu, reserva
+   y los paneles.
+   ========================================================================== */
+
+[data-theme="light"] {
+    color-scheme: light;
+
+    --bg: var(--brand-cream-soft);
+    --bg-alt: #ffffff;
+
+    /* Superficies de control. Sobre crema el blanco necesita mas opacidad
+       para que un input se lea, pero el vidrio no: por eso --glass-surface
+       se queda en 0.20 y no en 0.85. */
+    --surface: rgba(255, 255, 255, 0.72);
+    --surface-strong: rgba(255, 255, 255, 0.85);
+    --surface-hover: #ffffff;
+    --surface-solid: #ffffff;
+
+    /* Vidrio sobre crema. 0.20 / 0.35: translucido pero con cuerpo. */
+    --glass-surface: rgba(255, 255, 255, 0.2);
+    --glass-strong: rgba(255, 255, 255, 0.35);
+
+    --border: rgba(30, 57, 50, 0.18);
+    --border-strong: rgba(30, 57, 50, 0.45);
+
+    --text: var(--brand-green);
+    --text-muted: rgba(30, 57, 50, 0.65);
+    --text-subtle: rgba(30, 57, 50, 0.85);
+
+    --accent: var(--brand-green);
+    --accent-hover: var(--brand-rose);
+    --accent-text: var(--brand-cream-soft);
+    --link: var(--brand-rose);
+    --focus: var(--brand-rose);
+
+    --overlay: rgba(109, 24, 52, 0.38);
+    --menu-tint: rgba(255, 232, 201, 0.37);
+    --text-shadow: rgba(255, 224, 186, 0.55);
+
+    /* Sobre crema, --state-danger (#e74c3c) solo da 3.5:1 y no cumple AA.
+       Estos dos sí: 4.6:1 en claro, 8:1 en oscuro. */
+    --danger: #d81b44;
+    --success: #1e7a45;
+    --warning: #8a6100;
+    --info: #1f5b8f;
+
+    --table-head: rgba(30, 57, 50, 0.1);
+    --table-row-hover: rgba(30, 57, 50, 0.06);
+    --table-danger-row: rgba(216, 27, 68, 0.12);
+
+    --shadow-color: rgba(30, 57, 50, 0.12);
+}
+
+/* ==========================================================================
+   FONDOS DE PÁGINA
+   Las clases las aplica js/utils/random.js. El color de respaldo de cada
+   imagen es su tono medio real, para que no haya parpadeo al cargar.
+   ========================================================================== */
+
+.bg-dark1 {
+    background-color: var(--brand-brown);
+    background-image: url("../img/avif/dark1.avif");
+}
+
+.bg-dark2 {
+    background-color: var(--brand-green);
+    background-image: url("../img/avif/dark2.avif");
+}
+
+.bg-light1 {
+    background-color: var(--brand-brown);
+    background-image: url("../img/avif/light1.avif");
+}
+
+.bg-light2 {
+    background-color: var(--brand-brown);
+    background-image: url("../img/avif/light2.avif");
+}
+
+.bg-login {
+    background-color: var(--brand-rose);
+    background-image: url("../img/avif/login.avif");
+}

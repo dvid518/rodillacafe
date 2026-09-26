@@ -1,0 +1,91 @@
+/* ==========================================================================
+   RESET — solo lo que no depende del tema
+   ========================================================================== */
+
+html {
+    font-family: var(--font-family);
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-family);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+/* Truco del proyecto: el fondo se pinta también aquí para que la imagen
+   cubra el viewport cuando el body es más estrecho. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: inherit;
+    filter: blur(0px);
+    z-index: -2;
+}
+
+section {
+    scroll-margin-top: 150px;
+}
+
+img {
+    max-width: 100%;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+input,
+textarea,
+select {
+    font-family: inherit;
+}
+
+input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+svg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Estado global de scroll bloqueado -------------------------------
+   Estaba duplicado literal en components/modal.css y pages/carrito.css.
+   Lo_consumen Modal.js y carrito.js.                                */
+body.sin-scroll {
+    overflow: hidden;
+}
+
+/* --- Foco visible -----------------------------------------------------
+   El reset anterior tenía button { outline: none }, que dejaba el
+   foco de teclado invisible en todo el sitio. Solo se oculta cuando
+   el navegador ya dibuja su propio anillo (focus-visible).          */
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}

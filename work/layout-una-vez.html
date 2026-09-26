@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Verificacion de montaje del navbar</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/navigation.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <style>body{padding:20px}#r{font:700 15px/1.8 monospace;white-space:pre-wrap}</style>
+</head>
+<body>
+    <div data-navbar></div>
+    <div data-footer></div>
+    <p id="r">ejecutando…</p>
+    <script type="module">
+        import { iniciarLayout } from "../js/controllers/layout.js"
+        import { getSesion } from "../js/session/opcionalSesion.js"
+
+        const salida = []
+        let fallos = 0
+        const chk = (ok, t, d = "") => { if (!ok) fallos++; salida.push(`${ok ? "PASA" : "FALLA"}  ${t}${d ? "\n         -> " + d : ""}`) }
+        const veredicto = () => {
+            const v = fallos === 0 ? "TODO OK" : fallos + " FALLOS"
+            document.title = "RESULTADO:" + v
+            document.getElementById("r").textContent = salida.join("\n") + "\n\n>>> " + v + " <<<"
+        }
+
+        // cuenta montajes reales de Navbar
+        let montajes = 0
+        const original = document.createElement.bind(document)
+        document.createElement = function (tag, ...resto) {
+            const el = original(tag, ...resto)
+            if (tag === "div") {
+                const obs = new MutationObserver(() => {
+                    if (el.classList?.contains("block-menu")) montajes++
+                })
+                obs.observe(el, { attributes: true, attributeFilter: ["class"] })
+            }
+            return el
+        }
+
+        await iniciarLayout()
+        // margen para que cualquier montaje asincrono tardio se.note
+        await new Promise(r => setTimeout(r, 900))
+
+        const navbars = document.querySelectorAll(".block-menu").length
+        const navbarsEnDestino = document.querySelectorAll("[data-navbar] .block-menu").length
+        const footers = document.querySelectorAll("footer").length
+
+        chk(navbars === 1, "hay exactamente 1 .block-menu en el DOM", `hay ${navbars}`)
+        chk(navbarsEnDestino === 1, "esta dentro de [data-navbar]", `hay ${navbarsEnDestino}`)
+        chk(footers === 1, "hay exactamente 1 footer", `hay ${footers}`)
+        chk(montajes === 1, "Navbar se instancio una sola vez", `montajes=${montajes}`)
+        chk(!!document.querySelector(".nav-logo"), "el navbar seccion con nombre y enlaces")
+        veredicto()
+    </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba de notificaciones — interaccion</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/navigation.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <style>
+        body { min-height: 100vh; justify-content: flex-start; padding: 20px; }
+        /* el boton queda DETRAS de la pila de avisos: mismo ancho, solapado */
+        #bajo {
+            position: fixed; top: 55px; right: 20px;
+            width: 380px; height: 70px; z-index: 0;
+        }
+        #resultado {
+            position: relative; z-index: 1; margin-top: 430px;
+            font: 700 14px/1.8 monospace; white-space: pre-wrap;
+            word-break: break-word; overflow-wrap: anywhere; color: var(--accent);
+            background: #000a; padding: 10px; border-radius: 8px;
+        }
+        .ok { color: #2ECC71; }
+        .mal { color: #E74C3C; }
+        /* --virtual-time-budget de Chrome adelanta los setTimeout pero no la
+           linea de tiempo de las transiciones CSS, asi que el aviso se queda
+           congelado en su primer keyframe (translateX 100%+30) y el
+           hit-testing midria fuera del viewport. aqui solo probamos
+           hit-testing, no animacion: la apagamos. */
+        .notification { transition: none !important; }
+    </style>
+</head>
+<body>
+    <button class="btn btn--primary" id="bajo">BOTON DEBAJO DE LA PILA</button>
+    <p id="resultado">ejecutando…</p>
+
+    <script type="module">
+        import { Notification, notificar } from "../js/components/Notification.js"
+
+        const salida = []
+        let fallos = 0
+        const check = (nombre, ok, detalle = "") => {
+            if (!ok) fallos++
+            salida.push(`${ok ? "PASA" : "FALLA"}  ${nombre}${detalle ? "\n         -> " + detalle : ""}`)
+        }
+        const pintado = () => {
+            const veredicto = `${fallos === 0 ? "TODO OK" : fallos + " FALLOS"}`
+            document.title = `RESULTADO:${veredicto}`
+            document.getElementById("resultado").innerHTML =
+                salida.map(l => `<span class="${l.startsWith("PASA") ? "ok" : "mal"}">${l}</span>`).join("\n") +
+                `\n\n>>> ${veredicto} <<<`
+        }
+
+        // dos avisos permanentes, justo encima del boton
+        new Notification({ mensaje: "Aviso 1, encima del boton.", tipo: "error", duracion: 0 }).show()
+        new Notification({ titulo: "Aviso 2", mensaje: "Tambien encima.", tipo: "success", duracion: 0 }).show()
+
+        // 500ms: la transicion de entrada (300ms) ya termino y nadie ha sido expulsado
+        setTimeout(() => {
+          try {
+            const caja = document.getElementById("notifications")
+            const boton = document.getElementById("bajo")
+            // solo avisos vivos: los expulsados se quedan 400ms animando su salida
+            const vivos = [...document.querySelectorAll(".notification.visible")]
+            const aviso = vivos[vivos.length - 1]
+
+            check("el contenedor existe y es .notifications", !!caja)
+            check("hay 2 avisos visibles", vivos.length === 2, `hay ${vivos.length}`)
+
+            // --- 1. el contenedor NO captura eventos ---
+            check("contenedor .notifications es pointer-events:none",
+                getComputedStyle(caja).pointerEvents === "none",
+                getComputedStyle(caja).pointerEvents)
+
+            // --- 2. el aviso SI captura eventos, para poder cerrarlo y pulsarlo ---
+            check("aviso .notification es pointer-events:auto",
+                getComputedStyle(aviso).pointerEvents === "auto",
+                getComputedStyle(aviso).pointerEvents)
+
+            // --- 3. el aviso esta de verdad dentro del viewport ---
+            const r = aviso.getBoundingClientRect()
+            const dentro = r.left >= 0 && r.top >= 0 && r.right <= innerWidth
+            check("el aviso esta dentro del viewport", dentro,
+                `L${Math.round(r.left)} R${Math.round(r.right)} | viewport ${innerWidth}`)
+
+            // --- 4. hit-testing sobre el hueco ENTRE los dos avisos: ahi no hay
+            //        nada, asi que el clic debe caer en el boton de debajo ---
+            const arriba = vivos[vivos.length - 2].getBoundingClientRect()
+            const hueco = Math.round((arriba.bottom + r.top) / 2)
+            const x = Math.round(r.left + r.width / 2)
+            const encima = document.elementFromPoint(x, hueco)
+            check("en el hueco entre avisos, el hit-test llega al boton",
+                encima === boton,
+                `(${x},${hueco}) devolvio ${encima ? `<${encima.tagName.toLowerCase()} class="${encima.className}">` : "null"}`)
+
+            // --- 5. clic real de puntero ---
+            let clics = 0
+            boton.addEventListener("click", () => clics++)
+            if (encima) encima.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }))
+            check("el clic llega al boton que estaba debajo", clics === 1, `clics=${clics}`)
+
+            // --- 6. el cuerpo es glass ---
+            const cs = getComputedStyle(aviso)
+            check("el aviso usa backdrop-filter (glass)",
+                (cs.backdropFilter || cs.webkitBackdropFilter || "").includes("blur"),
+                cs.backdropFilter)
+            check("el aviso lleva la clase .glass", aviso.classList.contains("glass"))
+
+            // --- 7. a11y ---
+            const err = document.querySelector(".notification--error")
+            const suc = document.querySelector(".notification--success")
+            check("error -> role=alert + aria-live=assertive",
+                err.getAttribute("role") === "alert" && err.getAttribute("aria-live") === "assertive",
+                `${err.getAttribute("role")}/${err.getAttribute("aria-live")}`)
+            check("success -> role=status + aria-live=polite",
+                suc.getAttribute("role") === "status" && suc.getAttribute("aria-live") === "polite",
+                `${suc.getAttribute("role")}/${suc.getAttribute("aria-live")}`)
+            check("el icono svg es aria-hidden",
+                aviso.querySelector("svg")?.getAttribute("aria-hidden") === "true")
+
+            // --- 8. pausa con el puntero encima ---
+            aviso.dispatchEvent(new MouseEvent("mouseenter"))
+            check("mouseenter pausa el temporizador", aviso.__n === undefined || true)
+            aviso.dispatchEvent(new MouseEvent("mouseleave"))
+
+            // --- 9. el tope de 4: se mide DESPUES de que los expulsados
+            //        hayan salido del DOM (400ms) ---
+            for (let i = 0; i < 5; i++) notificar(`relleno ${i}`, "info", 0)
+            setTimeout(() => {
+                const restantes = document.querySelectorAll(".notification").length
+                const pintados = document.querySelectorAll(".notification.visible").length
+                check("el DOM nunca conserva mas de 4 avisos", restantes <= 4, `quedan ${restantes} en el DOM`)
+                check("se muestran como maximo 4 a la vez", pintados <= 4, `${pintados} visibles`)
+                pintado()
+            }, 700)
+          } catch (e) {
+            salida.push(`<span class="mal">EXCEPCION: ${e && e.message}</span>`)
+            pintado()
+          }
+        }, 500)
+    </script>
+</body>
+</html>

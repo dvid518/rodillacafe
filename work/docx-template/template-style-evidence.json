@@ -1,0 +1,168 @@
+{
+  "input": "C:\\Users\\david\\Downloads\\David\\c\u00f1z\\hdp\\Avance de Proyecto 1 - Grupo 3.docx",
+  "fonts_by_char_count": {},
+  "direct_run_formatting_runs": 186,
+  "direct_paragraph_formatting_paragraphs": 241,
+  "heading_like_paragraphs_not_heading_style": [
+    {
+      "para_index": 1,
+      "text": "1. Definici\u00f3n del problema",
+      "style": "Normal"
+    },
+    {
+      "para_index": 6,
+      "text": "2. Contexto",
+      "style": "Normal"
+    },
+    {
+      "para_index": 10,
+      "text": "3. Justificaci\u00f3n",
+      "style": "Normal"
+    },
+    {
+      "para_index": 14,
+      "text": "4. Necesidad del usuario",
+      "style": "Normal"
+    },
+    {
+      "para_index": 19,
+      "text": "5. Perfil del usuario (UX)",
+      "style": "Normal"
+    },
+    {
+      "para_index": 35,
+      "text": "Objetivo",
+      "style": "Normal"
+    },
+    {
+      "para_index": 37,
+      "text": "Comportamiento",
+      "style": "Normal"
+    },
+    {
+      "para_index": 39,
+      "text": "Problema",
+      "style": "Normal"
+    },
+    {
+      "para_index": 41,
+      "text": "Necesidad",
+      "style": "Normal"
+    },
+    {
+      "para_index": 50,
+      "text": "7. Necesidades y frustraciones",
+      "style": "Normal"
+    },
+    {
+      "para_index": 51,
+      "text": "7.1 Necesidades",
+      "style": "Normal"
+    },
+    {
+      "para_index": 52,
+      "text": "7.2 Frustraciones",
+      "style": "Normal"
+    },
+    {
+      "para_index": 63,
+      "text": "Insight UX",
+      "style": "Normal"
+    },
+    {
+      "para_index": 65,
+      "text": "8. User Journey",
+      "style": "Normal"
+    },
+    {
+      "para_index": 66,
+      "text": "Escenario",
+      "style": "Normal"
+    },
+    {
+      "para_index": 68,
+      "text": "10. Sketching",
+      "style": "Normal"
+    },
+    {
+      "para_index": 71,
+      "text": "Sketch 1 \u2014 Dashboard",
+      "style": "Normal"
+    },
+    {
+      "para_index": 78,
+      "text": "Sketch 2 \u2014 Cuentas",
+      "style": "Normal"
+    },
+    {
+      "para_index": 85,
+      "text": "Sketch 3 \u2014 Crear cuenta",
+      "style": "Normal"
+    },
+    {
+      "para_index": 92,
+      "text": "Sketch 4 \u2014 Movimientos",
+      "style": "Normal"
+    }
+  ],
+  "examples": {
+    "direct_paragraph_formatting": [
+      {
+        "para_index": 1,
+        "text": "1. Definici\u00f3n del problema",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "text": "Las personas que administran su propio dinero pueden tener sus recursos distribuidos entre diferentes tipos de cuentas y",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "text": "La informaci\u00f3n financiera suele encontrarse dispersa entre distintas plataformas, cuentas y medios de registro. Adem\u00e1s, ",
+        "style": "Normal"
+      },
+      {
+        "para_index": 4,
+        "text": "Como consecuencia, el usuario puede perder el control sobre sus finanzas, desconocer cu\u00e1nto dinero posee realmente y ter",
+        "style": "Normal"
+      },
+      {
+        "para_index": 5,
+        "text": "CINCO busca abordar este problema centralizando la informaci\u00f3n financiera del usuario en una sola plataforma, permiti\u00e9nd",
+        "style": "Normal"
+      }
+    ],
+    "direct_run_formatting": [
+      {
+        "para_index": 1,
+        "run_text": "1. Definici\u00f3n del problema",
+        "style": "Normal"
+      },
+      {
+        "para_index": 2,
+        "run_text": "Las personas que administran su propio dinero pueden tener sus recursos distribu",
+        "style": "Normal"
+      },
+      {
+        "para_index": 3,
+        "run_text": "La informaci\u00f3n financiera suele encontrarse dispersa entre distintas plataformas",
+        "style": "Normal"
+      },
+      {
+        "para_index": 4,
+        "run_text": "Como consecuencia, el usuario puede perder el control sobre sus finanzas, descon",
+        "style": "Normal"
+      },
+      {
+        "para_index": 5,
+        "run_text": "CINCO busca",
+        "style": "Normal"
+      }
+    ]
+  },
+  "notes": [
+    "Direct formatting is not always wrong, but it often causes inconsistent output when templates change.",
+    "Heading-like paragraphs not using Heading styles can break TOC and accessibility."
+  ]
+}

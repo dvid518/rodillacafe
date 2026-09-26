@@ -1,0 +1,22 @@
+/* ==========================================================================
+   TIPOGRAFÍA
+   ========================================================================== */
+
+h1,
+h2,
+h3,
+h4 {
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+p {
+    line-height: 1.6;
+}
+
+/* Texto auxiliar. El color sale del tema (antes había un [data-theme]
+   por cada lado en themes.css). */
+.nota {
+    font-size: 14px;
+    color: var(--text-muted);
+}

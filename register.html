@@ -1,0 +1,45 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#360e06">
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rodilla">
+    <title>Registro | Rodilla</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/base/typography.css">
+    <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/navigation.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/pages/auth.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+</head>
+<body class="login">
+    <div data-navbar></div>
+    <section class="block-login">
+        <h1>Crear Cuenta</h1>
+        <div class="ipt">
+            <input class="glass" type="text" placeholder="Nombre completo" id="nombre" name="nombre" required>
+            <input class="glass" type="text" placeholder="Correo electrónico" id="user" name="user" required>
+            <input class="glass" type="password" placeholder="Contraseña" id="pass" name="pass" required>
+            <input class="glass" type="password" placeholder="Confirmar contraseña" id="confirm" name="confirm" required>
+        </div>
+        <div class="error" id="msg"></div>
+        <div class="btns">
+            <button class="glass" id="btn-volver">Volver</button>
+            <button class="glass" id="btn-registrar">Registrarse</button>
+        </div>
+        <p class="registro-link">¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+    </section>
+    <div data-footer></div>
+    <script type="module" src="js/controllers/app.js"></script>
+    <script type="module" src="js/controllers/register.js"></script>
+</body>
+</html>

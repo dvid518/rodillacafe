@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#360e06">
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rodilla">
+    <title>Reserva | Rodilla</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/base/typography.css">
+    <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/navigation.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/pages/reserva.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="img/avif/light1.avif">
+    <link rel="preload" as="image" href="img/avif/light2.avif">
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+</head>
+<body class="reserva-page">
+    <div data-navbar></div>
+    <section id="paso-personas" class="paso">
+        <h1>Elija la cantidad de personas</h1>
+        <div class="personas">
+            <button type="button" class="glass">1</button>
+            <button type="button" class="glass">2</button>
+            <button type="button" class="glass">3</button>
+            <button type="button" class="glass">4</button>
+            <button type="button" class="glass">5</button>
+            <button type="button" class="glass">6</button>
+            <input class="glass" type="number" placeholder="+" min="1" max="25">
+        </div>
+        <p class="nota">*Bebés y niños deben ser incluidos en la cantidad de personas.</p>
+        <button class="continuar glass" name="continuar" type="button">Continuar</button>
+    </section>
+    <section id="paso-fecha" class="paso">
+        <h1>Seleccione una fecha</h1>
+        <div class="fecha-box">
+            <input type="date" id="fecha" class="glass" name="fecha">
+            <label for="fecha" class="custom-icon">📅</label>
+        </div>
+        <button class="continuar glass" name="continuar" type="button">Continuar</button>
+    </section>
+    <section id="paso-hora" class="paso">
+        <h1>Seleccione una hora</h1>
+        <div class="fecha-box">
+            <div class="hora-box">
+                <select id="hora" name="hora" class="glass">
+                    <option value="" disabled selected>Seleccionar hora</option>
+                    <option value="09:00">09:00 AM</option>
+                    <option value="09:30">09:30 AM</option>
+                    <option value="10:00">10:00 AM</option>
+                    <option value="10:30">10:30 AM</option>
+                    <option value="11:00">11:00 AM</option>
+                    <option value="11:30">11:30 AM</option>
+                    <option value="12:00">12:00 PM</option>
+                    <option value="12:30">12:30 PM</option>
+                    <option value="13:00">01:00 PM</option>
+                    <option value="13:30">01:30 PM</option>
+                    <option value="14:00">02:00 PM</option>
+                    <option value="14:30">02:30 PM</option>
+                    <option value="15:00">03:00 PM</option>
+                    <option value="15:30">03:30 PM</option>
+                    <option value="16:00">04:00 PM</option>
+                    <option value="16:30">04:30 PM</option>
+                    <option value="17:00">05:00 PM</option>
+                    <option value="17:30">05:30 PM</option>
+                    <option value="18:00">06:00 PM</option>
+                    <option value="18:30">06:30 PM</option>
+                    <option value="19:00">07:00 PM</option>
+                    <option value="19:30">07:30 PM</option>
+                    <option value="20:00">08:00 PM</option>
+                    <option value="20:30">08:30 PM</option>
+                    <option value="21:00">09:00 PM</option>
+                </select>
+            </div>
+        </div>
+        <button class="continuar glass" name="continuar" type="button">Continuar</button>
+    </section>
+    <section id="paso-datos" class="paso">
+        <h1>Ingrese sus datos</h1>
+        <div class="datos-box">
+            <input type="text" id="nombre" name="nombre" autocomplete="name" class="glass" placeholder="Nombre *" required>
+            <input type="email" id="email" name="email" autocomplete="email" class="glass" placeholder="Correo *" required>
+        </div>
+        <button class="continuar glass" name="continuar" type="button">Previsualizar reserva</button>
+    </section>
+    <section id="paso-confirmacion" class="paso">
+        <h1>Confirmación de Reserva</h1>
+        <div class="tabla-resumen glass">
+            <div class="resumen-item">
+                <span class="label">Cliente:</span>
+                <span class="valor" id="res-nombre"></span>
+            </div>
+            <div class="resumen-item">
+                <span class="label">Personas:</span>
+                <span class="valor" id="res-personas"></span>
+            </div>
+            <div class="resumen-item">
+                <span class="label">Fecha:</span>
+                <span class="valor" id="res-fecha"></span>
+            </div>
+            <div class="resumen-item">
+                <span class="label">Hora:</span>
+                <span class="valor" id="res-hora"></span>
+            </div>
+            <div class="resumen-item">
+                <span class="label">Correo:</span>
+                <span class="valor" id="res-email"></span>
+            </div>
+        </div>
+        <div class="acciones-finales">
+            <button class="conf-edit glass" id="btn-confirmar">Confirmar Reserva</button>
+            <button class="conf-edit glass" id="btn-editar">Editar datos</button>
+        </div>
+    </section>
+    <div class="fases glass">
+        <div class="fase act" id="fase-personas">
+            <span>Personas</span>
+        </div>
+        <div class="fase" id="fase-fecha">
+            <span>Fecha</span>
+        </div>
+
+        <div class="fase" id="fase-hora">
+            <span>Hora</span>
+        </div>
+        <div class="fase" id="fase-datos">
+            <span>Datos</span>
+        </div>
+        <div class="fase">
+            <span>Confirmación</span>
+        </div>
+    </div>
+    <div data-footer></div>
+    <script type="module" src="js/controllers/app.js"></script>
+    <script type="module" src="js/controllers/reserva.js"></script>
+</body>
+</html>

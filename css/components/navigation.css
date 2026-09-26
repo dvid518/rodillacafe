@@ -1,0 +1,293 @@
+/* ==========================================================================
+   NAVEGACIÓN
+   --------------------------------------------------------------------------
+   Cabecera sticky, botón de carrito, menú fullscreen y pie de página.
+   Todo lo que monta js/components/Navbar.js y js/components/Footer.js.
+
+   El <header> que crea Navbar.js es un .navbar .glass. Antes, reset.css
+   tenía "header { background:#111 }" y ganaba, así que la barra se veía
+   negra sólida en todo el sitio en lugar de vidrio. Ese reset ya no existe.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Cabecera
+   -------------------------------------------------------------------------- */
+.block-menu {
+    position: sticky;
+    top: 20px;
+    z-index: var(--z-nav);
+}
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 80%;
+    margin: 30px auto;
+    padding: 15px 30px;
+    border-radius: var(--radius-full);
+}
+
+.nav-logo {
+    display: inline;
+    justify-self: start;
+    font-size: 25px;
+    font-weight: bold;
+    color: var(--text);
+    transition: transform var(--transition-slow), color var(--transition-slow);
+}
+
+.nav-logo:hover {
+    transform: scale(1.05);
+    color: var(--text);
+}
+
+.nav-menu a {
+    display: inline-block;
+    margin: 0 15px;
+    padding: 0;
+    font-size: 20px;
+    color: var(--text);
+    justify-self: center;
+    opacity: 1;
+    visibility: visible;
+    transition: all var(--transition-slow);
+}
+
+.nav-menu a:hover {
+    padding: 0 5px;
+    transform: scale(1.05);
+    color: var(--link);
+}
+
+.right {
+    display: flex;
+    flex-direction: row;
+}
+
+.item {
+    color: var(--text);
+    transition: all var(--transition);
+}
+
+.item:hover {
+    transform: scale(1.05);
+    color: var(--link);
+}
+
+/* "Reservar ahora" */
+.btn a {
+    display: inline-flex;
+    justify-self: end;
+    padding: 8px 18px;
+    border: 1px solid var(--text);
+    border-radius: var(--radius-full);
+    color: var(--text);
+    font-size: 15px;
+    text-decoration: none;
+    opacity: 1;
+    visibility: visible;
+    transition: all var(--transition-slow);
+}
+
+.btn a:hover {
+    padding: 8px 20px;
+    background-color: var(--text);
+    color: var(--bg);
+    transform: scale(1.05);
+}
+
+.menu-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: none;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+@media (max-width: 900px) {
+    .menu-toggle {
+        display: block;
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 90px;
+        left: 0;
+        flex-direction: column;
+        align-items: center;
+        display: none;
+    }
+
+    .nav-menu a {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+
+    .btn {
+        display: none;
+    }
+
+    .btn.active {
+        display: flex;
+        opacity: 0;
+        visibility: hidden;
+        text-shadow: 0 5px 10px var(--text-shadow);
+        transition: all var(--transition-slow);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Botón de carrito (navbar)
+   -------------------------------------------------------------------------- */
+.boton-carrito {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 0 12px;
+    padding: 8px 10px 8px 14px;
+    border: 1px solid var(--text);
+    border-radius: 30px;
+    background-color: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.boton-carrito:hover {
+    padding: 8px 14px 8px 18px;
+    background-color: var(--text);
+    color: var(--bg);
+    transform: scale(1.05);
+}
+
+.boton-carrito svg {
+    width: 18px;
+    height: 18px;
+}
+
+.cantidad-carrito {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 10px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 20px;
+    background-color: var(--text);
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: bold;
+    transition: all var(--transition);
+}
+
+.boton-carrito:hover .cantidad-carrito {
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Menú fullscreen
+   -------------------------------------------------------------------------- */
+.menu-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-fullscreen);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 60px;
+    background-color: var(--menu-tint);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-slow);
+}
+
+.menu-fullscreen.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+}
+
+.menu-list .item {
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-slow);
+}
+
+.menu-list .a.act {
+    opacity: 1;
+    visibility: visible;
+}
+
+.exis {
+    position: absolute;
+    top: 40px;
+    right: 40px;
+    width: 60px;
+    height: 60px;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Pie de página
+   -------------------------------------------------------------------------- */
+footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 60px 0 30px;
+}
+
+.copy {
+    display: inline-block;
+    padding: 10px 15px;
+    border-radius: var(--radius-full);
+    color: var(--text);
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition-slow);
+}
+
+.copy a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.copy:hover {
+    padding: 10px 20px;
+    color: var(--link);
+    transform: scale(1.05);
+}
+
+.footer-btn {
+    display: inline-block;
+    padding: 8px 9px;
+    border-radius: var(--radius-full);
+    color: var(--text);
+    cursor: pointer;
+    transition: all var(--transition-slow);
+}
+
+.footer-btn:hover {
+    padding: 8px 15px;
+    color: var(--link);
+    transform: scale(1.05);
+}

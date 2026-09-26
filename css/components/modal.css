@@ -1,0 +1,788 @@
+/* ==========================================================================
+   CAPAS Y MODALES
+   --------------------------------------------------------------------------
+   Todas las capas que tapan la página viven aquí. Antes estaban repartidas
+   en modal.css, loading.css, notifications.css y media página de carrito,
+   con cuatro modificadores de estado distintos (.active / .visible /
+   .abierto / .act) y tres valores de z-index empatados en 9999.
+
+   Capas y su z-index (ver --z-* en style.css):
+     drawer      1100   carrito lateral
+     modal       1000   confirmación genérica
+     fullscreen  2000   menú móvil      -> navigation.css
+     panel       2400   alta/edición    -> pages/admin.css
+     loader      2500   pantalla de carga
+     toast       3000   notificaciones
+
+   CONVENCIÓN: una capa se oculta con opacity:0 + visibility:hidden y se
+   muestra añadiendo la clase que ya usa su JS (.active, .visible,
+   .abierto). No se renombran para no tocar los 7 controladores.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Base común de las capas
+   -------------------------------------------------------------------------- */
+.modal-overlay,
+.carrito-overlay,
+.loading {
+    position: fixed;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition), visibility var(--transition);
+}
+
+/* --------------------------------------------------------------------------
+   Modal de confirmación — js/components/Modal.js
+   -------------------------------------------------------------------------- */
+.modal-overlay {
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-color: var(--overlay);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Antes la animación referenciaba un @keyframes "fadeOut" que no existía
+   en ningún archivo: el cierre del modal no animaba. */
+.modal-overlay.fade-out {
+    animation: overlay-out 0.3s ease forwards;
+}
+
+@keyframes overlay-out {
+    to {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
+.modal-content {
+    box-sizing: border-box;
+    width: 90%;
+    max-width: 450px;
+    padding: 30px;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--link);
+}
+
+.modal-close {
+    padding: 5px;
+    border: none;
+    background: none;
+    color: var(--link);
+    cursor: pointer;
+    transition: transform var(--transition);
+}
+
+.modal-close:hover {
+    transform: rotate(90deg);
+}
+
+.modal-close svg {
+    width: 24px;
+    height: 24px;
+}
+
+.modal-body {
+    margin-bottom: 25px;
+}
+
+.modal-body p {
+    margin-bottom: 15px;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 15px;
+}
+
+.modal-footer button {
+    padding: 10px 24px;
+    border: 1px solid var(--link);
+    border-radius: 40px;
+    background-color: transparent;
+    color: var(--link);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        padding var(--transition), transform var(--transition);
+}
+
+.modal-footer button:hover {
+    padding: 10px 28px;
+    transform: scale(1.05);
+}
+
+.cancel-btn:hover {
+    background-color: var(--link);
+    color: var(--bg);
+}
+
+.delete-btn:hover {
+    background-color: var(--state-danger);
+    border-color: var(--state-danger);
+    color: var(--white);
+}
+
+/* .accept-btn lo creaban 3 controladores sin estilo propio: heredaba solo
+   el base de .modal-footer button, sin hover. */
+.accept-btn:hover {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+/* Fila de producto dentro del modal de detalle: mis-pedidos.js y
+   panel-pedidos.js la generaban sin ninguna regla. */
+.producto-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.producto-item + .producto-item {
+    border-top: 1px solid var(--border);
+}
+
+.product-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 15px 0;
+    padding: 12px 15px;
+    border: 1px solid var(--link);
+    border-radius: var(--radius-full);
+}
+
+#productName {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+#productCategory {
+    padding: 4px 12px;
+    border-radius: var(--radius-md);
+    background-color: color-mix(in srgb, var(--link) 25%, transparent);
+    color: var(--text);
+    font-size: 0.85rem;
+}
+
+.warning-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--danger);
+}
+
+@media (max-width: 600px) {
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
+    }
+
+    .modal-footer {
+        flex-direction: column-reverse;
+    }
+
+    .modal-footer button {
+        width: 100%;
+        padding: 12px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Drawer del carrito — js/controllers/carrito.js
+   Solo se monta en menu.html, pero es una capa, no contenido de página:
+   por eso vive aquí y no en pages/menu.css.
+   -------------------------------------------------------------------------- */
+.carrito-overlay {
+    z-index: var(--z-drawer);
+    background-color: var(--overlay);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.carrito-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.carrito-panel {
+    position: fixed;
+    top: 0;
+    right: -520px;
+    z-index: calc(var(--z-drawer) + 1);
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    background-color: var(--surface-solid);
+    color: var(--text);
+    font-family: inherit;
+    box-shadow: -8px 0 30px var(--shadow-color);
+    transition: right 0.35s ease;
+}
+
+.carrito-panel.abierto {
+    right: 0;
+}
+
+.carrito-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 24px;
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.carrito-header h2 {
+    margin: 0 0 4px;
+    font-size: 25px;
+}
+
+.carrito-header p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.8;
+}
+
+.cerrar-carrito {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background-color: var(--surface-hover);
+    color: var(--text);
+    font-size: 30px;
+    cursor: pointer;
+    transition: transform var(--transition);
+}
+
+.cerrar-carrito:hover {
+    transform: rotate(90deg) scale(1.05);
+}
+
+.lista-carrito {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px;
+    background-color: var(--surface);
+}
+
+.carrito-item {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    align-items: center;
+    gap: 13px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.carrito-item img {
+    width: 65px;
+    height: 65px;
+    padding: 7px;
+    border-radius: 50px;
+    object-fit: contain;
+    background-color: var(--surface-hover);
+}
+
+.carrito-item-info {
+    margin-left: 15px;
+}
+
+.carrito-item-info h4 {
+    margin: 0 0 5px;
+    color: var(--text);
+}
+
+.carrito-item-info p {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.control-cantidad {
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 30px;
+}
+
+.control-cantidad span {
+    min-width: 34px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.carrito-item-final {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 11px;
+    min-width: 85px;
+}
+
+.btn-eliminar-producto {
+    padding: 7px 15px;
+    border: none;
+    border-radius: 20px;
+    background-color: color-mix(in srgb, var(--state-danger) 11%, transparent);
+    color: var(--danger);
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        padding var(--transition), transform var(--transition);
+}
+
+.btn-eliminar-producto:hover {
+    padding: 7px 17px;
+    background-color: var(--state-danger);
+    color: var(--white);
+    transform: scale(1.01);
+}
+
+.carrito-vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 350px;
+    padding: 20px;
+    text-align: center;
+}
+
+.carrito-vacio-icono {
+    margin-bottom: 15px;
+    font-size: 60px;
+}
+
+.carrito-vacio h3 {
+    margin: 0 0 8px;
+}
+
+.carrito-vacio p {
+    max-width: 280px;
+    margin: 0 0 20px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.ir-menu-carrito {
+    padding: 10px 18px;
+    border-radius: 35px;
+    background-color: color-mix(in srgb, var(--brand-green) 22%, transparent);
+    color: var(--text);
+    text-decoration: none;
+    transition: background-color var(--transition), color var(--transition),
+        padding var(--transition), transform var(--transition);
+}
+
+.ir-menu-carrito:hover {
+    padding: 10px 24px;
+    background-color: var(--accent);
+    color: var(--accent-text);
+    transform: scale(1.05);
+}
+
+.carrito-footer {
+    padding: 18px 22px 22px;
+    border-top: 1px solid var(--border);
+    background-color: var(--surface);
+}
+
+.total-carrito {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+.total-carrito strong {
+    font-size: 24px;
+}
+
+.seguir-comprando,
+.vaciar-carrito,
+.realizar-pedido {
+    width: 100%;
+    margin-bottom: 9px;
+    padding: 13px;
+    border: none;
+    border-radius: 30px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        transform var(--transition);
+}
+
+.seguir-comprando {
+    background-color: color-mix(in srgb, var(--brand-green) 22%, transparent);
+    color: var(--text);
+}
+
+.seguir-comprando:hover {
+    background-color: var(--accent);
+    color: var(--accent-text);
+    transform: scale(1.05);
+}
+
+.vaciar-carrito {
+    background-color: color-mix(in srgb, var(--state-danger) 10%, transparent);
+    color: var(--danger);
+}
+
+.vaciar-carrito:hover {
+    background-color: var(--state-danger);
+    color: var(--white);
+}
+
+.realizar-pedido {
+    margin-bottom: 0;
+    background-color: color-mix(in srgb, var(--brand-brown) 23%, transparent);
+    color: var(--text-muted);
+}
+
+.realizar-pedido:hover {
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+.vaciar-carrito:disabled,
+.realizar-pedido:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    .boton-carrito {
+        margin: 0 8px 0 auto;
+        padding: 7px 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .carrito-panel {
+        max-width: 100%;
+    }
+
+    .carrito-item {
+        grid-template-columns: 60px 1fr;
+    }
+
+    .carrito-item img {
+        width: 55px;
+        height: 55px;
+    }
+
+    .carrito-item-final {
+        grid-column: 2;
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Pantalla de carga — js/components/Loading.js
+   Antes solo se cargaba en login y register; cualquier otra página que
+   quisiera usarla tenía que acordarse de añadir el <link>.
+   -------------------------------------------------------------------------- */
+.loading {
+    z-index: var(--z-loader);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;
+    transition: opacity var(--transition-slow), visibility var(--transition-slow);
+}
+
+.loading.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.loading h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text);
+}
+
+.loading svg {
+    width: 60px;
+    height: 60px;
+    color: var(--accent);
+    animation: rodilla-spin 0.9s linear infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Notificaciones — js/components/Notification.js
+
+   El contenedor NO captura eventos: los clics y el scroll pasan de largo y
+   la pagina de debajo sigue usable. Solo cada aviso los captura. Sin esto
+   un toast de 4s encima de un boton te lo roba durante 4 segundos.
+   -------------------------------------------------------------------------- */
+.notifications {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: var(--z-toast);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    width: min(380px, calc(100vw - 40px));
+    pointer-events: none;
+}
+
+.notification {
+    /* .glass (0,1,0) pone un fondoneutro; el tintado por tipo va debajo */
+    --toast: var(--state-info);
+    --toast-ink: var(--white);
+
+    box-sizing: border-box;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 14px 14px 16px;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background-color: color-mix(in srgb, var(--toast) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--toast) 45%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    box-shadow: var(--shadow-md);
+    color: var(--text);
+    font-family: var(--font-family);
+    pointer-events: auto;
+    opacity: 0;
+    transform: translateX(calc(100% + 30px));
+    transition: transform var(--transition), opacity var(--transition);
+}
+
+.notification.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Fallback: sin backdrop-filter el aviso tiene que seguir siendo legible */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .notification {
+        background-color: color-mix(in srgb, var(--toast) 88%, var(--bg));
+    }
+}
+
+.notification--success {
+    --toast: var(--state-success);
+    --toast-ink: var(--white);
+}
+
+.notification--error {
+    --toast: var(--state-danger);
+    --toast-ink: var(--white);
+}
+
+.notification--warning {
+    --toast: var(--state-warning);
+    --toast-ink: var(--black);
+}
+
+.notification--info {
+    --toast: var(--state-info);
+    --toast-ink: var(--white);
+}
+
+.notification__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    /* chip solido, no una mezcla al 26%: con la mezcla, el glifo blanco se
+       perdia sobre el azul palido en tema claro */
+    background-color: var(--toast);
+    color: var(--toast-ink);
+}
+
+.notification__body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding-top: 4px;
+}
+
+.notification__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.notification__text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.notification__action {
+    align-self: flex-start;
+    margin-top: 6px;
+    padding: 5px 12px;
+    border: 1px solid color-mix(in srgb, var(--toast) 55%, transparent);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    color: var(--toast-ink);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition);
+}
+
+.notification__action:hover {
+    background-color: var(--toast);
+    color: var(--toast-ink);
+}
+
+.notification__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        transform var(--transition);
+}
+
+.notification__close:hover {
+    background-color: var(--surface-hover);
+    color: var(--text);
+    transform: rotate(90deg);
+}
+
+/* Barra de tiempo. Se congela con el puntero encima, en tiempo real, via
+   animation-play-state: la pausa de CSS y la del setTimeout van a la vez. */
+.notification__progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background-color: color-mix(in srgb, var(--toast) 70%, transparent);
+    transform-origin: left center;
+    animation: notification-progress var(--duracion, 4000ms) linear forwards;
+}
+
+.notification:hover .notification__progress {
+    animation-play-state: paused;
+}
+
+@keyframes notification-progress {
+    from {
+        transform: scaleX(1);
+    }
+    to {
+        transform: scaleX(0);
+    }
+}
+
+/* Avisos montados a pelo en body, sin contenedor (compatibilidad) */
+body > .notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: min(380px, calc(100vw - 40px));
+}
+
+@media (max-width: 600px) {
+    .notifications {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .notification {
+        transform: none;
+        transition: opacity var(--transition);
+    }
+
+    .notification__progress {
+        display: none;
+    }
+}
+
+.banner-guest {
+    display: block;
+    max-width: 800px;
+    margin: 16px auto 0;
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.banner-guest a {
+    text-decoration: underline;
+}

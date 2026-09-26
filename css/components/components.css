@@ -1,0 +1,722 @@
+/* ==========================================================================
+   COMPONENTES REUTILIZABLES
+   --------------------------------------------------------------------------
+   Capa genérica del proyecto. Cualquier página o componente JS puede usar
+   estas clases sin escribir CSS nuevo.
+
+   Convención: una clase base ".btn" / ".input" / ".card" y el estado o la
+   variante como modificador ".btn--primary". Los selectores del proyecto
+   que ya existen se agrupan aquí contra las mismas declaraciones, para no
+   duplicar valores ni tocar el HTML.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Superficie de vidrio
+   --------------------------------------------------------------------------
+   El vidrio usa sus propios tokens, NO --surface-strong. Ese token es para
+   superficies de control (inputs, botones) y en tema claro llega a 0.85 de
+   opacidad: si el vidrio lo reutiliza, el navbar sale blanco solido en vez
+   de translucido. Aqui la opacidad se mantiene baja en los dos temas. */
+.glass {
+    background-color: var(--glass-surface);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.glass-strong {
+    background-color: var(--glass-strong);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+}
+
+/* --------------------------------------------------------------------------
+   2. Botones
+   -------------------------------------------------------------------------- */
+.btn,
+.btn-agregar,
+.btn-cantidad,
+.btn-view {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 10px 18px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        border-color var(--transition), padding var(--transition),
+        transform var(--transition);
+}
+
+.btn:hover,
+.btn-agregar:hover {
+    transform: scale(1.05);
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Primario: relleno de acento con texto del color contrario */
+.btn--primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.btn--primary:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--accent-text);
+}
+
+/* Secundario: transparente con borde */
+.btn--ghost {
+    background-color: transparent;
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+
+.btn--ghost:hover {
+    background-color: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+}
+
+/* Sobre superficie de vidrio: mismo aspecto que --ghost pero sin inverter */
+.btn--surface {
+    background-color: var(--surface-strong);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.btn--surface:hover {
+    background-color: var(--surface-hover);
+    border-color: var(--border-strong);
+}
+
+.btn--danger {
+    background-color: transparent;
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.btn--danger:hover {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: var(--bg);
+}
+
+.btn--sm {
+    padding: 6px 14px;
+    font-size: 14px;
+}
+
+.btn--lg {
+    padding: 13px 24px;
+    font-size: 16px;
+}
+
+.btn--block {
+    width: 100%;
+}
+
+.btn--icon {
+    padding: 8px;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+}
+
+.btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* --- Botones que ya existían en el proyecto, agrupados aquí --------------- */
+.logout-btn {
+    display: inline-flex;
+    justify-self: end;
+    font-size: 15px;
+    text-decoration: none;
+    opacity: 1;
+    visibility: visible;
+}
+
+.logout-btn,
+.continuar,
+.conf-edit {
+    padding: 8px 18px;
+    background-color: transparent;
+    border: 1px solid var(--link);
+    border-radius: var(--radius-full);
+    color: var(--link);
+    font-family: inherit;
+    font-size: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        padding var(--transition), transform var(--transition);
+}
+
+.logout-btn:hover,
+.continuar:hover,
+.conf-edit:hover {
+    padding: 8px 22px;
+    background-color: var(--link);
+    color: var(--bg);
+    transform: scale(1.05);
+}
+
+.continuar {
+    margin-top: var(--space-md);
+}
+
+.conf-edit {
+    width: auto;
+}
+
+/* Botón de la tarjeta de producto: el color lo pone la categoría.
+   Comparte geometría con .btn porque Card.js:27 genera el botón solo con
+   class="btn-agregar", sin la clase .btn. */
+.btn-agregar {
+    margin-top: 15px;
+    padding: 10px 14px;
+    border: none;
+    color: var(--white);
+}
+
+.btn-agregar:hover {
+    padding: 10px 18px;
+}
+
+.btn-agregar:disabled {
+    background-color: var(--state-success);
+    cursor: default;
+    transform: none;
+}
+
+#bebidas .btn-agregar {
+    background-color: var(--cat-bebidas);
+}
+
+#postres .btn-agregar {
+    background-color: var(--cat-postres);
+}
+
+#aperitivos .btn-agregar {
+    background-color: var(--cat-aperitivos);
+}
+
+/* Stepper de cantidad del carrito */
+.btn-cantidad {
+    width: 31px;
+    height: 31px;
+    border: none;
+    background-color: var(--surface);
+    color: var(--text);
+    font-size: 19px;
+    font-weight: bold;
+}
+
+.btn-cantidad:hover {
+    background-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.btn-view {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: inherit;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   3. Controles de formulario
+   -------------------------------------------------------------------------- */
+.input,
+.textarea,
+.select,
+.formulario input,
+.formulario textarea,
+.datos-box input,
+.left input,
+.left select {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 15px 24px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background-color: var(--surface-strong);
+    color: var(--text);
+    font-size: 16px;
+    resize: vertical;
+    transition: border-color var(--transition), background-color var(--transition);
+}
+
+.input::placeholder,
+.textarea::placeholder,
+.formulario input::placeholder,
+.formulario textarea::placeholder,
+.datos-box input::placeholder {
+    color: var(--text-muted);
+}
+
+.input:hover,
+.textarea:hover,
+.select:hover,
+.formulario input:hover,
+.datos-box input:hover,
+.left input:hover,
+.left select:hover {
+    border-color: var(--text);
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus,
+.formulario input:focus,
+.formulario textarea:focus,
+.datos-box input:focus,
+.left input:focus,
+.left select:focus {
+    outline: none;
+    border-color: var(--accent);
+    background-color: var(--surface-hover);
+}
+
+/* Chrome pinta su propio fondo al autocompletar: sin esto sale un
+   rectángulo amarillo sobre el tema oscuro. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.formulario input:-webkit-autofill {
+    -webkit-text-fill-color: var(--text);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface-solid) inset;
+    transition: background-color 9999s ease-out;
+}
+
+.textarea {
+    min-height: 160px;
+    border-radius: var(--radius-lg);
+    line-height: 1.6;
+}
+
+.select {
+    padding-right: 45px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.field label {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* Grupo de formulario */
+.form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+}
+
+/* --- Toggle / switch ----------------------------------------------------
+   Reemplaza al checkbox nativo sin estilo que tenía el form de contacto.
+   El input real se mantiene oculto y accesible (solo se oculta visualmente,
+   no display:none), para que siga siendo foco y leachate de teclado.       */
+.switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.switch__track {
+    position: relative;
+    flex: 0 0 auto;
+    width: 46px;
+    height: 26px;
+    border-radius: var(--radius-full);
+    background-color: var(--surface-hover);
+    border: 1px solid var(--border-strong);
+    transition: background-color var(--transition), border-color var(--transition);
+}
+
+.switch__track::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--text);
+    transition: transform var(--transition), background-color var(--transition);
+}
+
+.switch input:checked + .switch__track {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.switch input:checked + .switch__track::after {
+    transform: translateX(20px);
+    background-color: var(--accent-text);
+}
+
+.switch input:focus-visible + .switch__track {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+}
+
+.switch__label {
+    font-size: 15px;
+    color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   4. Tarjetas
+   -------------------------------------------------------------------------- */
+.card {
+    box-sizing: border-box;
+    border-radius: var(--radius-md);
+    padding: 25px 20px;
+    text-align: center;
+    transition: transform var(--transition-slow), box-shadow var(--transition-slow),
+        background-color var(--transition-slow);
+}
+
+.card:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: var(--shadow-md);
+    background-color: var(--surface-hover);
+}
+
+.card-producto {
+    width: 200px;
+    border-radius: 15px;
+}
+
+.card-producto img {
+    width: 120px;
+    height: 120px;
+    flex: 0 1 200px;
+    object-fit: contain;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-radius: 50%;
+    transform: scale(1.25);
+    transition: transform 0.5s ease;
+}
+
+.card-producto:hover img {
+    animation: card-spin 120s infinite;
+}
+
+@keyframes card-spin {
+    0% {
+        transform: rotate(0deg) scale(1.25);
+    }
+    100% {
+        transform: rotate(360deg) scale(1.25);
+    }
+}
+
+.card-producto.bebidas img {
+    background-color: var(--cat-bebidas);
+}
+
+.card-producto.postres img {
+    background-color: var(--cat-postres);
+}
+
+.card-producto.aperitivos img {
+    background-color: var(--cat-aperitivos);
+}
+
+.card-producto h4 {
+    margin: 10px 0;
+    color: var(--text);
+}
+
+.nos-card {
+    width: 300px;
+    padding: 30px;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-slow);
+}
+
+.nos-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-md);
+}
+
+.nos-card h3 {
+    margin: 0 0 15px;
+    font-size: 18px;
+    color: var(--text);
+}
+
+.nos-card p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* --------------------------------------------------------------------------
+   5. Insignias y etiquetas
+   -------------------------------------------------------------------------- */
+.badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.precio {
+    margin-top: 10px;
+    padding: 5px 12px;
+    font-weight: bold;
+    border-radius: var(--radius-md);
+}
+
+.bebidas .precio {
+    color: var(--cat-bebidas);
+    background-color: color-mix(in srgb, var(--cat-bebidas) 15%, transparent);
+}
+
+.postres .precio {
+    color: var(--cat-postres);
+    background-color: color-mix(in srgb, var(--cat-postres) 15%, transparent);
+}
+
+.aperitivos .precio {
+    color: var(--cat-aperitivos);
+    background-color: color-mix(in srgb, var(--cat-aperitivos) 15%, transparent);
+}
+
+@media (max-width: 600px) {
+    .card-producto {
+        flex: 0 0 45%;
+        width: 45%;
+    }
+}
+
+@media (max-width: 400px) {
+    .card-producto {
+        flex: 0 0 100%;
+        width: 100%;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   6. Tablas
+   -------------------------------------------------------------------------- */
+.tabla-container {
+    width: 75%;
+    margin: auto;
+    border-radius: var(--radius-lg);
+}
+
+.tabla-block {
+    display: none;
+    margin: 30px 40px;
+    border-radius: 16px;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    box-shadow: 0 5px 7px var(--shadow-color);
+}
+
+.tabla-block.act {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+}
+
+.tabla-block table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabla-block th,
+.tabla-block td {
+    padding: 8px 10px;
+    border: none;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.tabla-block thead {
+    background-color: var(--table-head);
+}
+
+.tabla-block tr,
+.tabla-block th,
+.tabla-block td,
+td.icon svg {
+    transition: all var(--transition);
+}
+
+.tabla-block tr:hover,
+.tabla-block td:hover,
+.tabla-block th:hover {
+    background-color: var(--table-row-hover);
+}
+
+.tabla-block th:not(.del):hover {
+    color: var(--link);
+}
+
+.tabla-block img {
+    width: 30px;
+}
+
+th.del {
+    color: var(--danger);
+}
+
+td.icon {
+    width: 40px;
+    padding: 2px 6px;
+    cursor: pointer;
+    text-align: center;
+    vertical-align: middle;
+}
+
+td.icon svg {
+    display: block;
+    margin: auto;
+    color: var(--text);
+}
+
+td.icon button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 8px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+td.icon.pencil:hover svg {
+    color: var(--link);
+}
+
+td.icon.trash:hover {
+    background-color: var(--table-danger-row);
+}
+
+td.icon.trash:hover svg {
+    color: var(--danger);
+}
+
+svg.pencil {
+    width: 27px;
+    height: 27px;
+}
+
+svg.trash {
+    width: 20px;
+    height: 20px;
+}
+
+.mensaje-cell {
+    width: 300px;
+    max-width: 300px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.mensaje-cell span {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   7. Utilidades
+   -------------------------------------------------------------------------- */
+.hidden {
+    display: none;
+}
+
+@keyframes rodilla-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btn:hover,
+    .btn:active,
+    .card:hover,
+    .nos-card:hover,
+    .logout-btn:hover,
+    .continuar:hover,
+    .conf-edit:hover,
+    .card-producto:hover img {
+        transform: none;
+        animation: none;
+    }
+}

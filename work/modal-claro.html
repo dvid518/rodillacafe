@@ -1,0 +1,37 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba de modal en tema claro</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/navigation.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <style>
+        body { min-height: 100vh; justify-content: flex-start; padding: 30px; }
+        h1 { margin: 0 0 6px; }
+        p.ayuda { color: var(--text-muted); margin: 0 0 20px; }
+    </style>
+</head>
+<body class="panel admin">
+    <h1>Modal en tema claro</h1>
+    <p class="ayuda">Fondo de panel (panel.avif) debajo, para medir contraste real.</p>
+
+    <script type="module">
+        import { Modal } from "../js/components/Modal.js"
+
+        new Modal({
+            title: "Vaciar carrito",
+            body: "Se quitaran los 3 productos del carrito. Esta accion no se puede deshacer.",
+            actions: [
+                { label: "Cancelar", className: "cancel-btn" },
+                { label: "Vaciar", className: "delete-btn" },
+            ],
+        }).open()
+
+        
+    </script>
+</body>
+</html>

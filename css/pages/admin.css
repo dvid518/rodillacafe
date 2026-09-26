@@ -1,0 +1,287 @@
+/* ==========================================================================
+   ADMINISTRACIÓN — admin/panel-carta, -mensajes, -pedidos, -reservas, -usuarios
+   --------------------------------------------------------------------------
+   Las cinco páginas comparten shell: navbar + section + tabla. Antes todas
+   cargaban pages/panel.css, que mezclaba el dominio del cliente (mis-*.html)
+   con el del admin y arrastraba 6 reglas muertas.
+
+   REGLA JS: aquí se activan cosas con .act (panel-carta.js:200/276/401
+   abre y cierra el formulario, :438-442 cambia de pestaña).
+   ========================================================================== */
+
+/* Fondo del panel, scoped. Antes era "body { ... }" sin selector y se
+   aplicaba a las 8 páginas que cargaban la hoja. */
+.admin {
+    background-color: var(--brand-rose);
+    background-image: url("../../img/avif/panel.avif");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.admin .item:hover {
+    color: var(--link);
+    cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Secciones
+   --------------------------------------------------------------------------
+   panel-carta.html declara cuatro <section>: .carta-section (con contenido)
+   y .reservas / .mensajes / .usuarios vacías como marcadores de posición.
+   Ningún controlador conmuta esas tres, así que se dejan como contenedores
+   de altura cero en vez de montarles un sistema de display que nadie usa. */
+.carta-section {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-top: 20px;
+    gap: 25px;
+}
+
+.carta-section.act {
+    display: flex;
+}
+
+.mensajes,
+.pedidos,
+.reservas,
+.usuarios {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-top: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Pestañas de categoría
+   -------------------------------------------------------------------------- */
+.nav_block {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+}
+
+.categorias {
+    display: flex;
+    gap: 6px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    text-align: center;
+}
+
+.categorias button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background-color: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 14px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.categorias button:hover {
+    background-color: var(--surface-hover);
+}
+
+.categorias button.tab {
+    padding: 8px 20px;
+}
+
+.categorias button:not(.add):hover {
+    padding: 8px 25px;
+}
+
+.categorias button.add {
+    padding: 8px 9px 8px 7px;
+}
+
+.categorias button.add:hover {
+    padding: 8px 15px 8px 13px;
+}
+
+.categorias button svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    margin: auto;
+    color: var(--text);
+    transform: translateY(-2px);
+    transition: all var(--transition);
+}
+
+.categorias button.act {
+    color: var(--white);
+}
+
+.categorias button.act#tab-bebidas {
+    background-color: var(--cat-bebidas);
+}
+
+.categorias button.act#tab-postres {
+    background-color: var(--cat-postres);
+}
+
+.categorias button.act#tab-aperitivos {
+    background-color: var(--cat-aperitivos);
+}
+
+/* Franja de color por categoría en el canto de la tabla. */
+.bebidas {
+    border-left: 6px solid var(--cat-bebidas);
+}
+
+.postres {
+    border-left: 6px solid var(--cat-postres);
+}
+
+.aperitivos {
+    border-left: 6px solid var(--cat-aperitivos);
+}
+
+.tab-reservas {
+    border-left: 6px solid var(--accent);
+}
+
+.tab-mensajes {
+    border-left: 6px solid var(--link);
+}
+
+/* #19525a era un teal suelto que solo existía aquí. */
+.tab-pedidos {
+    border-left: 6px solid var(--cat-aperitivos);
+}
+
+/* tab-usuarios no existía: el cuarto panel salía sin franja de color. */
+.tab-usuarios {
+    border-left: 6px solid var(--cat-postres);
+}
+
+/* --------------------------------------------------------------------------
+   Alta / edición de producto — panel-carta.js
+   Es una capa (tapa la página, bloquea el scroll), pero es privativa de esta
+   página, así que se queda aquí en vez de subirla a modal.css.
+   -------------------------------------------------------------------------- */
+.form-add-producto {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-panel);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+    gap: 20px;
+    background-color: var(--overlay);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition), visibility var(--transition);
+}
+
+.form-add-producto.act {
+    opacity: 1;
+    visibility: visible;
+}
+
+.form-add-producto .left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+}
+
+.left .title {
+    font-size: 25px;
+    font-weight: bold;
+}
+
+/* Los inputs ya reciben su geometría por el selector agrupado
+   ".left input, .left select" de components.css. Aquí solo el ancho. */
+.left input,
+.left select {
+    width: 450px;
+    max-width: 90%;
+}
+
+.left input::placeholder {
+    color: var(--text-muted);
+}
+
+.left .button-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.left button {
+    padding: 10px 20px;
+    border: 1px solid var(--link);
+    border-radius: var(--radius-full);
+    background-color: var(--surface-strong);
+    color: var(--link);
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        padding var(--transition), transform var(--transition);
+}
+
+.left button:hover {
+    padding: 10px 25px;
+    background-color: var(--link);
+    color: var(--bg);
+    transform: scale(1.05);
+}
+
+.left button.hide-btn {
+    display: none;
+}
+
+.right img {
+    max-height: 350px;
+    border-radius: var(--radius-md);
+    animation: img-sway 20s infinite;
+}
+
+/* #img-box no tenía estilo: el preview de la imagen se salía del panel. */
+.img-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 350px;
+    max-width: 40vw;
+    min-height: 200px;
+    padding: 15px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+}
+
+.img-box img {
+    max-width: 100%;
+    max-height: 350px;
+    object-fit: contain;
+}
+
+@keyframes img-sway {
+    0% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(10deg);
+    }
+    75% {
+        transform: rotate(-10deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}

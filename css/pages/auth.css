@@ -1,0 +1,375 @@
+/* ==========================================================================
+   AUTENTICACIÓN — login.html y register.html
+   --------------------------------------------------------------------------
+   Ambas páginas comparten markup exacto (mismos ids, mismas clases) y esta
+   única hoja, así que no tiene sentido duplicarla.
+
+   El presupuesto vertical está ajustado para que la página quepa sin scroll
+   en viewports de 500px de alto o más. Por debajo de eso el scroll es
+   inevitable: no cabe un navbar, un formulario y un pie en 375px.
+   ========================================================================== */
+
+/* El body no lleva max-width: si no, los 750px se pegan a la izquierda.
+   Tampoco align-items: center — encogía el navbar y el footer al contenido
+   en vez de estirarlos como en el resto de páginas.
+   100dvh con fallback a 100vh para que la barra del navegador en móvil no
+   genere scroll. La tarjeta se centra con margin auto y no con
+   justify-content: center, que con contenido desbordado corta la parte
+   superior y deja inalcanzable el scroll. */
+.login {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 20px 25px;
+}
+
+/* Tarjeta */
+.block-login {
+    box-sizing: border-box;
+    align-self: center;
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 430px;
+    padding: 44px 40px;
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    background-color: color-mix(in srgb, var(--bg) 72%, transparent);
+    box-shadow: var(--shadow-md);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+}
+
+.block-login h1 {
+    margin: 0 0 28px;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--text);
+}
+
+/* Campos */
+.ipt {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+}
+
+.ipt input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 15px 24px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background-color: var(--surface-strong);
+    color: var(--text);
+    caret-color: var(--accent);
+    font-family: inherit;
+    font-size: 16px;
+    transition: border-color var(--transition), background-color var(--transition);
+}
+
+.ipt input::placeholder {
+    color: var(--text-muted);
+}
+
+.ipt input:hover {
+    border-color: var(--text);
+}
+
+.ipt input:focus {
+    outline: none;
+    border-color: var(--text);
+    background-color: var(--surface-hover);
+}
+
+/* Chrome pinta su propio fondo al autocompletar: sin esto sale un
+   rectángulo amarillo sobre el tema oscuro. */
+.ipt input:-webkit-autofill,
+.ipt input:-webkit-autofill:hover,
+.ipt input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--text);
+    -webkit-box-shadow: 0 0 0 1000px var(--surface-solid) inset;
+    caret-color: var(--accent);
+    transition: background-color 9999s ease-out;
+}
+
+/* Mensaje de error. El espacio siempre reservado evita saltos de layout;
+   .act es lo que login.js:21 y register.js añaden al mostrar el mensaje. */
+.error {
+    min-height: 20px;
+    margin: 14px 0 0;
+    font-size: 14px;
+    text-align: center;
+    color: var(--danger);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.error.act {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Botones */
+.btns {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.btns button {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 15px;
+    border-radius: var(--radius-full);
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        border-color var(--transition), transform var(--transition);
+}
+
+.btns button:hover {
+    transform: scale(1.03);
+}
+
+.btns button:active {
+    transform: scale(0.98);
+}
+
+#btn-volver {
+    background-color: var(--surface-strong);
+    border: 1px solid var(--border-strong);
+}
+
+#btn-volver:hover {
+    background-color: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+}
+
+#btn-login,
+#btn-registrar {
+    background-color: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--accent-text);
+}
+
+#btn-login:hover,
+#btn-registrar:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--accent-text);
+}
+
+/* Enlace inferior */
+.registro-link {
+    margin: 24px 0 0;
+    font-size: 15px;
+    text-align: center;
+    color: var(--text);
+    opacity: 0.85;
+}
+
+.registro-link a {
+    display: inline-block;
+    padding: 4px 10px;
+    border-bottom: 1px solid transparent;
+    border-radius: var(--radius-full);
+    color: var(--accent);
+    font-weight: 500;
+    transition: background-color var(--transition), color var(--transition),
+        border-color var(--transition), transform var(--transition);
+}
+
+.registro-link a:hover {
+    background-color: var(--text);
+    border-bottom-color: currentColor;
+    color: var(--bg);
+    transform: scale(1.05);
+}
+
+@media (max-width: 900px) {
+    .block-login {
+        max-width: 380px;
+        padding: 36px 28px;
+    }
+
+    .block-login h1 {
+        font-size: 26px;
+    }
+}
+
+@media (max-width: 500px) {
+    .login {
+        padding: 16px;
+    }
+
+    .block-login {
+        max-width: 100%;
+        padding: 28px 20px;
+        border-radius: var(--radius-lg);
+    }
+
+    .block-login h1 {
+        margin-bottom: 22px;
+        font-size: 23px;
+    }
+
+    .ipt {
+        gap: 12px;
+    }
+
+    .ipt input {
+        padding: 14px 20px;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Ajuste vertical — la página debe caber sin scroll.
+   El navbar y el footer miden ~130px cada uno y son los que se comen el
+   presupuesto. Se ajustan con selectores scopeados a .login para no tocar
+   navigation.css, que es compartido.
+   ------------------------------------------------------------------------ */
+@media (max-height: 900px) {
+    .login {
+        padding: 16px 25px;
+    }
+
+    .login .navbar {
+        margin: 16px auto;
+        padding: 12px 30px;
+    }
+
+    .login footer {
+        margin-top: 28px;
+        margin-bottom: 14px;
+    }
+
+    .block-login {
+        padding: 30px 36px;
+    }
+
+    .block-login h1 {
+        margin-bottom: 18px;
+        font-size: 26px;
+    }
+
+    .ipt {
+        gap: 12px;
+    }
+
+    .ipt input {
+        padding: 13px 22px;
+    }
+
+    .error {
+        min-height: 18px;
+        margin-top: 10px;
+    }
+
+    .btns {
+        gap: 10px;
+        margin-top: 0;
+    }
+
+    .btns button {
+        padding: 13px;
+    }
+
+    .registro-link {
+        margin-top: 16px;
+    }
+}
+
+@media (max-height: 780px) {
+    .login {
+        padding: 10px 25px;
+    }
+
+    .login .navbar {
+        margin: 10px auto;
+        padding: 10px 30px;
+    }
+
+    .login .nav-logo {
+        font-size: 22px;
+    }
+
+    .login footer {
+        margin-top: 18px;
+        margin-bottom: 10px;
+    }
+
+    .block-login {
+        padding: 24px 32px;
+        border-radius: var(--radius-lg);
+    }
+
+    .block-login h1 {
+        margin-bottom: 14px;
+        font-size: 22px;
+    }
+
+    .ipt {
+        gap: 10px;
+    }
+
+    .ipt input {
+        padding: 11px 20px;
+    }
+
+    .error {
+        min-height: 16px;
+        margin-top: 8px;
+        font-size: 13px;
+    }
+
+    .btns {
+        gap: 8px;
+    }
+
+    .btns button {
+        padding: 11px;
+        font-size: 15px;
+    }
+
+    .registro-link {
+        margin-top: 12px;
+        font-size: 14px;
+    }
+}
+
+@media (max-height: 660px) {
+    .login footer {
+        display: none;
+    }
+
+    .block-login {
+        padding: 20px 28px;
+    }
+
+    .block-login h1 {
+        margin-bottom: 12px;
+        font-size: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .btns button:hover,
+    .btns button:active,
+    .registro-link a:hover {
+        transform: none;
+    }
+}

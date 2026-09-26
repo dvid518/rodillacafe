@@ -1,0 +1,126 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#360e06">
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rodilla">
+    <title>Carta | Rodilla</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/navigation.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <link rel="stylesheet" href="../css/pages/admin.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+</head>
+<body class="panel admin">
+    <div data-navbar></div>
+    <section class="carta-section act" id="carta-section">
+        <div class="nav_block">
+            <nav class="categorias glass">
+                <button class="tab act" id="tab-bebidas">Bebidas</button>
+                <button class="tab" id="tab-postres">Postres</button>
+                <button class="tab" id="tab-aperitivos">Aperitivos</button>
+            </nav>
+            <nav class="categorias glass">
+                <button class="add" id="nuevo">
+                    <svg width=viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 12H18M12 6V18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </nav>
+        </div>
+        <div class="tabla-container glass">
+            <div class="tabla-block bebidas act" id="tabla-bebidas">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>img</th>
+                            <th>id_bebida</th>
+                            <th>Nombre</th>
+                            <th>Precio (s/)</th>
+                            <th>(E)</th>
+                            <th class="del">(D)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bebidas-tbody"></tbody>
+                </table>
+            </div>
+            <div class="tabla-block postres" id="tabla-postres">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>img</th>
+                            <th>id_postre</th>
+                            <th>Nombre</th>
+                            <th>Precio (s/)</th>
+                            <th>(E)</th>
+                            <th class="del">(D)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="postres-tbody"></tbody>
+                </table>
+            </div>
+            <div class="tabla-block aperitivos" id="tabla-aperitivos">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>img</th>
+                            <th>id_aperitivo</th>
+                            <th>Nombre</th>
+                            <th>Precio (s/)</th>
+                            <th>(E)</th>
+                            <th class="del">(D)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="aperitivos-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="form-add-producto" id="form-add-producto">
+            <div class="left">
+                <div class="title" id="title"></div>
+                <input type="text" id="nombre" placeholder="Nombre" autocomplete="off">
+                <input type="number" step="0.01" id="precio" placeholder="Precio">
+                <input type="text" id="img" placeholder="Link de la imagen">
+                <select id="categoria">
+                    <option value="" disabled selected>Categoría</option>
+                    <option value="bebidas">Bebidas</option>
+                    <option value="postres">Postres</option>
+                    <option value="aperitivos">Aperitivos</option>
+                </select>
+                <select id="unidad">
+                    <option value="" disabled selected>Unidad de medida</option>
+                </select>
+                <div class="button-container">
+                    <button id="push"></button>
+                    <button id="del" class="hide-btn">Eliminar</button>
+                    <button id="exit">Salir</button>
+                </div>
+            </div>
+            <div class="right">
+                <div class="img-box" id="img-box">
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="reservas" id="reservas-section">
+    </section>
+    <section class="mensajes" id="mensajes-section">
+    </section>
+    <section class="usuarios" id="usuarios-section">
+    </section>
+    <div data-footer></div>
+    <script type="module" src="../js/controllers/app.js"></script>
+    <script type="module" src="../js/session/guard.js"></script>
+    <script type="module" src="../js/controllers/panel-carta.js"></script>
+</body>
+</html>

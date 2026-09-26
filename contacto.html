@@ -1,0 +1,51 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset='UTF-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#360e06">
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rodilla">
+    <title>Contacto | Rodilla</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/base/typography.css">
+    <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/navigation.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/pages/contacto.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="img/avif/dark1.avif">
+    <link rel="preload" as="image" href="img/avif/dark2.avif">
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div data-navbar></div>
+    <section class="contacto">
+        <h1>Ponte en contacto con nosotros</h1>
+        <form action="">
+            <div class="formulario">
+                <input type="text" id="nombre" name="nombre" autocomplete="name" class="glass" placeholder="Nombre *" required>
+                <input type="email" id="mail" name="mail" autocomplete="email" class="glass" placeholder="Correo *" required>
+                <textarea id="mensaje" name="mensaje" autocomplete="off" class="glass" placeholder="Mensaje..."></textarea>
+                <p class="nota">Obligatorios todos los campos con *</p>
+            </div>
+            <div class="submit">
+                <label class="switch">
+                    <input type="checkbox" id="checkbox" required>
+                    <span class="switch__track"></span>
+                    <span class="switch__label">Acepto el tratamiento de mi información.</span>
+                </label>
+                <button type="submit" class="glass">Enviar</button>
+            </div>
+</form>
+    </section>
+    <div data-footer></div>
+    <script type="module" src="js/controllers/app.js"></script>
+    <script type="module" src="js/controllers/contacto.js"></script>
+</body>
+</html>

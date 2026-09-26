@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba de notificaciones</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/navigation.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <style>
+        /* atajo de la prueba: la zona de toasts tiene que quedar encima de
+           un boton real, para comprobar el paso de los clics */
+        .zona {
+            position: relative;
+            height: 260px;
+            display: grid;
+            place-items: center;
+        }
+        .resultado {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body class="panel admin">
+    <div class="zona">
+        <div style="display:grid;gap:14px;place-items:center">
+            <button class="btn btn--primary" id="bajo">Boton DEBAJO de los toasts</button>
+            <p class="resultado" id="r">sin clics todavia</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Notification, notificar } from "../js/components/Notification.js"
+        import { icon } from "../js/components/Icon.js"
+
+        document.getElementById("bajo").addEventListener("click", () => {
+            document.getElementById("r").textContent = "CLIC LLEGUE AL BOTON"
+        })
+
+        // los cuatro tipos, con el contenedor pegado al boton
+        new Notification({ mensaje: "Cuenta creada correctamente.", tipo: "success", duracion: 0 }).show()
+        new Notification({ titulo: "Stock bajo", mensaje: "ESPRESSO: 2 unidades, minimo 5.", tipo: "warning", duracion: 0 }).show()
+        new Notification({ titulo: "Error al facturar", mensaje: "La caja no tiene apertura para el turno de la tarde.", tipo: "error", duracion: 0 }).show()
+        new Notification({
+            mensaje: "3 pedidos nuevos en BARRA.",
+            tipo: "info",
+            duracion: 30000,
+            accion: { label: "Ver cocina", onClick: () => console.log("accion") }
+        }).show()
+
+        // el quinto debe expulsar al primero
+        notificar("Este aviso expulsa al primero por el tope de 4", "info", 0)
+    </script>
+</body>
+</html>
