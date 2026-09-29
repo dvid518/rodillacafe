@@ -1,0 +1,52 @@
+<section class="hero hero--reservas hero--compact hero--contenido">
+    <div class="hero__contenido">
+        <span class="hero__etiqueta">Reserva</span>
+        <h1 class="hero__titulo">Reserva tu mesa</h1>
+        <p class="hero__subtitulo">
+            Elige fecha, hora y cantidad de personas.
+        </p>
+    </div>
+    <div class="hero__decoracion" aria-hidden="true">
+        <re-icon icon="calendar-days" weight="filled"></re-icon>
+    </div>
+</section>
+
+<section class="reserva">
+    <ol class="reserva__pasos" id="reserva-pasos" aria-label="Pasos de la reserva">
+        <li class="paso__indicador" data-indicador="0">Personas</li>
+        <li class="paso__indicador" data-indicador="1">Fecha</li>
+        <li class="paso__indicador" data-indicador="2">Hora</li>
+        <li class="paso__indicador" data-indicador="3">Confirmar</li>
+    </ol>
+
+    <div class="reserva__pasos">
+        <div class="paso paso--activo" data-paso="personas">
+            <h2>¿Cuántas personas?</h2>
+            <div class="personas" id="personas-selector" role="group" aria-label="Cantidad de personas"></div>
+            <button class="btn btn--primary" type="button" data-siguiente>Continuar</button>
+        </div>
+
+        <div class="paso" data-paso="fecha">
+            <h2>¿Qué día?</h2>
+            <label class="visualmente-oculto" for="reserva-fecha">Fecha de la reserva</label>
+            <input class="input input--fecha" type="date" id="reserva-fecha" required>
+            <button class="btn btn--primary" type="button" data-siguiente>Continuar</button>
+        </div>
+
+        <div class="paso" data-paso="hora">
+            <h2>¿A qué hora?</h2>
+            <label class="visualmente-oculto" for="reserva-hora">Hora de la reserva</label>
+            <select class="select select--hora" id="reserva-hora" required></select>
+            <button class="btn btn--primary" type="button" data-siguiente>Continuar</button>
+        </div>
+
+        <div class="paso" data-paso="confirmar">
+            <h2>Confirmar reserva</h2>
+            <dl class="reserva__resumen" id="reserva-resumen"></dl>
+            <div class="reserva__acciones">
+                <button class="btn btn--surface" type="button" data-volver>Volver</button>
+                <button class="btn btn--primary" type="button" id="reserva-confirmar">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</section>

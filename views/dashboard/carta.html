@@ -1,0 +1,119 @@
+<section class="dashboard-carta">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Carta</h1>
+            <p class="hero__subtitulo">Administra los productos del menú.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary" type="button" id="carta-nuevo">+ Nuevo producto</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="coffee" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <div class="tabs-categorias" id="carta-tabs" role="tablist" aria-label="Categorias de la carta"></div>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Imagen</th>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Unidad</th>
+                    <th title="Editar">(E)</th>
+                    <th title="Eliminar">(D)</th>
+                </tr>
+            </thead>
+            <tbody id="carta-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="carta-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="carta-modal-titulo">
+            <h2 id="carta-modal-titulo">Nuevo producto</h2>
+
+            <label class="modal-form__campo" for="carta-input-nombre">
+                Nombre
+                <input class="input" type="text" id="carta-input-nombre" required>
+            </label>
+
+            <label class="modal-form__campo" for="carta-input-precio">
+                Precio S/
+                <input class="input" type="number" step="0.01" min="0" id="carta-input-precio" required>
+            </label>
+
+            <label class="modal-form__campo" for="carta-input-imagen">
+                Imagen (URL)
+                <input class="input" type="text" id="carta-input-imagen" placeholder="https://…">
+            </label>
+
+            <label class="modal-form__campo" for="carta-input-categoria">
+                Categoria
+                <select class="select" id="carta-input-categoria" required>
+                    <option value="" disabled selected>Seleccionar</option>
+                </select>
+            </label>
+
+            <label class="modal-form__campo" for="carta-input-unidad">
+                Unidad
+                <select class="select" id="carta-input-unidad" required></select>
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="carta-modal-cancelar">Cancelar</button>
+                <button class="btn btn--danger modal-form__eliminar" type="button" id="carta-modal-eliminar" hidden>Eliminar</button>
+                <button class="btn btn--primary" type="button" id="carta-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

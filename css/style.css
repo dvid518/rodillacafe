@@ -46,6 +46,13 @@
     --radius-lg: 30px;
     --radius-full: 50px;
 
+/* Ancho del "shell": la caja que comparten la navbar de la landing y los
+   heroes de las paginas de contenido, para que cabecera y portada midan lo
+   mismo. El project no tiene reset global de box-sizing, asi que estos dos
+   valores son content-box: el ancho exterior real es 80% + 2 x 30px. */
+--shell-ancho: 80%;
+--shell-padding-x: 30px;
+
     /* --- Sombras (la parte móvil vive en el tema) --- */
     --shadow-sm: 0 2px 32px rgba(0, 0, 0, 0.025), 0 4px 5px rgba(0, 0, 0, 0.025);
     --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.15);
@@ -183,8 +190,10 @@
 
 /* ==========================================================================
    FONDOS DE PÁGINA
-   Las clases las aplica js/utils/random.js. El color de respaldo de cada
-   imagen es su tono medio real, para que no haya parpadeo al cargar.
+   Estas clases quedaron sin usar: las aplicaba js/utils/random.js, que se
+   elimino al limpiar el proyecto. El fondo real de cada pagina lo pone
+   ahora el bloque de su hero en components/hero.css. Se conservan por si
+   vuelve a hacer falta una imagen de fondo a pagina completa.
    ========================================================================== */
 
 .bg-dark1 {

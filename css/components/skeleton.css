@@ -1,0 +1,196 @@
+/* ==========================================================================
+   ESQUELETOS DE CARGA
+   --------------------------------------------------------------------------
+   Bloques grises con un barrido de luz que ocupan el sitio exacto que
+   ocupara el dato. Son ESTATICOS: van escritos en el HTML del parcial, no los
+   pinta el controlador. Cada vista reemplaza el contenido del tbody o de la
+   rejilla en cuanto recibe la respuesta, asi que el esqueleto nunca sobrevive
+   a los datos (los caminos de vacio y de error tambien escriben, con
+   filaVacia() o filaError()).
+
+   LA REGLA DE ESTA HOJA
+   Cada esqueleto copia las medidas del elemento al que sustituye. Si solo se
+   parece, al caer el dato la pagina salta y encima el bloque real queda
+   montado encima de una silueta de otro tamano. Por eso los numeros de aqui
+   NO son inventados: salen de las reglas del elemento real, y cada uno lleva
+   un comentario que dice de donde. Si cambias .kpi-card, cambia tambien
+   .esqueleto-kpi.
+
+   ACCESIBILIDAD
+   Un esqueleto no es informacion, asi que va aria-hidden y el contenedor que
+   lo envuelve lleva aria-busy: un lector de pantalla anuncia "cargando" una
+   vez y se calla, en vez de leer quince bloques vacios.
+
+   PREFERENCIAS DE MOVIMIENTO
+   El barrido es decorativo. Con prefers-reduced-motion se quita la animacion
+   y queda el bloque plano: el sitio comunica la carga igual, solo que sin
+   movimiento.
+   ========================================================================== */
+
+/* ---------- primitiva ---------- */
+
+.skeleton {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background-color: var(--surface-strong);
+    border-radius: var(--radius-sm);
+}
+
+/* El barrido: una franja clara que cruza el bloque de izquierda a derecha.
+   Va en un pseudo-elemento para no anadir nodos al HTML. */
+.skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--surface-hover),
+        transparent
+    );
+    transform: translateX(-100%);
+    animation: skeleton-barrido 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-barrido {
+    to { transform: translateX(100%); }
+}
+
+/* ---------- medidas ---------- */
+
+/* Una linea de texto. 1em de alto para que la fila mida lo que mide con el
+   dato puesto, en vez de forzar una altura que luego se encoge. */
+.skeleton--texto {
+    width: 100%;
+    height: 1em;
+}
+
+.skeleton--corto {
+    width: 45%;
+}
+
+/* ==========================================================================
+   Fila de tabla
+   --------------------------------------------------------------------------
+   La celda real ya trae el padding de .tabla th, .tabla td (8px 16px), asi que
+   el esqueleto NO vuelve a declararlo. La altura sale sola: en las columnas de
+   texto, 8 + 16 + 16 = 40px; en las de accion, 8 + 16 + 32 = 56px, que es
+   justo lo que ocupa un .btn-icono de 32x32. Asi la fila crece igual que
+   cuando llegan los datos.
+   -------------------------------------------------------------------------- */
+.esqueleto-fila td {
+    vertical-align: middle;
+}
+
+.esqueleto-fila .skeleton {
+    margin: 0 auto;
+}
+
+/* La celda de accion: cuadrado de 32px con el mismo radio que .btn-icono, no
+   una linea fina como las de texto. */
+.skeleton--icono {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+}
+
+/* ==========================================================================
+   Tarjeta de producto
+   --------------------------------------------------------------------------
+   Copia .card-producto de components.css: mismo padding, mismo disco de foto
+   de 116px, mismo titulo de dos lineas (min-height 2.8em), misma pastilla de
+   precio y mismo boton a todo el ancho. Sin esto el menu saltaba al caer la
+   primera fila de productos.
+   -------------------------------------------------------------------------- */
+.esqueleto-tarjeta {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+/* El disco, con el mismo diametro y el mismo radio que .card-producto img */
+.esqueleto-tarjeta .skeleton--foto {
+    width: 116px;
+    height: 116px;
+    margin: 0 auto var(--space-md);
+    border-radius: 50%;
+}
+
+/* Dos lineas: min-height 2.8em del h4 real */
+.esqueleto-tarjeta .skeleton--lineas {
+    width: 100%;
+    height: 2.8em;
+    margin-bottom: var(--space-xs);
+}
+
+/* La pastilla del precio: .precio va en inline-block y centrado */
+.esqueleto-tarjeta .skeleton--pastilla {
+    align-self: center;
+    width: 4.5rem;
+    height: 1.7rem;
+    margin-bottom: var(--space-md);
+    border-radius: var(--radius-full);
+}
+
+/* El boton, a todo el ancho y pegado abajo con margin-top:auto, igual que
+   .btn-agregar */
+.esqueleto-tarjeta .skeleton--boton {
+    width: 100%;
+    height: 2.4rem;
+    margin-top: auto;
+    border-radius: var(--radius-full);
+}
+
+/* ==========================================================================
+   Tarjeta de indicador
+   --------------------------------------------------------------------------
+   Copia .kpi-card y sus cuatro hijos de dashboard.css: icono de 38px con radio
+   --radius-sm (NO un circulo), etiqueta, valor grande y pie. Faltaba el valor
+   grande, que es lo que mas alto tiene la tarjeta, y por eso el panel encogia
+   al llegar los numeros.
+   -------------------------------------------------------------------------- */
+.esqueleto-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+}
+
+.esqueleto-kpi .skeleton--icono-kpi {
+    width: 38px;
+    height: 38px;
+    margin-bottom: var(--space-xs);
+    border-radius: var(--radius-sm);
+}
+
+.esqueleto-kpi .skeleton--etiqueta {
+    width: 60%;
+    height: 0.85rem;
+}
+
+/* el valor: 2rem con line-height 1.1, lo mas alto de la tarjeta */
+.esqueleto-kpi .skeleton--valor {
+    width: 45%;
+    height: 2.2rem;
+}
+
+.esqueleto-kpi .skeleton--pie {
+    width: 70%;
+    height: 0.8rem;
+}
+
+/* ---------- menos movimiento ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+        animation: none;
+        transform: none;
+        opacity: 0;
+    }
+}

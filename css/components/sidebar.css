@@ -1,0 +1,149 @@
+/* ==========================================================================
+   SIDEBAR — navegacion del dashboard
+   --------------------------------------------------------------------------
+   Escrito a mano con los tokens de style.css, sin Tailwind. El proyecto
+   no tiene build ni dependencias; meter el CDN de Tailwind para maquetar
+   dos bloques seria anadir una dependencia externa y un script bloqueante
+   a cambio de nada.
+
+   250px fijos en escritorio. En movil se oculta y entra con
+   .sidebar--abierto, sobre un fondo scrim que cierra al tocar fuera.
+
+   El proyecto NO tiene reset global de box-sizing, asi que sin esto el
+   width:250px + el padding horizontal se suman y el sidebar mide 283px,
+   descuadrando la columna del grid. Scoped a estos dos componentes.
+   ========================================================================== */
+
+.sidebar,
+.sidebar *,
+.topbar,
+.topbar * {
+    box-sizing: border-box;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    width: 250px;
+    /* 100% y no 100vh: el shell (.dashboard-layout) ya tiene alto definido,
+       asi que el sidebar se ajusta a la fila del grid y no a un alto propio
+       que dejaria de cuadrar cuando difieran 100vh y 100dvh en movil. */
+    height: 100%;
+    padding: var(--space-lg) var(--space-md);
+    background-color: var(--bg);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    flex: 0 0 auto;
+}
+
+.sidebar__brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar__logo {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    transition: transform var(--transition);
+}
+
+.sidebar__logo:hover {
+    transform: scale(1.04);
+    color: var(--link);
+}
+
+.sidebar__sub {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.sidebar__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.sidebar__link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-full);
+    color: var(--text-muted);
+    font-size: 15px;
+    transition: background-color var(--transition), color var(--transition);
+}
+
+.sidebar__link:hover {
+    background-color: var(--surface-strong);
+    color: var(--text);
+}
+
+.sidebar__link--active {
+    background-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 500;
+}
+
+.sidebar__link--active:hover {
+    background-color: var(--accent);
+    color: var(--accent-text);
+}
+
+.sidebar__logout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    color: var(--text);
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition);
+}
+
+.sidebar__logout:hover {
+    background-color: var(--state-danger);
+    border-color: var(--state-danger);
+    color: var(--white);
+}
+
+.sidebar__rol {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* --- movil --- */
+@media (max-width: 900px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        /* ya no esta dentro del grid, asi que 100% se resolveria contra el
+               viewport: se fija el alto explicito para el movil */
+        height: 100vh;
+        height: 100dvh;
+        z-index: calc(var(--z-drawer) + 2);
+        box-shadow: var(--shadow-md);
+        transform: translateX(-100%);
+        transition: transform var(--transition-slow);
+    }
+
+    .sidebar--abierto {
+        transform: translateX(0);
+    }
+}

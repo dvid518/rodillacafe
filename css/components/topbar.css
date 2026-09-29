@@ -1,0 +1,98 @@
+/* ==========================================================================
+   TOPBAR — cabecera del dashboard
+   --------------------------------------------------------------------------
+   Sticky arriba, vidrio, 64px. Burger solo en movil: en escritorio el
+   sidebar ya esta visible y el boton no tendria nada que abrir.
+   ========================================================================== */
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-nav);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    height: 64px;
+    /* flex:0 0 auto para que los 64px no se encojan al repartirse el alto con
+       #app dentro de .dashboard-main */
+    flex: 0 0 auto;
+    padding: 0 var(--space-lg);
+    border-width: 0 0 1px 0;
+    border-radius: 0;
+}
+
+.topbar__burger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color var(--transition);
+}
+
+.topbar__burger:hover {
+    background-color: var(--surface-strong);
+}
+
+.topbar__titulo {
+    flex: 1;
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+    /* el titulo cambia de texto en cada seccion: que no wontonee */
+    overflow-wrap: anywhere;
+}
+
+.topbar__right {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.topbar__usuario {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.topbar__accion {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background-color: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition);
+}
+
+.topbar__accion:hover {
+    background-color: var(--surface-hover);
+    color: var(--link);
+}
+
+@media (max-width: 900px) {
+    .topbar__burger {
+        display: flex;
+    }
+
+    .topbar {
+        padding: 0 var(--space-md);
+    }
+
+    .topbar__usuario {
+        display: none;
+    }
+}

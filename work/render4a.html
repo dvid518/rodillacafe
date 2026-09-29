@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Prompt 4a - render</title>
+<link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../css/base/reset.css">
+<link rel="stylesheet" href="../css/base/typography.css">
+<link rel="stylesheet" href="../css/components/components.css">
+<link rel="stylesheet" href="../css/components/sidebar.css">
+<link rel="stylesheet" href="../css/components/topbar.css">
+<link rel="stylesheet" href="../css/components/modal.css">
+<link rel="stylesheet" href="../css/pages/dashboard.css">
+<style>
+  /* solo para el harness: separa los bloques en la captura */
+  .demo-seccion { margin-bottom: 28px; outline: 1px dashed rgba(255,255,255,.25); }
+  .demo-seccion > .demo-rotulo {
+    font: 700 11px/1 monospace; letter-spacing: .1em; text-transform: uppercase;
+    color: #ffe8c9; background: rgba(0,0,0,.5); padding: 6px 10px; display: inline-block;
+  }
+</style>
+</head>
+<body>
+<!-- el grid real de dashboard.html es 250px + 1fr, pero aqui no hay sidebar,
+     asi que .dashboard-main caeria en la columna de 250px. Se ensancha. -->
+<div class="dashboard-layout" style="grid-template-columns: 1fr">
+  <main class="dashboard-main">
+    <div id="app" class="demo-seccion">
+      <span class="demo-rotulo">cargando…</span>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+import { icono } from "../js/components/Icon.js"
+
+const App = document.getElementById("app")
+
+async function cargar(nombre) {
+  const r = await fetch(`../views/dashboard/${nombre}.html`)
+  return r.text()
+}
+
+/* Datos de muestra con la misma forma que devuelve Supabase. */
+const KPIS = [
+  ["Pedidos", 128, "6 pendientes", "receipt"],
+  ["Reservas", 42, "3 pendientes", "calendar-days"],
+  ["Mensajes", 17, "Recibidos", "mail"],
+  ["Productos", 16, "En carta", "coffee"],
+  ["Categorias", 5, "Activas", "boxes"],
+]
+const KPIS_ERROR = [["Mensajes", null, "No disponible", "mail"]]
+
+const PEDIDOS = [
+  ["1042", "Ana Quispe Mamani", "12/09/2026, 08:14", "S/ 46.00", '<span class="badge badge--p">Pendiente</span>'],
+  ["1041", "Luis Ramirez", "12/09/2026, 07:02", "S/ 18.50", '<span class="badge badge--f">Completado</span>'],
+  ["1040", "Carla Diaz", "11/09/2026, 19:47", "S/ 132.00", '<span class="badge badge--a">Aprobado</span>'],
+  ["1039", "Pedro Salas", "11/09/2026, 16:30", "S/ 27.00", '<span class="badge badge--x">Anulado</span>'],
+]
+const RESERVAS = [
+  ["15 sept 2026", "19:00", "4 &middot; Mesa Diaz", '<span class="badge badge--a">Aprobado</span>'],
+  ["18 sept 2026", "14:30", "2 &middot; Ana Quispe Mamani", '<span class="badge badge--p">Pendiente</span>'],
+]
+
+const CATEGORIAS = [
+  [1, "Cafes calientes", "Espresso,Filtered,Milk", "BARRA", 4],
+  [2, "Bebidas frias", "Cold brew,Limadas", "BARRA", 3],
+  [3, "Postres", "Pasteleria,dulces", "VITRINA", 5],
+  [4, "Aperitivos", "Saldados,pan", "COCINA", 4],
+]
+
+const PRODUCTOS = [
+  ["", 1, "Espresso", "S/ 6.00", "tz", "BARRA"],
+  ["", 1, "Americano", "S/ 7.50", "tz", "BARRA"],
+  ["", 3, "Tiramisu", "S/ 18.00", "porc", "VITRINA"],
+  ["", 4, "Empanada de carne", "S/ 9.00", "und", "COCINA"],
+]
+
+function kpiHtml([t, v, s, ic], conError = false) {
+  return `<article class="kpi-card glass">
+      <span class="kpi-card__icono">${icono(ic, { size: 20 })}</span>
+      <span class="kpi-card__label">${t}</span>
+      <strong class="kpi-card__valor">${conError ? "--" : v}</strong>
+      <span class="kpi-card__sub">${s}</span>
+    </article>`
+}
+
+function tabla(headers, rows, claseFila = () => "") {
+  return `<div class="tabla-container glass"><table class="tabla">
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(r => `<tr class="${claseFila(r)}">${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table></div>`
+}
+
+function filaProducto([img, id, nombre, precio, unidad, area]) {
+  const cat = area === "BARRA" ? "bebidas" : area === "VITRINA" ? "postres" : "aperitivos"
+  const miniatura = img
+    ? `<img src="${img}" class="carta-miniatura">`
+    : '<span class="carta-miniatura carta-miniatura--vacia" aria-hidden="true"></span>'
+  return `<tr class="carta-fila carta-fila--${cat}">
+      <td>${miniatura}</td><td>${id}</td>
+      <td><strong>${nombre}</strong><small class="carta-detalle">Detalle de ejemplo</small></td>
+      <td>${precio}</td><td>${unidad}</td>
+      <td><button class="btn-icono">${icono("pencil", { size: 16 })}</button></td>
+      <td><button class="btn-icono btn-icono--peligro">${icono("trash-2", { size: 16 })}</button></td>
+    </tr>`
+}
+
+function filaCategoria([id, nombre, desc, area, n]) {
+  return `<tr>
+      <td>${id}</td><td><strong>${nombre}</strong></td><td>${desc}</td>
+      <td><span class="chip chip--${area.toLowerCase()}">${area}</span></td>
+      <td><button class="btn-icono">${icono("pencil", { size: 16 })}</button></td>
+      <td><button class="btn-icono btn-icono--peligro">${icono("trash-2", { size: 16 })}</button></td>
+    </tr>
+    <tr class="cat-subfila"><td colspan="6">${n} producto${n === 1 ? "" : "s"} en la carta</td></tr>`
+}
+
+function tabs(items, activo) {
+  return `<div class="tabs-categorias" role="tablist">${items.map(([id, n]) => {
+    const on = id === activo
+    return `<button class="tab${on ? " tab--activo" : ""}" role="tab" aria-selected="${on}">${n}</button>`
+  }).join("")}</div>`
+}
+
+const PANEL = await cargar("panel")
+  .then(h => h.replace('<p class="vacio">Cargando indicadores…</p>', KPIS.map(k => kpiHtml(k)).join("")))
+  .then(h => h.replace('id="panel-ultimos-pedidos"></tbody>', PEDIDOS.map(p => `<tr>${p.map(c => `<td>${c}</td>`).join("")}</tr>`).join("") + "</tbody>"))
+  .then(h => h.replace('id="panel-proximas-reservas"></tbody>', RESERVAS.map(p => `<tr>${p.map(c => `<td>${c}</td>`).join("")}</tr>`).join("") + "</tbody>"))
+  .then(h => h.replace('<span class="dashboard-panel__hero-icono" data-icono="coffee" aria-hidden="true"></span>', `<span class="dashboard-panel__hero-icono">${icono("coffee", { size: 30 })}</span>`))
+  .then(h => h.replace(">Bienvenido<", ">Bienvenido, Ana Quispe<"))
+
+const CARTA = await cargar("carta")
+  .then(h => h.replace(/(<div class="tabs-categorias"[^>]*>)<\/div>/, `$1${tabs([["todas", "Todas (16)"], ["1", "Cafes calientes (4)"], ["3", "Postres (5)"], ["4", "Aperitivos (4)"]], "3")}</div>`))
+  .then(h => h.replace(/(<tbody id="carta-tbody")><\/tbody>/, `$1>${PRODUCTOS.map(filaProducto).join("")}</tbody>`))
+  .then(h => h.replace('id="carta-modal" hidden', 'id="carta-modal"')
+             .replace(">Nuevo producto<", ">Editar: Tiramisu<")
+             .replace('id="carta-input-nombre" required', 'id="carta-input-nombre" value="Tiramisu" required')
+             .replace('id="carta-input-precio" required', 'id="carta-input-precio" value="18.00" required')
+             .replace('id="carta-modal-eliminar" hidden', 'id="carta-modal-eliminar"'))
+
+const CATS = await cargar("categorias")
+  .then(h => h.replace(/(<tbody id="cat-tbody")><\/tbody>/, `$1>${CATEGORIAS.map(filaCategoria).join("")}</tbody>`))
+
+const CAT_ERROR = await cargar("panel")
+  .then(h => h.replace(/<div class="kpis-grid"[\s\S]*?<\/div>\s*<section/, `<div class="kpis-grid">${KPIS_ERROR.map(k => kpiHtml(k, true)).join("")}</div><section`))
+  .then(h => h.replace('id="panel-ultimos-pedidos"></tbody>', '<tr><td colspan="5" class="vacio">No se pudieron leer los pedidos</td></tr></tbody>'))
+
+const PLACEHOLDER = await cargar("pedidos")
+
+App.innerHTML = `
+  <div class="dashboard-panel demo-seccion"><span class="demo-rotulo">panel — KPIs 1/2/4 col + tablas</span>${PANEL}</div>
+  <div class="dashboard-carta demo-seccion"><span class="demo-rotulo">carta — tabs + tabla + modal abierto</span>${CARTA}</div>
+  <div class="dashboard-categorias demo-seccion"><span class="demo-rotulo">categorias — chips + subfila de conteo</span>${CATS}</div>
+  <div class="demo-seccion"><span class="demo-rotulo">placeholder</span>${PLACEHOLDER}</div>
+`
+document.title = "RENDER OK"
+</script>
+</body>
+</html>

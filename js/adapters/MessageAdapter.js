@@ -85,4 +85,49 @@ async function eliminar(id) {
     return { ok: true, data: null }
 }
 
-export const MessageAdapter = { crear, listarMisMensajes, listarTodas, actualizarEstado, eliminar }
+/** Alta manual desde el panel: el cliente lo elige quien esta en el mostrador. */
+async function crearManual(datos) {
+    if (!datos.ID_Cliente) return { ok: false, error: { message: "Falta el cliente" } }
+    if (!datos.Mensaje || !datos.Mensaje.trim()) {
+        return { ok: false, error: { message: "El mensaje está vacío" } }
+    }
+
+    const { data, error } = await supabase
+        .from("MENSAJE")
+        .insert({
+            ID_Cliente: datos.ID_Cliente,
+            Asunto: (datos.Asunto || "Mensaje").trim().substring(0, 100),
+            Mensaje: datos.Mensaje.trim(),
+            Situacion: "P",
+            USUCRE: datos.USUCRE || "WEB",
+        })
+        .select("ID_Mensaje")
+        .maybeSingle()
+    if (error) return { ok: false, error }
+    return { ok: true, data }
+}
+
+async function actualizar(id, datos) {
+    const { error } = await supabase
+        .from("MENSAJE")
+        .update({
+            Asunto: (datos.Asunto || "Mensaje").trim().substring(0, 100),
+            Mensaje: datos.Mensaje,
+            Situacion: datos.Situacion,
+            USUMOD: "WEB",
+            FECMOD: new Date().toISOString(),
+        })
+        .eq("ID_Mensaje", id)
+    if (error) return { ok: false, error }
+    return { ok: true, data: null }
+}
+
+export const MessageAdapter = {
+    crear,
+    listarMisMensajes,
+    listarTodas,
+    crearManual,
+    actualizar,
+    actualizarEstado,
+    eliminar,
+}

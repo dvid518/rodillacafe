@@ -1,0 +1,41 @@
+<section class="hero hero--contacto hero--compact hero--contenido">
+    <div class="hero__contenido">
+        <span class="hero__etiqueta">Contacto</span>
+        <h1 class="hero__titulo">Contáctanos</h1>
+        <p class="hero__subtitulo">
+            ¿Tienes alguna consulta? Escríbenos y te respondemos a la brevedad.
+        </p>
+    </div>
+    <div class="hero__decoracion" aria-hidden="true">
+        <re-icon icon="envelope" weight="filled"></re-icon>
+    </div>
+</section>
+
+<section class="contacto">
+    <form class="contacto__form" id="contacto-form" novalidate>
+        <div class="campo">
+            <label class="campo__label" for="contacto-nombre">Nombre</label>
+            <input class="input" type="text" id="contacto-nombre" name="nombre" placeholder="Tu nombre" readonly>
+        </div>
+
+        <div class="campo">
+            <label class="campo__label" for="contacto-email">Correo</label>
+            <input class="input" type="email" id="contacto-email" name="email" placeholder="tu@correo.com" readonly>
+        </div>
+
+        <div class="campo">
+            <label class="campo__label" for="contacto-mensaje">Mensaje</label>
+            <textarea class="textarea" id="contacto-mensaje" name="mensaje" placeholder="Cuéntanos en qué podemos ayudarte" required></textarea>
+        </div>
+
+        <label class="switch">
+            <input type="checkbox" id="contacto-acepto" name="acepto" required>
+            <span class="switch__track" aria-hidden="true"></span>
+            <span class="switch__label">Acepto el tratamiento de mis datos</span>
+        </label>
+
+        <p class="contacto__aviso" id="contacto-aviso" role="status"></p>
+
+        <button class="btn btn--primary btn--block" type="submit">Enviar mensaje</button>
+    </form>
+</section>

@@ -1,0 +1,64 @@
+<section class="auth-split">
+    <aside class="hero hero--auth hero--compact auth-split__hero">
+        <div class="hero__contenido">
+            <h1 class="hero__titulo">Crea tu cuenta</h1>
+            <p class="hero__subtitulo">
+                Únete a Rodilla y disfruta de todos los beneficios.
+            </p>
+            <ul class="hero__lista">
+                <li>
+                    <re-icon icon="check" weight="filled" size="18"></re-icon>
+                    <span>Historial de pedidos</span>
+                </li>
+                <li>
+                    <re-icon icon="check" weight="filled" size="18"></re-icon>
+                    <span>Reservas prioritarias</span>
+                </li>
+                <li>
+                    <re-icon icon="check" weight="filled" size="18"></re-icon>
+                    <span>Promociones exclusivas</span>
+                </li>
+            </ul>
+        </div>
+    </aside>
+
+    <div class="auth-form">
+        <form id="register-form" novalidate>
+            <h2>Registrarse</h2>
+            <p class="auth-form__subtitulo">
+                Completa tus datos para empezar.
+            </p>
+
+            <label class="auth-form__campo">
+                <span>Nombre completo</span>
+                <input class="input" type="text" id="register-nombre" required autocomplete="name">
+            </label>
+
+            <label class="auth-form__campo">
+                <span>Correo electrónico</span>
+                <input class="input" type="email" id="register-email" required autocomplete="email">
+            </label>
+
+            <label class="auth-form__campo">
+                <span>Contraseña</span>
+                <input class="input" type="password" id="register-password" required autocomplete="new-password" minlength="6">
+            </label>
+
+            <label class="auth-form__campo">
+                <span>Confirmar contraseña</span>
+                <input class="input" type="password" id="register-confirm" required autocomplete="new-password">
+            </label>
+
+            <p class="auth-form__error" id="register-error" role="alert" aria-live="polite"></p>
+
+            <button type="submit" class="btn btn--primary btn--block" id="register-enviar">
+                Crear cuenta
+            </button>
+
+            <p class="auth-form__link">
+                ¿Ya tienes cuenta?
+                <a href="#/login">Inicia sesión</a>
+            </p>
+        </form>
+    </div>
+</section>

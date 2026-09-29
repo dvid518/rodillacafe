@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>carrito</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/navigation.css">
+</head>
+<body>
+    <pre id="r" style="font:12px monospace;background:#000;color:#0f0;padding:8px;white-space:pre">…</pre>
+    <script type="module">
+        const R = []
+        let f = 0
+        const chk = (ok, t, d = "") => { if (!ok) f++; R.push(`${ok ? "PASA" : "FALLA"}  ${t}${d ? "  -> " + d : ""}`) }
+
+        // importar carrito.js lo auto-inicializa
+        const { carritoRodilla } = await import("../js/controllers/carrito.js")
+
+        chk(!!document.getElementById("carrito-panel"), "panel del carrito creado al importar")
+        chk(!!document.getElementById("carrito-overlay"), "overlay del carrito creado")
+
+        // agregar un producto: debe abrir el drawer solo, sin boton
+        carritoRodilla.agregarProducto({ id: 1, nombre: "ESPRESSO", precio: 6, img: "", categoria: "bebidas" })
+        chk(document.getElementById("carrito-panel").classList.contains("abierto"),
+            "agregarProducto abre el drawer sin tocar ningun boton")
+        chk(document.body.classList.contains("sin-scroll"), "body queda con scroll bloqueado")
+        chk(document.querySelectorAll(".lista-carrito .carrito-item").length === 1,
+            "el item aparece en la lista",
+            document.querySelectorAll(".lista-carrito .carrito-item").length + "")
+        chk(carritoRodilla.obtenerProductos().length === 1, "obtenerProductos devuelve 1")
+
+        // el total se calcula
+        const total = document.querySelector(".total-carrito")
+        chk(!!total && /6/.test(total.textContent), "el total muestra S/ 6.00", total ? total.textContent.trim().slice(0, 40) : "null")
+
+        // cerrar
+        carritoRodilla.cerrarCarrito()
+        chk(!document.getElementById("carrito-panel").classList.contains("abierto"), "cerrarCarrito cierra el drawer")
+        chk(!document.body.classList.contains("sin-scroll"), "y desbloquea el scroll")
+
+        // segundo producto: mismo id acumula en vez de duplicar
+        carritoRodilla.agregarProducto({ id: 1, nombre: "ESPRESSO", precio: 6 })
+        chk(carritoRodilla.obtenerProductos()[0].cantidad === 2, "el mismo id acumula cantidad",
+            "cantidad=" + carritoRodilla.obtenerProductos()[0].cantidad)
+        chk(carritoRodilla.obtenerProductos().length === 1, "y no crea una fila nueva")
+
+        // sin nombre debe rechazar
+        const n0 = carritoRodilla.obtenerProductos().length
+        carritoRodilla.agregarProducto({ id: 9 })
+        chk(carritoRodilla.obtenerProductos().length === n0, "un producto sin nombre se rechaza")
+
+        document.title = f === 0 ? "TODO OK" : f + " FALLOS"
+        document.getElementById("r").textContent = document.title + "\n" + R.join("\n")
+    </script>
+</body>
+</html>

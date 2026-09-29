@@ -1,0 +1,90 @@
+﻿<section class="dashboard-panel">
+    <section class="hero hero--panel hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Panel de administración</span>
+            <h1 class="hero__titulo" id="panel-bienvenida">Bienvenido</h1>
+            <p class="hero__subtitulo">
+                Administra tu cafetería de especialidad Rodilla desde un solo lugar.
+            </p>
+            <div class="hero__acciones">
+                <a href="#/dashboard/pedidos" class="btn btn--primary">Ver pedidos</a>
+                <a href="#/dashboard/carta" class="btn btn--ghost">Gestionar carta</a>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="coffee" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <div class="kpis-grid" id="kpis-grid" aria-live="polite" aria-busy="true">
+        <div class="esqueleto-kpi" aria-hidden="true">
+            <span class="skeleton skeleton--icono-kpi"></span>
+            <span class="skeleton skeleton--etiqueta"></span>
+            <span class="skeleton skeleton--valor"></span>
+            <span class="skeleton skeleton--pie"></span>
+        </div>
+        <div class="esqueleto-kpi" aria-hidden="true">
+            <span class="skeleton skeleton--icono-kpi"></span>
+            <span class="skeleton skeleton--etiqueta"></span>
+            <span class="skeleton skeleton--valor"></span>
+            <span class="skeleton skeleton--pie"></span>
+        </div>
+        <div class="esqueleto-kpi" aria-hidden="true">
+            <span class="skeleton skeleton--icono-kpi"></span>
+            <span class="skeleton skeleton--etiqueta"></span>
+            <span class="skeleton skeleton--valor"></span>
+            <span class="skeleton skeleton--pie"></span>
+        </div>
+        <div class="esqueleto-kpi" aria-hidden="true">
+            <span class="skeleton skeleton--icono-kpi"></span>
+            <span class="skeleton skeleton--etiqueta"></span>
+            <span class="skeleton skeleton--valor"></span>
+            <span class="skeleton skeleton--pie"></span>
+        </div>
+        <div class="esqueleto-kpi" aria-hidden="true">
+            <span class="skeleton skeleton--icono-kpi"></span>
+            <span class="skeleton skeleton--etiqueta"></span>
+            <span class="skeleton skeleton--valor"></span>
+            <span class="skeleton skeleton--pie"></span>
+        </div>
+    </div>
+
+    <section class="dashboard-seccion">
+        <header class="dashboard-seccion__header">
+            <h2>Últimos pedidos</h2>
+        </header>
+        <div class="tabla-container glass">
+            <table class="tabla">
+                <thead>
+                    <tr>
+                        <th>Nº</th>
+                        <th>Cliente</th>
+                        <th>Fecha</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="panel-ultimos-pedidos"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="dashboard-seccion">
+        <header class="dashboard-seccion__header">
+            <h2>Próximas reservas</h2>
+        </header>
+        <div class="tabla-container glass">
+            <table class="tabla">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Comensales</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="panel-proximas-reservas"></tbody>
+            </table>
+        </div>
+    </section>
+</section>

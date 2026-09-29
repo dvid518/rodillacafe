@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>prueba funcional de la landing</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/base/typography.css">
+    <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/navigation.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/pages/landing.css">
+    <script type="module">
+    window.addEventListener("error", e => { document.title = "ERROR: " + e.message })
+    window.addEventListener("unhandledrejection", e => { document.title = "REJECT: " + (e.reason && e.reason.message || e.reason) })
+    </script></head>
+<body>
+    <div id="navbar-root"></div>
+    <main id="app"></main>
+    <div id="footer-root"></div>
+    <script type="module">
+        import { Router } from "./js/lib/router.js"
+        import { Navbar } from "./js/components/Navbar.js"
+        import { Footer } from "./js/components/Footer.js"
+        import { authService } from "./js/services/authService.js"
+        import { menuController } from "./js/views/landing/menu.js"
+        import { reservasController } from "./js/views/landing/reservas.js"
+        import { contactoController } from "./js/views/landing/contacto.js"
+
+        const R = []
+        let fallos = 0
+        const chk = (ok, t, d = "") => { if (!ok) fallos++; R.push(`${ok ? "PASA" : "FALLA"}  ${t}${d ? "  -> " + d : ""}`) }
+        const esperar = ms => new Promise(r => setTimeout(r, ms))
+        const titulo = () => document.title = (fallos === 0 ? "TODO OK" : fallos + " FALLOS")
+
+        // --- Fase 1: estructura ---
+        document.getElementById("navbar-root").replaceChildren(new Navbar({ session: null, mostrarCarrito: true }).render())
+        document.getElementById("footer-root").replaceChildren(new Footer().render())
+
+        const router = new Router({
+            rutas: {
+                "/menu": { vista: "landing/menu", controlador: menuController },
+                "/reservas": { vista: "landing/reservas", controlador: reservasController },
+                "/contacto": { vista: "landing/contacto", controlador: contactoController },
+            },
+            contenedor: "#app", porDefecto: "/menu",
+        })
+
+        await router.navigate("/menu")
+        await esperar(2500)
+
+        chk(!!document.querySelector(".navbar"), "navbar montado")
+        chk(!!document.getElementById("carrito-panel"), "carrito: panel creado al importar carrito.js")
+        chk(document.querySelectorAll("#menu-grid .card-producto").length > 0,
+            "menu: productos reales cargados",
+            document.querySelectorAll("#menu-grid .card-producto").length + " tarjetas")
+        chk(document.querySelectorAll("#menu-filtros .filtro").length === 4,
+            "menu: 4 filtros",
+            document.querySelectorAll("#menu-filtros .filtro").length + "")
+        chk(!!document.querySelector("#menu-grid .btn-agregar"), "menu: botones de agregar")
+
+        // --- Fase 2: filtro ---
+        const antes = document.querySelectorAll("#menu-grid .card-producto").length
+        document.querySelector('#menu-filtros .filtro[data-categoria="postres"]').click()
+        await esperar(300)
+        const despues = document.querySelectorAll("#menu-grid .card-producto").length
+        chk(despues > 0 && despues < antes, "menu: el filtro Postres reduce la rejilla", `${antes} -> ${despues}`)
+        chk(document.querySelector('#menu-filtros .filtro[data-categoria="postres"]').classList.contains("filtro--activo"), "menu: filtro marcado activo")
+
+        // --- Fase 3: carrito ---
+        document.querySelector("#menu-filtros .filtro[data-categoria='']").click()
+        await esperar(300)
+        const botonAgregar = document.querySelector("#menu-grid .btn-agregar")
+        botonAgregar.click()
+        await esperar(400)
+        chk(document.getElementById("carrito-panel").classList.contains("abierto"),
+            "carrito: se abre solo al agregar (sin boton flotante)")
+        chk(document.body.classList.contains("sin-scroll"), "carrito: body bloqueado")
+        const items = document.querySelectorAll("#carrito-lista .carrito-item, .lista-carrito .carrito-item").length
+        chk(items > 0, "carrito: el producto aparece en la lista", items + " items")
+        const contador = document.getElementById("cantidad-carrito")
+        chk(contador && contador.textContent !== "0", "carrito: el contador del navbar sube", contador ? contador.textContent : "null")
+
+        // --- Fase 4: reserva sin sesion ---
+        await router.navigate("/reservas")
+        await esperar(600)
+        chk(document.querySelectorAll("#reserva-pasos ~ .paso, .paso").length >= 4, "reservas: 4 pasos en el DOM")
+        chk(document.querySelectorAll("#personas-selector .persona-boton").length === 6, "reservas: 6 botones de personas")
+        chk(document.querySelectorAll("#reserva-hora option").length === 12, "reservas: 12 horas",
+            document.querySelectorAll("#reserva-hora option").length + "")
+        chk(document.querySelector(".paso--activo")?.dataset.paso === "personas", "reservas: arranca en el paso 1")
+        chk(!!document.querySelector("#reserva-fecha")?.min, "reservas: la fecha minima es hoy",
+            document.querySelector("#reserva-fecha")?.min)
+
+        // avanzar hasta confirmar y pulsar: debe pedir login
+        document.querySelector('.paso[data-paso="personas"] [data-siguiente]').click()
+        await esperar(150)
+        chk(document.querySelector(".paso--activo")?.dataset.paso === "fecha", "reservas: avanza a fecha")
+        document.querySelector('.paso[data-paso="fecha"] [data-siguiente]').click()
+        await esperar(150)
+        chk(document.querySelector(".paso--activo")?.dataset.paso === "hora", "reservas: avanza a hora")
+        document.querySelector('.paso[data-paso="hora"] [data-siguiente]').click()
+        await esperar(200)
+        chk(document.querySelector(".paso--activo")?.dataset.paso === "confirmar", "reservas: llega a confirmar")
+        chk(document.querySelectorAll("#reserva-resumen dt").length === 3, "reservas: el resumen se rellena",
+            document.querySelectorAll("#reserva-resumen dt").length + " filas")
+
+        document.getElementById("reserva-confirmar").click()
+        await esperar(1200)
+        chk(!!document.querySelector(".notification--warning"), "reservas: SIN sesion avisa que inicie sesion",
+            document.querySelector(".notification--warning") ? "hay aviso" : "no hay aviso")
+
+        // --- Fase 5: contacto sin sesion ---
+        await router.navigate("/contacto")
+        await esperar(800)
+        chk(!!document.querySelector(".switch__track"), "contacto: el toggle tiene su pista")
+        chk(document.getElementById("contacto-nombre").readOnly, "contacto: nombre en readonly")
+        chk(document.getElementById("contacto-aviso").textContent.includes("sesión"), "contacto: avisa que hace falta iniciar sesion",
+            document.getElementById("contacto-aviso").textContent)
+        // enviar sin sesión: debe pedir login, no mandar
+        document.getElementById("contacto-mensaje").value = "hola"
+        document.getElementById("contacto-acepto").checked = true
+        document.getElementById("contacto-form").requestSubmit()
+        await esperar(1200)
+        chk(!!document.querySelector(".notification--warning"), "contacto: SIN sesion avisa antes de enviar",
+            document.querySelector(".notification--warning") ? "hay aviso" : "no hay aviso")
+
+        titulo()
+        const pre = document.createElement("pre")
+        pre.style.cssText = "position:relative;z-index:99;background:#000;color:#0f0;font:11px monospace;padding:8px;white-space:pre"
+        pre.textContent = document.title + "\n" + R.join("\n")
+        document.body.appendChild(pre)
+    </script>
+</body>
+</html>

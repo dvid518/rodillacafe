@@ -2,6 +2,7 @@ import { opcionalSesion } from "../session/opcionalSesion.js"
 import { orderService } from "../services/orderService.js"
 import { formatearPrecio, escaparHTML } from "../utils/format.js"
 import { Modal } from "../components/Modal.js"
+import { icono } from "../components/Icon.js"
 import { notifyInfo, notifyWarning, notifyError, notifySuccess } from "../utils/notify.js"
 
 const CLAVE_CARRITO = "rodilla_carrito"
@@ -259,7 +260,7 @@ function actualizarCarrito() {
         lista.innerHTML = `
             <div class="carrito-vacio">
                 <div class="carrito-vacio-icono">
-                    🛒
+                    ${icono("shopping-bag", { size: 60 })}
                 </div>
                 <h3>
                     Tu carrito está vacío
@@ -269,7 +270,7 @@ function actualizarCarrito() {
                     que deseas pedir.
                 </p>
                 <a
-                    href="menu.html"
+                    href="/#/menu"
                     class="ir-menu-carrito"
                 >
                     Ver el menú
@@ -330,7 +331,7 @@ async function realizarPedido() {
     if (sesion === null) {
         notifyWarning("Inicia sesión para realizar un pedido", 3500)
         setTimeout(() => {
-            window.location.href = "/login.html?redirect=/menu.html"
+            window.location.href = "/auth.html?redirect=%2F%23%2Fmenu"
         }, 1500)
         return
     }
@@ -351,7 +352,7 @@ async function realizarPedido() {
         guardarCarrito()
         cerrarCarrito()
         setTimeout(() => {
-            window.location.href = "/mis-pedidos.html"
+            window.location.href = "/dashboard.html#/dashboard/mis-pedidos"
         }, 1200)
     } catch (error) {
         console.error("Error al guardar pedido:", error)

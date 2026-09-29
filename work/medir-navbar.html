@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>medir navbar</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/navigation.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <link rel="stylesheet" href="../css/pages/landing.css">
+</head>
+<body>
+<pre id="r" style="font:12px monospace;white-space:pre-wrap">midiendo…</pre>
+<script type="module">
+    const lineas = []
+    const chk = (ok, t, d = "") => lineas.push(`${ok ? "PASA" : "FALLA"}  ${t}${d ? "  -> " + d : ""}`)
+
+    // replica exactamente lo que hace landing.js, con una sesion falsa
+    const { Navbar } = await import("../js/components/Navbar.js")
+    const raiz = document.createElement("div")
+    document.body.appendChild(raiz)
+    raiz.replaceChildren(new Navbar({ session: null, mostrarCarrito: true }).render())
+
+    const bloque = document.querySelector(".block-menu")
+    const nav = document.querySelector(".navbar")
+    const logo = document.querySelector(".nav-logo")
+    const menu = document.querySelector(".nav-menu")
+    const burger = document.querySelector(".menu-toggle")
+
+    chk(!!bloque, "existe .block-menu")
+    chk(!!nav, "existe .navbar")
+    chk(!!logo, "existe .nav-logo")
+
+    const cs = getComputedStyle(nav)
+    const r = nav.getBoundingClientRect()
+    lineas.push(`navbar: ${Math.round(r.width)}x${Math.round(r.height)} en (${Math.round(r.left)},${Math.round(r.top)})`)
+    lineas.push(`  display=${cs.display} position=${cs.position} color=${cs.color} visibility=${cs.visibility} opacity=${cs.opacity} overflow=${cs.overflow}`)
+
+    const csB = getComputedStyle(bloque)
+    const rb = bloque.getBoundingClientRect()
+    lineas.push(`block-menu: ${Math.round(rb.width)}x${Math.round(rb.height)} position=${csB.position} z=${csB.zIndex} overflow=${csB.overflow}`)
+
+    const rl = logo.getBoundingClientRect()
+    const cl = getComputedStyle(logo)
+    lineas.push(`nav-logo: ${Math.round(rl.width)}x${Math.round(rl.height)} color=${cl.color} fontSize=${cl.fontSize}`)
+
+    const rm = menu ? menu.getBoundingClientRect() : null
+    {
+        if (rm) lineas.push(`nav-menu: ${Math.round(rm.width)}x${Math.round(rm.height)} display=${getComputedStyle(menu).display}`)
+        else lineas.push("nav-menu: NO EXISTE")
+    }
+    lineas.push(`menu-toggle display=${burger ? getComputedStyle(burger).display : "n/a"}`)
+    lineas.push(`hijos de .navbar: ${nav.children.length} -> ${[...nav.children].map(c => c.className || c.tagName).join(" | ")}`)
+
+    document.getElementById("r").textContent = lineas.join("\n")
+</script>
+</body>
+</html>

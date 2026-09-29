@@ -1,0 +1,451 @@
+/* ==========================================================================
+   LANDING — vistas parciales de index.html
+   --------------------------------------------------------------------------
+   Solo se carga en index.html, asi que nada de esto toca las paginas
+   antiguas. Todo con los tokens de style.css: sin hex, sin Tailwind.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Utilidades
+   -------------------------------------------------------------------------- */
+.visualmente-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.seccion__header {
+    max-width: 640px;
+    margin: 0 auto var(--space-xl);
+    text-align: center;
+}
+
+.seccion__header h2 {
+    margin: 0 0 8px;
+    font-size: clamp(26px, 4vw, 34px);
+    color: var(--text);
+}
+
+.seccion__header p {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.vacio {
+    grid-column: 1 / -1;
+    padding: var(--space-xl);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.vacio--error {
+    color: var(--danger);
+}
+
+/* Los 16 productos tienen Imagen NULL en la base. Sin esto se veria el
+   icono de imagen rota en cada tarjeta. */
+.card-producto img[src=""],
+.card-producto img:not([src]) {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   HOME — destacados
+   -------------------------------------------------------------------------- */
+.destacados {
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.destacados__grid,
+.menu__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-lg);
+    max-width: 1100px;
+    margin: 0 auto;
+    justify-items: center;
+}
+
+/* --------------------------------------------------------------------------
+   HOME — features
+   -------------------------------------------------------------------------- */
+.features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-lg);
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.feature {
+    padding: var(--space-lg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    text-align: center;
+    transition: transform var(--transition), border-color var(--transition);
+}
+
+.feature:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-strong);
+}
+
+.feature__icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin: 0 auto var(--space-md);
+    border-radius: 50%;
+    background-color: var(--surface-strong);
+    color: var(--accent);
+}
+
+.feature h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    color: var(--text);
+}
+
+.feature p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   MENU
+   -------------------------------------------------------------------------- */
+.menu {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.menu__header h1 {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 5vw, 42px);
+    color: var(--text);
+}
+
+.menu__filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: center;
+    margin-bottom: var(--space-xl);
+}
+
+.filtro {
+    padding: 8px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background-color: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        border-color var(--transition);
+}
+
+.filtro:hover {
+    border-color: var(--border-strong);
+    background-color: var(--surface-hover);
+}
+
+.filtro--activo {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   RESERVAS
+   -------------------------------------------------------------------------- */
+.reserva {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.reserva__header h1 {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 5vw, 40px);
+    color: var(--text);
+}
+
+/* barra de progreso de pasos */
+.reserva__pasos:first-of-type {
+    display: flex;
+    gap: var(--space-xs);
+    justify-content: center;
+    margin-bottom: var(--space-lg);
+    padding: 0;
+    list-style: none;
+    counter-reset: paso;
+}
+
+.paso__indicador {
+    flex: 1;
+    max-width: 140px;
+    padding: 8px 6px;
+    border-bottom: 3px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align: center;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.paso__indicador--hecho {
+    border-bottom-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.paso__indicador--activo {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+    font-weight: 500;
+}
+
+/* los bloques de paso */
+.reserva__pasos .paso {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    text-align: center;
+}
+
+.paso[hidden] {
+    display: none;
+}
+
+.paso h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text);
+}
+
+.personas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: center;
+}
+
+.persona-boton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background-color: var(--surface-strong);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color var(--transition), color var(--transition),
+        transform var(--transition);
+}
+
+.persona-boton:hover {
+    background-color: var(--surface-hover);
+    transform: scale(1.06);
+}
+
+.persona-boton--activo {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+}
+
+.input--fecha,
+.select--hora {
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+}
+
+.reserva__resumen {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px var(--space-lg);
+    width: 100%;
+    margin: 0;
+    text-align: left;
+}
+
+.reserva__resumen dt {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.reserva__resumen dd {
+    margin: 0;
+    color: var(--text);
+    font-weight: 500;
+    text-align: right;
+}
+
+.reserva__acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    justify-content: center;
+}
+
+/* --------------------------------------------------------------------------
+   CONTACTO
+   -------------------------------------------------------------------------- */
+.contacto {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.contacto__header h1 {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 5vw, 40px);
+    color: var(--text);
+}
+
+.contacto__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+}
+
+.campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.campo__label {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+/* nombre y correo: solo lectura, los rellena la sesion */
+.campo .input[readonly] {
+    opacity: 0.75;
+    cursor: not-allowed;
+}
+
+.contacto__form .textarea {
+    min-height: 140px;
+}
+
+.contacto__aviso {
+    min-height: 20px;
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.contacto__aviso--aviso {
+    color: var(--warning);
+}
+
+/* --------------------------------------------------------------------------
+   NOSOTROS
+   -------------------------------------------------------------------------- */
+.nosotros {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.nosotros__header h1 {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 5vw, 40px);
+    color: var(--text);
+}
+
+.nosotros__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-lg);
+}
+
+.nosotros__articulo {
+    padding: var(--space-lg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    transition: transform var(--transition), border-color var(--transition);
+}
+
+.nosotros__articulo:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-strong);
+}
+
+.nosotros__icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: var(--space-md);
+    border-radius: 50%;
+    background-color: var(--surface-strong);
+    color: var(--accent);
+}
+
+.nosotros__articulo h2 {
+    margin: 0 0 10px;
+    font-size: 20px;
+    color: var(--text);
+}
+
+.nosotros__articulo p {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 700px) {
+    .destacados__grid,
+    .menu__grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: var(--space-md);
+    }
+
+    .features,
+    .nosotros__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reserva__pasos:first-of-type {
+        display: none;
+    }
+
+    .persona-boton {
+        width: 46px;
+        height: 46px;
+    }
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iniciar sesión | Rodilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <!-- Reicon: web component de iconos. defer para no bloquear el render;
+         los <re-icon> se actualizan solos cuando el script define el elemento. -->
+    <script defer src="https://unpkg.com/reicon@1.2.4/cdn/reicon.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/base/typography.css">
+      <link rel="stylesheet" href="css/components/components.css">
+      <link rel="stylesheet" href="css/components/hero.css">
+      <!-- modal.css aporta el .loading que usa Loading.js durante el envio;
+           sin el, el overlay sale sin estilos. -->
+      <link rel="stylesheet" href="css/components/modal.css">
+      <link rel="stylesheet" href="css/components/skeleton.css">
+      <link rel="stylesheet" href="css/pages/auth.css">
+      <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+    <main id="app"></main>
+    <script type="module" src="js/controllers/auth.js"></script>
+</body>
+</html>

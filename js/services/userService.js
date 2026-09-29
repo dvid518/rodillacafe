@@ -26,4 +26,8 @@ async function promoverAAdmin(email) {
     return { ok: true, data: resultado.data }
 }
 
-export const userService = { obtenerPerfilActual, obtenerRoles, listarUsuarios, promoverAAdmin }
+async function listarClientes() {
+    return UserAdapter.listarClientes()
+}
+
+export const userService = { obtenerPerfilActual, obtenerRoles, listarUsuarios, listarClientes, promoverAAdmin }

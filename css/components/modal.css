@@ -100,7 +100,8 @@
     transform: rotate(90deg);
 }
 
-.modal-close svg {
+.modal-close svg,
+.modal-close re-icon {
     width: 24px;
     height: 24px;
 }
@@ -555,11 +556,14 @@
     color: var(--text);
 }
 
-.loading svg {
+/* El giro lo aporta el atributo `spin` de Reicon (Loading.js), no este
+   keyframes. Solo queda el tamano y el color, y en el host: el <svg> interno
+   vive en el shadow root y el CSS del documento no lo alcanza. */
+.loading svg,
+.loading re-icon {
     width: 60px;
     height: 60px;
     color: var(--accent);
-    animation: rodilla-spin 0.9s linear infinite;
 }
 
 /* --------------------------------------------------------------------------

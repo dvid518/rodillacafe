@@ -1,30 +1,44 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es" data-theme="dark">
 <head>
-    <meta charset='UTF-8'>
-    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-    <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="theme-color" content="#360e06">
-    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Rodilla">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Rodilla | Cafetería de especialidad</title>
+    <!-- El tema guardado se aplica ANTES de pintar. Si se hiciera desde
+         landing.js, el HTML llega con data-theme="dark" hardcodeado y al
+         cambiar a claro se veria un parpadeo oscuro de un frame. Va aqui,
+         en el head y sin modulo, porque cualquier otro punto ya es tarde. -->
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem("rodilla:theme")
+                if (t === "dark" || t === "light") {
+                    document.documentElement.dataset.theme = t
+                }
+            } catch (e) { /* modo privado: se queda el dark del HTML */ }
+        })()
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <!-- Reicon: web component de iconos. defer para no bloquear el render;
+         los <re-icon> se actualizan solos cuando el script define el elemento. -->
+    <script defer src="https://unpkg.com/reicon@1.2.4/cdn/reicon.js"></script>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/base/reset.css">
     <link rel="stylesheet" href="css/base/typography.css">
     <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/hero.css">
     <link rel="stylesheet" href="css/components/navigation.css">
     <link rel="stylesheet" href="css/components/modal.css">
-    <link rel="stylesheet" href="css/pages/home.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/components/skeleton.css">
+    <link rel="stylesheet" href="css/pages/landing.css">
+    <link rel="manifest" href="/manifest.webmanifest">
 </head>
-<body class="home">
-    <div data-navbar></div>
-    <div class="phrase">El arte del buen café</div>
-    <div data-footer></div>
-    <script type="module" src="js/controllers/app.js"></script>
+<body>
+    <div id="navbar-root"></div>
+    <main id="app"></main>
+    <div id="footer-root"></div>
+    <script type="module" src="js/controllers/landing.js"></script>
 </body>
 </html>

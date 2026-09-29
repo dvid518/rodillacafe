@@ -1,0 +1,12 @@
+sql/
+work/
+.git/
+.gitignore
+*.md
+*.code-workspace
+firebase.json
+.firebaserc
+firebase-debug.log
+node_modules/
+.env
+.env.local

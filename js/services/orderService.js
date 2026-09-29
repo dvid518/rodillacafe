@@ -22,4 +22,31 @@ async function eliminarPedido(id) {
     return OrderAdapter.eliminar(id)
 }
 
-export const orderService = { crearPedido, listarMisPedidos, listarTodos, actualizarEstado, eliminarPedido }
+async function listarTiposAtencion() {
+    const resultado = await OrderAdapter.listarTipos()
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: resultado.data }
+}
+
+async function crearPedidoManual(datos) {
+    const resultado = await OrderAdapter.crearManual(datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: resultado.data }
+}
+
+async function actualizarPedido(id, datos) {
+    const resultado = await OrderAdapter.actualizar(id, datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: null }
+}
+
+export const orderService = {
+    crearPedido,
+    crearPedidoManual,
+    listarMisPedidos,
+    listarTodos,
+    listarTiposAtencion,
+    actualizarPedido,
+    actualizarEstado,
+    eliminarPedido,
+}

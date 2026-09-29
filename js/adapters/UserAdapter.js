@@ -78,4 +78,26 @@ async function promoverAdmin(email) {
     return { ok: true, data }
 }
 
-export const UserAdapter = { getRoles, getPerfilByAuthId, listarUsuarios, promoverAdmin }
+/**
+ * Listado de clientes para los <select> de pedidos, reservas y mensajes.
+ *
+ * OJO con RLS: CLIENTE solo es legible por su dueno o por un admin
+ * (p_cliente_select = is_owner_cliente(...) or is_admin()). Un cajero
+ * recibe { ok: true, data: [] } — no un error — porque RLS filtra filas en
+ * silencio. Por eso los formularios de alta manual quedan ocultos para
+ * quien no sea admin: el desplegable vendria vacio.
+ */
+async function listarClientes() {
+    const { data, error } = await supabase
+        .from("CLIENTE")
+        .select(`
+            ID_Cliente,
+            Tipo_Cliente,
+            PERSONA ( Nombre, Ap_Paterno, EMAIL )
+        `)
+        .order("ID_Cliente")
+    if (error) return { ok: false, error }
+    return { ok: true, data }
+}
+
+export const UserAdapter = { getRoles, getPerfilByAuthId, listarUsuarios, listarClientes, promoverAdmin }

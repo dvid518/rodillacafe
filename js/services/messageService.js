@@ -22,4 +22,24 @@ async function eliminarMensaje(id) {
     return MessageAdapter.eliminar(id)
 }
 
-export const messageService = { enviarMensaje, listarMisMensajes, listarTodos, actualizarEstado, eliminarMensaje }
+async function crearMensajeManual(datos) {
+    const resultado = await MessageAdapter.crearManual(datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: resultado.data }
+}
+
+async function actualizarMensaje(id, datos) {
+    const resultado = await MessageAdapter.actualizar(id, datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: null }
+}
+
+export const messageService = {
+    enviarMensaje,
+    crearMensajeManual,
+    listarMisMensajes,
+    listarTodos,
+    actualizarMensaje,
+    actualizarEstado,
+    eliminarMensaje,
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!-- No es la app: es una sonda que carga auth.html de verdad dentro de un
+     iframe, espera al router y vuelca en el <pre> lo que se ve, mas los
+     errores de consola y de red. Sirve para comprobar el render y el 404
+     sin tener que iniciar sesion a mano. -->
+<html lang="es">
+<head><meta charset="utf-8"><title>auth probe</title>
+<style>
+  body { font: 13px/1.5 monospace; background: #1a1a1a; color: #eee; margin: 0; padding: 16px; }
+  h2 { font-size: 14px; margin: 18px 0 6px; color: #ffe8c9; }
+  pre { white-space: pre-wrap; margin: 0; }
+  .ok { color: #6f6; } .mal { color: #f77; }
+  iframe { width: 100%; height: 780px; border: 1px solid #444; }
+</style>
+</head>
+<body>
+<h2 id="t">sonda…</h2>
+<pre id="r"></pre>
+<iframe id="f" src="/auth.html#/login"></iframe>
+<script>
+const R = document.getElementById("r")
+const T = document.getElementById("t")
+const lineas = []
+const malas = []
+
+const errores = []
+window.addEventListener("error", e => errores.push(`window.onerror: ${e.message}`))
+window.addEventListener("unhandledrejection", e => errores.push(`promesa sin catch: ${e.reason}`))
+
+/* Los recursos los pide el documento del iframe, asi que los 404 se sacan
+   de su propio PerformanceResourceTiming: el observer del padre no los ve. */
+function recursosFallidos(doc) {
+  const out = []
+  for (const e of doc.defaultView.performance.getEntriesByType("resource")) {
+    if (e.responseStatus && e.responseStatus >= 400) out.push(`HTTP ${e.responseStatus}  ${e.name}`)
+  }
+  return out
+}
+
+const CHECKS = {
+  login: [
+    ["el router monto .auth-split",      d => !!d.querySelector(".auth-split")],
+    ["existe #login-form",              d => !!d.querySelector("#login-form")],
+    ["los 3 campos visibles",           d => ["login-email","login-password","login-enviar"].every(i => d.getElementById(i)?.offsetParent !== null)],
+    ["el heroe tiene la foto de fondo", d => getComputedStyle(d.querySelector(".auth-hero")).backgroundImage.includes("login.avif")],
+    ["el heroe se ve en escritorio",    d => d.querySelector(".auth-hero").offsetWidth > 100],
+    ["el boton es block (ancho lleno)", d => { const b = d.getElementById("login-enviar").getBoundingClientRect(); return b.width > 300 }],
+    ["el error arranca oculto",         d => getComputedStyle(d.getElementById("login-error")).visibility === "hidden"],
+    ["enlace a #/register",             d => !!d.querySelector('.auth-form__link a[href="#/register"]')],
+  ],
+  register: [
+    ["el router monto .auth-split",     d => !!d.querySelector(".auth-split")],
+    ["existe #register-form",           d => !!d.querySelector("#register-form")],
+    ["los 5 campos visibles",           d => ["register-nombre","register-email","register-password","register-confirm","register-enviar"].every(i => d.getElementById(i)?.offsetParent !== null)],
+    ["enlace a #/login",                d => !!d.querySelector('.auth-form__link a[href="#/login"]')],
+    ["titulo del heroe propio",         d => d.querySelector(".auth-hero__titulo").textContent.includes("Crea tu cuenta")],
+  ],
+}
+
+/* El iframe carga auth.html una sola vez y se navega por hash. Ojo: cambiar
+   solo el hash no dispara load, asi que hay que esperar al hashchange del
+   documento hijo o el probe se queda colgado esperando un load que no llega. */
+let cargado = false
+function esperarHash(doc, hash) {
+  return new Promise(res => {
+    const w = doc.defaultView
+    const t = setTimeout(() => { w.removeEventListener("hashchange", al); res() }, 3000)
+    function al() { clearTimeout(t); w.removeEventListener("hashchange", al); setTimeout(res, 400) }
+    w.addEventListener("hashchange", al)
+    w.location.hash = "#/" + hash
+  })
+}
+
+async function probar(hash, nombre) {
+  const f = document.getElementById("f")
+  if (!cargado) {
+    f.src = `/auth.html#/${hash}`
+    await new Promise(r => f.addEventListener("load", r, { once: true }))
+    cargado = true
+    await new Promise(r => setTimeout(r, 1200))
+  } else {
+    await esperarHash(f.contentDocument, hash)
+  }
+  const d = f.contentDocument
+
+  lineas.push(`--- ${nombre} (${d.title}) ---`)
+  for (const [txt, fn] of CHECKS[nombre]) {
+    let r = false
+    try { r = fn(d) } catch (e) { r = false; linea(`      ! ${e.message}`) }
+    if (r) { lineas.push(`  ok   ${txt}`) } else { lineas.push(`  FALLA ${txt}`); malas.push(`${nombre}: ${txt}`) }
+  }
+  // el router sustituyo #app: no debe haber restos de la vista anterior
+  const sobras = d.querySelectorAll("#app > section").length
+  if (sobras === 1) lineas.push("  ok   #app tiene una sola vista (el router limpio)")
+  else { lineas.push(`  FALLA #app tiene ${sobras} secciones`); malas.push(`${nombre}: #app con ${sobras} secciones`) }
+
+  const caidos = recursosFallidos(d)
+  if (caidos.length) { caidos.forEach(c => { lineas.push(`  FALLA ${c}`); malas.push(c) }) }
+  else lineas.push("  ok   ningun recurso 4xx/5xx")
+}
+
+function linea(s) { lineas.push(s); R.textContent = lineas.join("\n") }
+
+;(async () => {
+  await probar("login", "login")
+  await probar("register", "register")
+  await new Promise(r => setTimeout(r, 1200))
+
+  lineas.push("")
+  if (errores.length) { lineas.push("errores JS:"); errores.forEach(e => lineas.push("  " + e)) }
+  else lineas.push("sin errores de JS")
+  lineas.push("")
+  lineas.push(malas.length ? `FALLOS (${malas.length}):` : "sin 404 ni checks fallidos")
+  malas.forEach(m => lineas.push("  " + m))
+
+  T.textContent = malas.length || errores.length ? `HAY ${malas.length + errores.length} PROBLEMA(S)` : "TODO OK"
+  T.className = malas.length || errores.length ? "mal" : "ok"
+  document.title = "DONE"
+  R.textContent = lineas.join("\n")
+})()
+</script>
+</body>
+</html>

@@ -1,3 +1,5 @@
+import { icon } from "./Icon.js"
+
 class Loading {
     constructor({ mensaje = "Cargando..." } = {}) {
         this.mensaje = mensaje
@@ -13,18 +15,9 @@ class Loading {
         const titulo = document.createElement("h1")
         titulo.textContent = this.mensaje
 
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-        svg.setAttribute("viewBox", "0 0 24 24")
-        svg.setAttribute("fill", "none")
-        svg.setAttribute("aria-hidden", "true")
-        const circulo = document.createElementNS("http://www.w3.org/2000/svg", "path")
-        circulo.setAttribute("d", "M12 3C7.03 3 3 7.03 3 12")
-        circulo.setAttribute("stroke", "currentColor")
-        circulo.setAttribute("stroke-width", "7")
-        circulo.setAttribute("stroke-linecap", "round")
-        svg.appendChild(circulo)
-
-        seccion.append(titulo, svg)
+        // el atributo `spin` es la animacion propia de Reicon: sustituye al
+        //keyframes rodilla-spin que antes vivia en modal.css
+        seccion.append(titulo, icon("loader-circle", { size: 60, spin: true }))
         this.element = seccion
         return seccion
     }

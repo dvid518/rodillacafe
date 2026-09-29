@@ -6,12 +6,12 @@ export const ROLES_EMPLEADO = ["ADMINISTRADOR", "CAJERO", "MOZO"]
 export async function guardRol(rolesPermitidos) {
     const sesion = await authService.obtenerSesion()
     if (!sesion.ok || !sesion.data) {
-        window.location.href = "/login.html"
+        window.location.href = "/auth.html"
         return null
     }
     const resultado = await userService.obtenerRoles()
     if (!resultado.ok) {
-        window.location.href = "/login.html"
+        window.location.href = "/auth.html"
         return null
     }
     const roles = resultado.data

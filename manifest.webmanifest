@@ -8,19 +8,5 @@
   "orientation": "portrait-primary",
   "background_color": "#360e06",
   "theme_color": "#360e06",
-  "lang": "es-PE",
-  "icons": [
-    {
-      "src": "/img/pwa/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/img/pwa/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+  "lang": "es-PE"
 }

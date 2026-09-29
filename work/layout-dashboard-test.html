@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prueba de layout del dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/base/reset.css">
+    <link rel="stylesheet" href="../css/base/typography.css">
+    <link rel="stylesheet" href="../css/components/components.css">
+    <link rel="stylesheet" href="../css/components/sidebar.css">
+    <link rel="stylesheet" href="../css/components/topbar.css">
+    <link rel="stylesheet" href="../css/components/modal.css">
+    <link rel="stylesheet" href="../css/pages/dashboard.css">
+    <style>
+        /* caja de contenido solo para ver donde cae el sidebar */
+        .app-demo {
+            margin: var(--space-lg);
+            padding: var(--space-lg);
+            border: 2px dashed var(--border-strong);
+            border-radius: var(--radius-md);
+        }
+        /* --virtual-time-budget de Chrome no adelanta la linea de tiempo de
+           las transiciones CSS: el sidebar se queda congelado en su primer
+           keyframe y el toggle parece no hacer nada. aqui probamos el
+           mecanismo, no la animacion. */
+        .sidebar { transition: none !important; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <div>
+            <aside class="sidebar" id="sb">
+                <div class="sidebar__brand">
+                    <a class="sidebar__logo" href="#/">Rodilla</a>
+                    <span class="sidebar__sub">Panel</span>
+                </div>
+                <nav class="sidebar__nav">
+                    <a class="sidebar__link sidebar__link--active" href="#/dashboard"><span>Panel</span></a>
+                    <a class="sidebar__link" href="#/dashboard/carta"><span>Carta</span></a>
+                    <a class="sidebar__link" href="#/dashboard/categorias"><span>Categorías</span></a>
+                    <a class="sidebar__link" href="#/dashboard/pedidos"><span>Pedidos</span></a>
+                    <a class="sidebar__link" href="#/dashboard/reservas"><span>Reservas</span></a>
+                    <a class="sidebar__link" href="#/dashboard/mensajes"><span>Mensajes</span></a>
+                    <a class="sidebar__link" href="#/dashboard/usuarios"><span>Usuarios</span></a>
+                </nav>
+                <button class="sidebar__logout" type="button"><span>Cerrar sesión</span></button>
+                <p class="sidebar__rol">ADMINISTRADOR</p>
+            </aside>
+        </div>
+        <div class="dashboard-main">
+            <header class="topbar glass">
+                <button class="topbar__burger" type="button" id="burger" aria-label="Abrir menú">≡</button>
+                <h1 class="topbar__titulo">Panel</h1>
+                <div class="topbar__right">
+                    <span class="topbar__usuario">admin@rodilla.pe</span>
+                    <button class="topbar__accion" type="button" aria-label="Cambiar tema">◐</button>
+                </div>
+            </header>
+            <main class="app-demo" id="caja">contenido</main>
+        </div>
+    </div>
+    <script type="module">
+        // el burger de verdad, como lo cablea dashboard.js
+        document.getElementById("burger").addEventListener("click", () => {
+            document.querySelector(".sidebar")?.classList.toggle("sidebar--abierto")
+        })
+
+        // comprueba el grid en lugar de mirar la captura
+        const r = document.createElement("p")
+        const salida = []
+        let fallos = 0
+        const chk = (ok, t, d = "") => { if (!ok) fallos++; salida.push(`${ok ? "PASA" : "FALLA"}  ${t}${d ? "  -> " + d : ""}`) }
+
+        const layout = document.querySelector(".dashboard-layout")
+        const main = document.querySelector(".dashboard-main")
+        const sb = document.getElementById("sb")
+        const burger = document.getElementById("burger")
+        const ancho = window.innerWidth
+
+        const cs = getComputedStyle(layout)
+        chk(cs.display === "grid", "dashboard-layout es grid", cs.display)
+
+        const colIzq = sb.getBoundingClientRect()
+        chk(ancho > 900 ? colIzq.width === 250 : true,
+            ancho > 900 ? "sidebar de 250px en escritorio" : "sidebar en una columna",
+            `ancho real ${Math.round(colIzq.width)}`)
+
+        chk(main.getBoundingClientRect().left >= (ancho > 900 ? 250 : 0) - 1,
+            "el contenido arranca despues del sidebar",
+            `main.left=${Math.round(main.getBoundingClientRect().left)}`)
+
+        if (ancho <= 900) {
+            chk(getComputedStyle(sb).position === "fixed", "sidebar fijo en movil", getComputedStyle(sb).position)
+            chk(getComputedStyle(sb).transform !== "none", "sidebar desplazado fuera de pantalla", getComputedStyle(sb).transform)
+            chk(colIzq.right <= 1, "sidebar completamente fuera de pantalla", `right=${Math.round(colIzq.right)}`)
+
+            burger.click()
+            // hay que dejar terminar la transicion de 0.4s: medir en el acto
+            // devuelve la posicion inicial
+            setTimeout(() => {
+                const abierta = sb.getBoundingClientRect()
+                chk(abierta.left === 0, "tras el toggle el sidebar queda dentro", `left=${Math.round(abierta.left)}`)
+                chk(abierta.right > 100, "y es visible de verdad", `right=${Math.round(abierta.right)}`)
+                chk(sb.classList.contains("sidebar--abierto"), "la clase sidebar--abierto se aplico")
+
+                document.title = `${fallos === 0 ? "TODO OK" : fallos + " FALLOS"} @${ancho}px`
+                salida.forEach(l => { const p = document.createElement("p"); p.textContent = l; document.body.appendChild(p) })
+            }, 700)
+        } else {
+            document.title = `${fallos === 0 ? "TODO OK" : fallos + " FALLOS"} @${ancho}px`
+            salida.forEach(l => { const p = document.createElement("p"); p.textContent = l; document.body.appendChild(p) })
+        }
+    </script>
+</body>
+</html>

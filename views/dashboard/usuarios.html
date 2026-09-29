@@ -1,0 +1,102 @@
+﻿<section class="dashboard-crud">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Usuarios</h1>
+            <p class="hero__subtitulo">Gestiona cuentas y roles.</p>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="users" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <p class="aviso-permiso" id="usuarios-aviso" hidden></p>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Logeo</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Bloqueado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="usuarios-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="usuarios-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="usuarios-modal-titulo">
+            <h2 id="usuarios-modal-titulo">Promover usuario</h2>
+
+            <p class="modal-nota" id="usuarios-modal-info"></p>
+
+            <label class="modal-form__campo" for="usuarios-input-rol">
+                Rol
+                <select class="select" id="usuarios-input-rol"></select>
+            </label>
+
+            <p class="modal-nota modal-nota--peligro">
+                El único rol que se puede asignar desde aquí es ADMINISTRADOR.
+                Promover <strong>revoca</strong> cualquier otro rol vigente
+                (CLIENTE, CAJERO, MOZO) y no se puede deshacer desde la
+                aplicación.
+            </p>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="usuarios-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="usuarios-modal-guardar">Promover</button>
+            </div>
+        </div>
+    </div>
+</section>

@@ -144,7 +144,8 @@
     border-radius: 50%;
 }
 
-.btn svg {
+.btn svg,
+.btn re-icon {
     width: 18px;
     height: 18px;
 }
@@ -192,36 +193,29 @@
     width: auto;
 }
 
-/* Botón de la tarjeta de producto: el color lo pone la categoría.
-   Comparte geometría con .btn porque Card.js:27 genera el botón solo con
-   class="btn-agregar", sin la clase .btn. */
+/* Botón de la tarjeta de producto: el color lo pone la categoría, que llega
+   a la tarjeta como --cat. Comparte geometría con .btn porque Card.js:27
+   genera el botón solo con class="btn-agregar", sin la clase .btn. */
 .btn-agregar {
-    margin-top: 15px;
+    /* margin-top:auto empuja el botón al fondo de la tarjeta: como la tarjeta
+       es flex column y la rejilla estira todas las de una fila a la misma
+       altura, los botones quedan alineados entre si. */
+    margin-top: auto;
     padding: 10px 14px;
     border: none;
     color: var(--white);
+    background-color: var(--cat, var(--accent));
 }
 
 .btn-agregar:hover {
     padding: 10px 18px;
+    filter: brightness(1.1);
 }
 
 .btn-agregar:disabled {
     background-color: var(--state-success);
     cursor: default;
     transform: none;
-}
-
-#bebidas .btn-agregar {
-    background-color: var(--cat-bebidas);
-}
-
-#postres .btn-agregar {
-    background-color: var(--cat-postres);
-}
-
-#aperitivos .btn-agregar {
-    background-color: var(--cat-aperitivos);
 }
 
 /* Stepper de cantidad del carrito */
@@ -428,6 +422,20 @@
 
 /* --------------------------------------------------------------------------
    4. Tarjetas
+   --------------------------------------------------------------------------
+   Card.js monta: <div class="card-producto <categoria> glass"> con dentro
+   <img>, <h4>, <p class="precio"> y <button class="btn-agregar">.
+
+   La categoria (bebidas/postres/aperitivos) la pone Card.js desde el
+   argumento `categoria` y se usa para tres cosas a la vez: el tono del disco
+   de la foto, el color del precio y el fondo del boton. Se recoge una sola vez
+   en la variable --cat y todo lo demas la consume, en vez de repetir tres
+   reglas por elemento y por categoria.
+
+   Antes el boton sacaba su fondo de #bebidas/#postres/#aperitivos, y esos ids
+   ya no existen en el markup (los filtros se pintan con data-categoria), asi
+   que el boton se quedaba transparente con texto blanco encima de la tarjeta.
+   Con --cat el color sale de la propia tarjeta y no depende de un ancestro.
    -------------------------------------------------------------------------- */
 .card {
     box-sizing: border-box;
@@ -444,51 +452,52 @@
     background-color: var(--surface-hover);
 }
 
+/* --cat: el color de la seccion, heredado por los hijos de la tarjeta */
+.card-producto.bebidas { --cat: var(--cat-bebidas); }
+.card-producto.postres { --cat: var(--cat-postres); }
+.card-producto.aperitivos { --cat: var(--cat-aperitivos); }
+
+/* La tarjeta ocupa la celda entera de la rejilla. Con el width:200px fijo de
+   antes, en columnas de ~257px sobraba hueco a los lados y en movil podia
+   desbordar la pista. */
 .card-producto {
-    width: 200px;
-    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    padding: var(--space-lg) var(--space-md);
+    border-radius: var(--radius-md);
+    text-align: center;
 }
 
+/* Disco de la foto. El relleno es un tinte al 18% del color de seccion en vez
+   del color plano: antes era un circulo saturado del color completo, que con
+   la foto encima competia por la atencion. */
 .card-producto img {
-    width: 120px;
-    height: 120px;
-    flex: 0 1 200px;
-    object-fit: contain;
-    padding: 20px;
-    margin-bottom: 15px;
+    width: 116px;
+    height: 116px;
+    margin: 0 auto var(--space-md);
+    border: 1px solid color-mix(in srgb, var(--cat) 45%, transparent);
     border-radius: 50%;
-    transform: scale(1.25);
-    transition: transform 0.5s ease;
+    background-color: color-mix(in srgb, var(--cat) 18%, transparent);
+    object-fit: contain;
+    transition: transform var(--transition);
 }
 
+/* Antes: un giro de 120 segundos con scale(1.25) que ademas se salia de la
+   tarjeta. Ahora solo un leve realce y sin salirse. */
 .card-producto:hover img {
-    animation: card-spin 120s infinite;
+    transform: scale(1.06);
 }
 
-@keyframes card-spin {
-    0% {
-        transform: rotate(0deg) scale(1.25);
-    }
-    100% {
-        transform: rotate(360deg) scale(1.25);
-    }
-}
-
-.card-producto.bebidas img {
-    background-color: var(--cat-bebidas);
-}
-
-.card-producto.postres img {
-    background-color: var(--cat-postres);
-}
-
-.card-producto.aperitivos img {
-    background-color: var(--cat-aperitivos);
-}
-
+/* min-height de dos lineas para que el precio y el boton de las tarjetas de
+   una misma fila caigan a la misma altura aunque los nombres sean distintos. */
 .card-producto h4 {
-    margin: 10px 0;
+    margin: 0 0 var(--space-xs);
+    min-height: 2.8em;
     color: var(--text);
+    font-size: 1.05rem;
+    line-height: 1.4;
 }
 
 .nos-card {
@@ -527,41 +536,24 @@
     line-height: 1.2;
 }
 
+/* Precio: mismo --cat de la tarjeta. Estas tres reglas por categoria eran
+   copias de lo mismo con distinto color. */
 .precio {
-    margin-top: 10px;
+    align-self: center;
+    margin: 0 0 var(--space-md);
     padding: 5px 12px;
-    font-weight: bold;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-full);
+    color: var(--cat, var(--text));
+    background-color: color-mix(in srgb, var(--cat, var(--text)) 15%, transparent);
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
 }
 
-.bebidas .precio {
-    color: var(--cat-bebidas);
-    background-color: color-mix(in srgb, var(--cat-bebidas) 15%, transparent);
-}
-
-.postres .precio {
-    color: var(--cat-postres);
-    background-color: color-mix(in srgb, var(--cat-postres) 15%, transparent);
-}
-
-.aperitivos .precio {
-    color: var(--cat-aperitivos);
-    background-color: color-mix(in srgb, var(--cat-aperitivos) 15%, transparent);
-}
-
-@media (max-width: 600px) {
-    .card-producto {
-        flex: 0 0 45%;
-        width: 45%;
-    }
-}
-
-@media (max-width: 400px) {
-    .card-producto {
-        flex: 0 0 100%;
-        width: 100%;
-    }
-}
+/* Sin reglas de ancho por movil: la tarjeta ya ocupa el 100% de su celda y es
+   la rejilla (.menu__grid / .destacados__grid, que baja a minmax(160px, 1fr))
+   la que decide cuantas caben. El width:45% que habia aqui venia del layout
+   flex antiguo y dejaba media pista vacia en el telefono. */
 
 /* --------------------------------------------------------------------------
    6. Tablas
@@ -608,7 +600,8 @@
 .tabla-block tr,
 .tabla-block th,
 .tabla-block td,
-td.icon svg {
+td.icon svg,
+td.icon re-icon {
     transition: all var(--transition);
 }
 
@@ -638,7 +631,8 @@ td.icon {
     vertical-align: middle;
 }
 
-td.icon svg {
+td.icon svg,
+td.icon re-icon {
     display: block;
     margin: auto;
     color: var(--text);
@@ -656,7 +650,8 @@ td.icon button {
     transition: all var(--transition);
 }
 
-td.icon.pencil:hover svg {
+td.icon.pencil:hover svg,
+td.icon.pencil:hover re-icon {
     color: var(--link);
 }
 
@@ -664,16 +659,22 @@ td.icon.trash:hover {
     background-color: var(--table-danger-row);
 }
 
-td.icon.trash:hover svg {
+td.icon.trash:hover svg,
+td.icon.trash:hover re-icon {
     color: var(--danger);
 }
 
-svg.pencil {
+/* Reicon lleva el tamano en el atributo size, que su shadow root aplica al
+   <svg> interno. Estas reglas existian para pisar ese tamano en la tabla, asi
+   que tienen que quedar en el host: el <svg> interno no es alcanzable. */
+svg.pencil,
+re-icon.pencil {
     width: 27px;
     height: 27px;
 }
 
-svg.trash {
+svg.trash,
+re-icon.trash {
     width: 20px;
     height: 20px;
 }
@@ -695,16 +696,123 @@ svg.trash {
 }
 
 /* --------------------------------------------------------------------------
-   7. Utilidades
+   8. Layout del dashboard
+   --------------------------------------------------------------------------
+   Movido a css/pages/dashboard.css: el grid de dos columnas es estructura
+   de esa pagina, no un componente compartido. Aqui no queda ningun selector
+   duplicado.
    -------------------------------------------------------------------------- */
-.hidden {
-    display: none;
+
+/* --------------------------------------------------------------------------
+   9. Footer en columnas (solo el footer nuevo de la landing)
+   El footer simple de los HTML antiguos sigue con las reglas de
+   navigation.css: .copy y .footer-btn no se tocan.
+   -------------------------------------------------------------------------- */
+.footer--nuevo {
+    display: grid;
+    grid-template-columns: 1.4fr repeat(3, 1fr);
+    gap: var(--space-xl) var(--space-lg);
+    align-items: start;
+    margin: var(--space-xl) auto var(--space-lg);
+    padding: var(--space-xl) var(--space-lg);
+    width: min(1100px, 92%);
+    border-top: 1px solid var(--border);
+    text-align: left;
 }
 
-@keyframes rodilla-spin {
-    to {
-        transform: rotate(360deg);
+.footer__logo {
+    display: inline-block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    transition: transform var(--transition);
+}
+
+.footer__logo:hover {
+    transform: scale(1.04);
+    color: var(--link);
+}
+
+.footer__tagline {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.footer__col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.footer__titulo {
+    margin: 0 0 4px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.footer__lista {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 15px;
+}
+
+.footer__lista a {
+    color: var(--text);
+    transition: color var(--transition);
+}
+
+.footer__lista a:hover {
+    color: var(--link);
+}
+
+.footer__redes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.footer__legal {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+@media (max-width: 800px) {
+    .footer--nuevo {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-lg);
     }
+}
+
+@media (max-width: 480px) {
+    .footer--nuevo {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   10. Utilidades
+   -------------------------------------------------------------------------- */
+.router-error {
+    padding: var(--space-xl);
+    text-align: center;
+    color: var(--danger);
+}
+
+.hidden {
+    display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

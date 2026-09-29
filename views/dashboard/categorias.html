@@ -1,0 +1,103 @@
+<section class="dashboard-categorias">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Categorías</h1>
+            <p class="hero__subtitulo">Organiza las categorías de productos.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary" type="button" id="cat-nuevo">+ Nueva categoria</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="box" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripcion</th>
+                    <th>Area</th>
+                    <th title="Editar">(E)</th>
+                    <th title="Eliminar">(D)</th>
+                </tr>
+            </thead>
+            <tbody id="cat-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="cat-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="cat-modal-titulo">
+            <h2 id="cat-modal-titulo">Nueva categoria</h2>
+
+            <label class="modal-form__campo" for="cat-input-nombre">
+                Nombre
+                <input class="input" type="text" id="cat-input-nombre" required>
+            </label>
+
+            <label class="modal-form__campo" for="cat-input-descripcion">
+                Descripcion
+                <input class="input" type="text" id="cat-input-descripcion">
+            </label>
+
+            <label class="modal-form__campo" for="cat-input-area">
+                Area de preparacion
+                <select class="select" id="cat-input-area">
+                    <option value="BARRA">Barra</option>
+                    <option value="COCINA">Cocina</option>
+                    <option value="VITRINA">Vitrina</option>
+                </select>
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="cat-modal-cancelar">Cancelar</button>
+                <button class="btn btn--danger modal-form__eliminar" type="button" id="cat-modal-eliminar" hidden>Eliminar</button>
+                <button class="btn btn--primary" type="button" id="cat-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

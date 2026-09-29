@@ -1,8 +1,4 @@
-const ICONO_CERRAR = `
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M16 8L8 16M8.00001 8L16 16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-`
+import { icono } from "./Icon.js"
 
 class Modal {
     constructor({ title = "", body = "", actions = [], id = null, className = "", onClose = null } = {}) {
@@ -36,7 +32,7 @@ class Modal {
         cerrar.type = "button"
         cerrar.className = "modal-close"
         cerrar.setAttribute("aria-label", "Cerrar modal")
-        cerrar.innerHTML = ICONO_CERRAR
+        cerrar.innerHTML = icono("x", { size: 24 })
         header.append(titulo, cerrar)
 
         const cuerpo = document.createElement("div")

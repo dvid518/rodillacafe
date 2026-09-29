@@ -22,4 +22,24 @@ async function eliminarReserva(id) {
     return ReservationAdapter.eliminar(id)
 }
 
-export const reservationService = { crearReserva, listarMisReservas, listarTodas, actualizarEstado, eliminarReserva }
+async function crearReservaManual(datos) {
+    const resultado = await ReservationAdapter.crearManual(datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: resultado.data }
+}
+
+async function actualizarReserva(id, datos) {
+    const resultado = await ReservationAdapter.actualizar(id, datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: null }
+}
+
+export const reservationService = {
+    crearReserva,
+    crearReservaManual,
+    listarMisReservas,
+    listarTodas,
+    actualizarReserva,
+    actualizarEstado,
+    eliminarReserva,
+}

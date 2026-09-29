@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>probe 4b</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="../css/base/reset.css">
+<link rel="stylesheet" href="../css/base/typography.css">
+<link rel="stylesheet" href="../css/components/components.css">
+<link rel="stylesheet" href="../css/components/modal.css">
+<link rel="stylesheet" href="../css/pages/dashboard.css">
+<style>
+  body { font: 12px/1.5 monospace; background:#111; color:#eee; margin:0; padding:14px }
+  pre { white-space: pre-wrap; margin:0 }
+  .ok { color:#6f6 } .mal { color:#f77 }
+  #app { margin-top:12px; border:1px solid #444; border-radius:8px; overflow:hidden }
+</style>
+</head>
+<body>
+<h3 id="t">ejecutando…</h3>
+<pre id="r"></pre>
+<div id="app"></div>
+
+<script>
+/* Antes que el modulo: si el import a esm.sh o cualquier sentencia del
+   modulo falla, este listener sigue vivo y deja constancia. Registrado
+   dentro del modulo no serviria de nada, porque el modulo es justo lo que
+   no llega a ejecutarse. */
+window.__err = []
+addEventListener("error", e => {
+  window.__err.push(`error: ${e.message} @ ${e.filename?.split("/").pop()}:${e.lineno}`)
+  document.getElementById("r").textContent = window.__err.join("\n")
+  document.getElementById("t").textContent = "ERROR"
+  document.getElementById("t").className = "mal"
+}, true)
+addEventListener("unhandledrejection", e => {
+  window.__err.push(`rechazo: ${e.reason?.message || e.reason}`)
+  document.getElementById("r").textContent += "\n" + window.__err[window.__err.length - 1]
+})
+/* marcas de paso: si el modulo se queda colgado, se ve hasta donde llego */
+window.__paso = s => { document.getElementById("r").textContent += `\n[${s}]` }
+</script>
+
+<script type="module">
+/* ==========================================================================
+   EJECUTA LOS CONTROLADORES REALES CONTRA SUPABASE DOBLE
+   --------------------------------------------------------------------------
+   supabase es el objeto que exporta lib/supabaseClient.js. Se sustituyen
+   from() y auth() por dobles encadenables, de modo que los controladores,
+   los adapters y los services que importan son los de verdad: lo que se
+   comprueba aqui es el render y la logica, no el HTTP a Supabase.
+   ========================================================================== */
+window.__paso("antes de supabaseClient")
+import { supabase } from "../js/lib/supabaseClient.js"
+window.__paso("supabaseClient importado; typeof supabase = " + typeof supabase)
+
+const lineas = []
+const malas = []
+const errores = []
+const log = s => { lineas.push(s); document.getElementById("r").textContent = lineas.join("\n") }
+const ok = m => log(`  ok   ${m}`)
+const mal = m => { log(`  FALLA ${m}`); malas.push(m) }
+window.addEventListener("error", e => errores.push(`window.onerror: ${e.message}`))
+window.addEventListener("unhandledrejection", e => errores.push(`promesa sin catch: ${e.reason}`))
+
+/* ---------- fixtures con la misma forma que devuelve Supabase ---------- */
+
+const PERSONAS = {
+  1: { Nombre: "Ana", Ap_Paterno: "Quispe", EMAIL: "ana@rodilla.pe" },
+  2: { Nombre: "Luis", Ap_Paterno: "Ramirez", EMAIL: "luis@rodilla.pe" },
+}
+/* ID_Cliente es columna DIRECTA de USUARIO, no un embed: resolverSesion() la
+   pide en el select plano. Si se anida dentro de CLIENTE, el filtro por
+   ID_Cliente del listado "mis-*" sale undefined y la tabla queda vacia. */
+const USUARIOS = [
+  { ID_Usuario: 1, ID_Cliente: 1, Logeo: "admin@rodilla.pe", Bloqueado: "0", ESTADO: "1", auth_id: "auth-1",
+    CLIENTE: [{ ID_Cliente: 1, PERSONA: [PERSONAS[1]] }],
+    USUARIO_ROL: [{ ID_Rol: 1, ROL: [{ N_Rol: "ADMINISTRADOR" }] }] },
+  { ID_Usuario: 2, ID_Cliente: 1, Logeo: "ana@rodilla.pe", Bloqueado: "0", ESTADO: "1", auth_id: "auth-2",
+    CLIENTE: [{ ID_Cliente: 1, PERSONA: [PERSONAS[1]] }],
+    USUARIO_ROL: [{ ID_Rol: 4, ROL: [{ N_Rol: "CLIENTE" }] }] },
+  { ID_Usuario: 3, ID_Cliente: null, Logeo: "cajero@rodilla.pe", Bloqueado: "1", ESTADO: "1", auth_id: "auth-3",
+    CLIENTE: [], USUARIO_ROL: [{ ID_Rol: 2, ROL: [{ N_Rol: "CAJERO" }] }] },
+]
+const CLIENTES = [
+  { ID_Cliente: 1, Tipo_Cliente: "P", PERSONA: [PERSONAS[1]] },
+  { ID_Cliente: 2, Tipo_Cliente: "P", PERSONA: [PERSONAS[2]] },
+]
+const PRODUCTOS = [
+  { ID_Producto: 1, ID_CategoriaProducto: 1, ID_UnidadMedida: 1, N_Producto: "Espresso", Precio: 6, Detalle: "Doble", Imagen: null, ESTADO: "1" },
+  { ID_Producto: 2, ID_CategoriaProducto: 1, ID_UnidadMedida: 2, N_Producto: "Americano", Precio: 7.5, Detalle: null, Imagen: null, ESTADO: "1" },
+  { ID_Producto: 3, ID_CategoriaProducto: 3, ID_UnidadMedida: 2, N_Producto: "Tiramisu", Precio: 18, Detalle: null, Imagen: null, ESTADO: "1" },
+]
+const CATEGORIAS = [
+  { ID_CategoriaProducto: 1, N_CategoriaProducto: "Cafes calientes", Descripcion: "Espresso", Area_Preparacion: "BARRA" },
+  { ID_CategoriaProducto: 3, N_CategoriaProducto: "Postres", Descripcion: "Dulces", Area_Preparacion: "VITRINA" },
+]
+const UNIDADES = [
+  { ID_UnidadMedida: 1, N_UnidadMedida: "Taza", Abreviatura: "tz" },
+  { ID_UnidadMedida: 2, N_UnidadMedida: "Porcion", Abreviatura: "porc" },
+]
+const TIPOS = [
+  { ID_TipoAtencion: 1, N_TipoAtencion: "EN SALON", Requiere_Mesa: "1", ESTADO: "1" },
+  { ID_TipoAtencion: 2, N_TipoAtencion: "PARA LLEVAR", Requiere_Mesa: "0", ESTADO: "1" },
+]
+const PEDIDOS = [
+  { ID_Pedido: 10, ID_Cliente: 1, ID_Usuario: 2, ID_TipoAtencion: 2, Numero_Pedido: "1042",
+    F_Pedido: "2026-09-12T08:14:00Z", N_Comensales: 2, Total: 46, Situacion: "P", Observacion: "Sin azúcar",
+    DETALLE_PEDIDO: [
+      { ID_DetallePedido: 1, ID_Producto: 1, Cantidad: 2, Precio: 6, Descuento: 0, Sub_Total: 12,
+        PRODUCTO: [{ N_Producto: "Espresso", Imagen: null }] },
+      { ID_DetallePedido: 2, ID_Producto: 3, Cantidad: 1, Precio: 18, Descuento: 0, Sub_Total: 18,
+        PRODUCTO: [{ N_Producto: "Tiramisu", Imagen: null }] },
+    ] },
+  { ID_Pedido: 11, ID_Cliente: 2, ID_Usuario: 1, ID_TipoAtencion: 1, Numero_Pedido: "1041",
+    F_Pedido: "2026-09-11T07:02:00Z", N_Comensales: 1, Total: 7.5, Situacion: "F", Observacion: null,
+    DETALLE_PEDIDO: [
+      { ID_DetallePedido: 3, ID_Producto: 2, Cantidad: 1, Precio: 7.5, Descuento: 0, Sub_Total: 7.5,
+        PRODUCTO: [{ N_Producto: "Americano", Imagen: null }] },
+    ] },
+]
+const RESERVAS = [
+  { ID_Reserva: 5, ID_Cliente: 1, ID_Mesa: 2, Numero_Mesa: 3, N_Comensales: 4,
+    F_Reserva: "2026-09-20T19:00:00Z", Situacion: "A", Observacion: "Mesa junto a la ventana",
+    CLIENTE: [{ ID_Cliente: 1, PERSONA: [PERSONAS[1]] }] },
+  { ID_Reserva: 6, ID_Cliente: 2, ID_Mesa: null, Numero_Mesa: null, N_Comensales: 2,
+    F_Reserva: "2026-09-18T14:30:00Z", Situacion: "P", Observacion: null,
+    CLIENTE: [{ ID_Cliente: 2, PERSONA: [PERSONAS[2]] }] },
+]
+const MENSAJES = [
+  { ID_Mensaje: 1, ID_Cliente: 1, Asunto: "Reserva para 6", Mensaje: "Quería reservar para seis personas el sábado por la tarde.", F_Envio: "2026-09-10T09:00:00Z", Situacion: "P" },
+  { ID_Mensaje: 2, ID_Cliente: 2, Asunto: "Horarios", Mensaje: "¿Hasta qué hora abren los domingos?", F_Envio: "2026-09-09T18:00:00Z", Situacion: "R" },
+]
+
+const TABLAS = {
+  USUARIO: USUARIOS, CLIENTE: CLIENTES, PRODUCTO: PRODUCTOS,
+  CATEGORIA_PRODUCTO: CATEGORIAS, UNIDAD_MEDIDA: UNIDADES, TIPO_ATENCION: TIPOS,
+  PEDIDO: PEDIDOS, RESERVA: RESERVAS, MENSAJE: MENSAJES, DETALLE_PEDIDO: [],
+}
+
+/* ---------- doble encadenable ---------- */
+
+function fila(q) {
+  let datos = TABLAS[q._tabla] || []
+  for (const [col, val] of q._filtros) {
+    if (col === "ESTADO") datos = datos.filter(d => d[col] === val)
+    else if (col in (datos[0] || {})) datos = datos.filter(d => d[col] === val)
+  }
+  return datos
+}
+
+supabase.from = (tabla) => {
+  const q = {
+    _tabla: tabla, _filtros: [],
+    select() { return q },
+    eq(c, v) { q._filtros.push([c, v]); return q },
+    neq() { return q },
+    order() { return q },
+    limit() { return q },
+    insert(d) { q._insert = d; return q },
+    update(d) { q._update = d; return q },
+    delete() { return q },
+    maybeSingle() { return Promise.resolve({ data: fila(q)[0] ?? null, error: null }) },
+    single() { return Promise.resolve({ data: fila(q)[0] ?? null, error: null }) },
+    then(resolve, reject) { return Promise.resolve({ data: fila(q), error: null }).then(resolve, reject) },
+  }
+  return q
+}
+supabase.auth = {
+  getSession: async () => ({ data: { session: { user: { id: "auth-1", email: "admin@rodilla.pe" } } }, error: null }),
+  getUser: async () => ({ data: { user: { id: "auth-1", email: "admin@rodilla.pe" } }, error: null }),
+  onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+}
+supabase.rpc = async (nombre) => {
+  if (nombre === "is_rol") return { data: true, error: null }
+  return { data: true, error: null }
+}
+
+/* ---------- ejecucion ---------- */
+
+const app = document.getElementById("app")
+
+async function montar(vista, fn, etiqueta) {
+  app.replaceChildren()
+  const html = await (await fetch(`../views/dashboard/${vista}.html`)).text()
+  app.innerHTML = html
+  const contenedor = app.firstElementChild
+  try {
+    const cleanup = await fn(contenedor)
+    return { ok: true, contenedor, cleanup: typeof cleanup === "function" ? cleanup : null }
+  } catch (e) {
+    mal(`${etiqueta} lanzo: ${e.message}`)
+    console.error(e)
+    return { ok: false }
+  }
+}
+
+window.__paso("controladores importando")
+const { pedidosController } = await import("../js/views/dashboard/pedidos.js")
+const { reservasController } = await import("../js/views/dashboard/reservas.js")
+const { mensajesController } = await import("../js/views/dashboard/mensajes.js")
+const { usuariosController } = await import("../js/views/dashboard/usuarios.js")
+const { misPedidosController } = await import("../js/views/dashboard/mis-pedidos.js")
+const { misReservasController } = await import("../js/views/dashboard/mis-reservas.js")
+const { misMensajesController } = await import("../js/views/dashboard/mis-mensajes.js")
+const { cartaController } = await import("../js/views/dashboard/carta.js")
+const { categoriasController } = await import("../js/views/dashboard/categorias.js")
+
+window.__paso("controladores importados")
+const n = sel => document.querySelectorAll(`#app ${sel}`).length
+const txt = sel => document.querySelector(`#app ${sel}`)?.textContent?.trim() || ""
+
+log("== PEDIDOS (admin) ==")
+let r = await montar("pedidos", pedidosController, "pedidosController")
+if (r.ok) {
+  n("tbody#pedidos-tbody tr") === 2 ? ok("2 filas de pedido") : mal(`filas = ${n("tbody#pedidos-tbody tr")}`)
+  txt("#pedidos-tbody tr td:nth-child(2)").includes("Quispe") ? ok("columna Cliente con nombre real") : mal(`cliente = "${txt("#pedidos-tbody tr td:nth-child(2)")}"`)
+  n("#pedidos-tbody .chip") === 2 ? ok("2 chips de estado") : mal(`chips = ${n("#pedidos-tbody .chip")}`)
+  n("#pedidos-tbody svg") >= 6 ? ok(`${n("#pedidos-tbody svg")} iconos de accion`) : mal(`svg = ${n("#pedidos-tbody svg")}`)
+  document.querySelector("#app #pedidos-modal").hidden ? ok("modal cerrado al entrar") : mal("modal ABIERTO al entrar")
+  document.querySelector("#app #pedidos-detalle-modal").hidden ? ok("modal detalle cerrado al entrar") : mal("modal detalle ABIERTO")
+  n("#pedidos-input-cliente option") === 3 ? ok(`select cliente con ${n("#pedidos-input-cliente option")} opciones (2 + placeholder)`) : mal(`opciones = ${n("#pedidos-input-cliente option")}`)
+  n("#pedidos-input-tipo option") === 2 ? ok("select tipo cargado desde la BD, no hardcodeado") : mal(`tipos = ${n("#pedidos-input-tipo option")}`)
+
+  // abrir detalle
+  document.querySelector("#app [data-accion=detalle]").click()
+  await new Promise(res => setTimeout(res, 200))
+  const d = document.querySelector("#pedidos-detalle-contenido").innerHTML
+  d.includes("Tiramisu") ? ok("el detalle pinta el producto del DETALLE_PEDIDO") : mal("el detalle no trae productos")
+  !document.querySelector("#app #pedidos-detalle-modal").hidden ? ok("el modal detalle se abre") : mal("el modal detalle no se abre")
+
+  // abrir alta y comprobar el total en vivo
+  document.querySelector("#app #pedidos-detalle-cerrar").click()
+  document.querySelector("#app #pedidos-nuevo").click()
+  await new Promise(res => setTimeout(res, 200))
+  !document.querySelector("#app #pedidos-modal").hidden ? ok("el modal de alta se abre") : mal("el modal de alta no se abre")
+  document.querySelector("#app #pedidos-items .item-producto").value = "1"
+  document.querySelector("#app #pedidos-items .item-cantidad").value = "3"
+  document.querySelector("#app #pedidos-items .item-producto").dispatchEvent(new Event("change"))
+  const total = txt("#pedidos-total")
+  total === "S/ 18.00" ? ok(`total en vivo = ${total} (3 × 6.00)`) : mal(`total = "${total}", se esperaba S/ 18.00`)
+
+  // el atributo hidden tiene que ocultar de verdad, no solo estar puesto
+  const campoEstado = document.querySelector("#app #pedidos-campo-estado")
+  campoEstado.hidden && getComputedStyle(campoEstado).display === "none"
+    ? ok("el campo Estado con hidden no se ve (display:none de verdad)")
+    : mal(`campo Estado: hidden=${campoEstado.hidden} display=${getComputedStyle(campoEstado).display}`)
+  document.querySelector("#app #pedidos-items-fieldset").hidden === false
+    ? ok("en alta el fieldset de productos si se ve") : mal("en alta faltan los productos")
+  r.cleanup?.()
+}
+
+log("")
+log("== RESERVAS ==")
+r = await montar("reservas", reservasController, "reservasController")
+if (r.ok) {
+  n("tbody#reservas-tbody tr") === 2 ? ok("2 filas") : mal(`filas = ${n("tbody#reservas-tbody tr")}`)
+  txt("#reservas-tbody tr td:nth-child(2)").includes("Ana") ? ok("nombre del cliente via CLIENTE.PERSONA") : mal(`cliente = "${txt("#reservas-tbody tr td:nth-child(2)")}"`)
+  const HORA = new RegExp("^\\d{2}:\\d{2}$")
+  HORA.test(txt("#reservas-tbody tr td:nth-child(4)")) ? ok(`hora = ${txt("#reservas-tbody tr td:nth-child(4)")}`) : mal(`hora = "${txt("#reservas-tbody tr td:nth-child(4)")}"`)
+  n("#reservas-input-estado option") === 4 ? ok("select estado con los 4 valores P/A/C/X") : mal(`estados = ${n("#reservas-input-estado option")}`)
+  document.querySelector("#app #reservas-nuevo").click()
+  await new Promise(res => setTimeout(res, 150))
+  document.querySelector("#app #reservas-input-fecha").value
+    ? ok("la fecha por defecto viene rellenada") : mal("fecha vacia")
+  document.querySelector("#app #reservas-campo-estado").hidden ? ok("en alta no se muestra el estado") : mal("en alta se muestra el estado")
+  document.querySelector("#app #reservas-input-cliente").disabled ? mal("en alta el cliente esta deshabilitado") : ok("en alta el cliente es editable")
+  r.cleanup?.()
+}
+
+log("")
+log("== MENSAJES ==")
+r = await montar("mensajes", mensajesController, "mensajesController")
+if (r.ok) {
+  n("tbody#mensajes-tbody tr") === 2 ? ok("2 filas") : mal(`filas = ${n("tbody#mensajes-tbody tr")}`)
+  n("#mensajes-input-estado option") === 3 ? ok("select estado con P/L/R") : mal(`estados = ${n("#mensajes-input-estado option")}`)
+  txt("#mensajes-tbody tr td:nth-child(4)").includes("Reserva") ? ok("asunto visible") : mal("asunto vacio")
+  r.cleanup?.()
+}
+
+log("")
+log("== USUARIOS ==")
+r = await montar("usuarios", usuariosController, "usuariosController")
+if (r.ok) {
+  n("tbody#usuarios-tbody tr") === 3 ? ok("3 usuarios") : mal(`filas = ${n("tbody#usuarios-tbody tr")}`)
+  txt("#usuarios-tbody tr td:nth-child(5)").includes("ADMINISTRADOR") ? ok("roles del usuario") : mal("roles vacios")
+  n("[data-accion=promover]") === 2 ? ok("boton Promover solo en los que no son admin") : mal(`promover = ${n("[data-accion=promover]")}`)
+  document.querySelector("#app [data-accion=promover]").click()
+  await new Promise(res => setTimeout(res, 250))
+  document.querySelector(".modal-overlay.active")
+    ? ok("el confirmar abre el Modal reutilizado, no un confirm nativo") : mal("no se abrio ningun modal de confirmacion")
+  document.querySelector(".modal-close")?.click()
+  r.cleanup?.()
+}
+
+log("")
+log("== MIS-* (solo lectura) ==")
+for (const [vista, fn, tbody] of [
+  ["mis-pedidos", misPedidosController, "#mis-pedidos-tbody"],
+  ["mis-reservas", misReservasController, "#mis-reservas-tbody"],
+  ["mis-mensajes", misMensajesController, "#mis-mensajes-tbody"],
+]) {
+  r = await montar(vista, fn, vista)
+  if (r.ok) {
+    // el doble filtra por ID_Cliente=1, asi que solo 1 fila
+    const filas = n(`tbody${tbody} tr`)
+    filas === 1 ? ok(`${vista}: 1 fila filtrada por ID_Cliente`) : mal(`${vista}: filas = ${filas}`)
+    const primera = document.querySelector(`#app tbody${tbody} tr`)
+    const celdas = primera ? primera.querySelectorAll("td").length : 0
+    const th = n("thead th")
+    celdas === th ? ok(`${vista}: ${celdas} celdas = ${th} columnas`) : mal(`${vista}: ${celdas} celdas vs ${th} columnas`)
+    n(".modal-overlay") === 0 ? ok(`${vista}: sin modales (solo lectura)`) : mal(`${vista}: aparecio un modal`)
+    r.cleanup?.()
+  }
+}
+
+log("")
+log("== limpieza de listeners al navegar ==")
+r = await montar("pedidos", pedidosController, "pedidos")
+if (r.ok) {
+  r.cleanup?.()
+  document.body.classList.contains("sin-scroll")
+    ? mal("el cleanup deja el scroll bloqueado") : ok("el cleanup quita sin-scroll")
+  r = await montar("pedidos", pedidosController, "pedidos 2")
+  if (r.ok) {
+    document.querySelector("#app #pedidos-nuevo").click()
+    await new Promise(res => setTimeout(res, 150))
+    document.querySelectorAll(".modal-form:not([hidden])").length === 1
+      ? ok("un solo modal abierto tras dos montajes") : mal(`modales abiertos = ${document.querySelectorAll(".modal-form:not([hidden])").length}`)
+  }
+}
+
+await new Promise(res => setTimeout(res, 400))
+
+log("")
+log("== CARTA y CATEGORIAS: el boton Eliminar con hidden (regresion de 4a) ==")
+for (const [vista, fn, idModal, idEliminar] of [
+  ["carta", cartaController, "carta-modal", "carta-modal-eliminar"],
+  ["categorias", categoriasController, "cat-modal", "cat-modal-eliminar"],
+]) {
+  r = await montar(vista, fn, vista)
+  if (!r.ok) continue
+  document.querySelector(`#app #${idModal.replace("-modal", "-nuevo")}`).click()
+  await new Promise(res => setTimeout(res, 200))
+  const btn = document.querySelector(`#app #${idEliminar}`)
+  const visible = getComputedStyle(btn).display !== "none"
+  !visible
+    ? ok(`${vista}: en el alta, #${idEliminar} esta oculto`)
+    : mal(`${vista}: en el alta, #${idEliminar} se ve (hidden no ocultó)`)
+  r.cleanup?.()
+}
+
+log("")
+if (errores.length) { log("errores JS:"); errores.forEach(e => { log("  " + e); malas.push(e) }) }
+else log("sin errores de JS")
+log("")
+log(malas.length ? `FALLOS (${malas.length}):` : "sin fallos")
+malas.forEach(m => log("  " + m))
+
+const T = document.getElementById("t")
+T.textContent = malas.length ? `HAY ${malas.length} FALLO(S)` : "TODO OK"
+T.className = malas.length ? "mal" : "ok"
+document.title = "DONE"
+</script>
+</body>
+</html>

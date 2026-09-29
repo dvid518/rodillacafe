@@ -87,4 +87,58 @@ async function eliminar(id) {
     return { ok: true, data: null }
 }
 
-export const ReservationAdapter = { crear, listarMisReservas, listarTodas, actualizarEstado, eliminar }
+/**
+ * Alta manual desde el panel. crear() es el camino del cliente en la web
+ * (resuelve su propio ID_Cliente desde la sesion); este recibe el cliente
+ * que elige quien esta en el mostrador.
+ */
+async function crearManual(datos) {
+    if (!datos.ID_Cliente) return { ok: false, error: { message: "Falta el cliente" } }
+    if (!datos.F_Reserva) return { ok: false, error: { message: "Falta la fecha" } }
+
+    const personas = Number(datos.N_Comensales)
+    if (!Number.isFinite(personas) || personas < 1) {
+        return { ok: false, error: { message: "El número de personas no es válido" } }
+    }
+
+    const { data, error } = await supabase
+        .from("RESERVA")
+        .insert({
+            ID_Cliente: datos.ID_Cliente,
+            N_Comensales: personas,
+            F_Reserva: datos.F_Reserva,
+            Situacion: "P",
+            Observacion: datos.Observacion || null,
+            USUCRE: datos.USUCRE || "WEB",
+        })
+        .select("ID_Reserva")
+        .maybeSingle()
+    if (error) return { ok: false, error }
+    return { ok: true, data }
+}
+
+async function actualizar(id, datos) {
+    const { error } = await supabase
+        .from("RESERVA")
+        .update({
+            N_Comensales: Number(datos.N_Comensales),
+            F_Reserva: datos.F_Reserva,
+            Situacion: datos.Situacion,
+            Observacion: datos.Observacion ?? null,
+            USUMOD: "WEB",
+            FECMOD: new Date().toISOString(),
+        })
+        .eq("ID_Reserva", id)
+    if (error) return { ok: false, error }
+    return { ok: true, data: null }
+}
+
+export const ReservationAdapter = {
+    crear,
+    listarMisReservas,
+    listarTodas,
+    crearManual,
+    actualizar,
+    actualizarEstado,
+    eliminar,
+}

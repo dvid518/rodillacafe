@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel | Rodilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Miranda+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+    <!-- Reicon: web component de iconos. defer para no bloquear el render;
+         los <re-icon> se actualizan solos cuando el script define el elemento. -->
+    <script defer src="https://unpkg.com/reicon@1.2.4/cdn/reicon.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/base/reset.css">
+    <link rel="stylesheet" href="css/base/typography.css">
+    <link rel="stylesheet" href="css/components/components.css">
+    <link rel="stylesheet" href="css/components/hero.css">
+    <link rel="stylesheet" href="css/components/sidebar.css">
+    <link rel="stylesheet" href="css/components/topbar.css">
+    <link rel="stylesheet" href="css/components/modal.css">
+    <link rel="stylesheet" href="css/components/skeleton.css">
+    <link rel="stylesheet" href="css/pages/dashboard.css">
+    <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <div id="sidebar-root"></div>
+        <div class="dashboard-main">
+            <div id="topbar-root"></div>
+            <main id="app"></main>
+        </div>
+    </div>
+    <script type="module" src="js/controllers/dashboard.js"></script>
+</body>
+</html>

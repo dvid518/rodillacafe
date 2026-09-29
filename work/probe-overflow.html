@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- Busca el elemento que ensancha el documento en un ancho dado.
+     Sirve para el desbordamiento horizontal: se listan los nodos cuyo
+     right edge se sale del viewport, que es donde empieza el scroll.
+     Uso: ?w=420&ruta=login -->
+<html lang="es">
+<head><meta charset="utf-8"><title>overflow probe</title>
+<style>
+  body { font: 12px/1.5 monospace; background:#111; color:#eee; margin:0; padding:12px }
+  pre { white-space: pre-wrap; margin:0 }
+  iframe { width: 100%; border: 1px solid #444; margin-top: 10px }
+  .mal { color: #f77 } .ok { color: #6f6 }
+</style>
+</head>
+<body>
+<pre id="r">midiendo…</pre>
+<iframe id="f" height="600"></iframe>
+<script>
+const q = new URLSearchParams(location.search)
+const W = Number(q.get("w") || 420)
+const RUTA = q.get("ruta") || "login"
+const f = document.getElementById("f")
+
+f.style.width = W + "px"
+f.src = `/auth.html#/${RUTA}`
+
+f.addEventListener("load", async () => {
+  await new Promise(r => setTimeout(r, 2000))
+  const d = f.contentDocument
+  const w = d.defaultView
+  const out = []
+
+  const doc = d.documentElement
+  out.push(`ancho configurado: ${W}px`)
+  out.push(`scrollWidth: ${doc.scrollWidth}   clientWidth: ${doc.clientWidth}`)
+  const desborda = doc.scrollWidth > doc.clientWidth + 1
+  out.push(desborda ? `DESBORDA por ${doc.scrollWidth - doc.clientWidth}px` : "sin desborde horizontal")
+  out.push("")
+
+  out.push("nodos que se salen por la derecha:")
+  let n = 0
+  for (const el of d.querySelectorAll("*")) {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0) continue
+    if (r.right > doc.clientWidth + 1) {
+      n++
+      const id = el.id ? `#${el.id}` : ""
+      const cls = el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/).join(".") : ""
+      out.push(`  ${el.tagName.toLowerCase()}${id}${cls}  right=${Math.round(r.right)} w=${Math.round(r.width)}`)
+      if (n >= 12) { out.push("  …"); break }
+    }
+  }
+  if (!n) out.push("  ninguno")
+
+  out.push("")
+  out.push("cajas clave:")
+  for (const sel of [".auth-split", ".auth-form", ".auth-form form", ".auth-hero", ".auth-hero__contenido", "#login-enviar"]) {
+    const el = d.querySelector(sel)
+    if (!el) { out.push(`  ${sel.padEnd(22)} no existe`); continue }
+    const r = el.getBoundingClientRect()
+    out.push(`  ${sel.padEnd(22)} x=${Math.round(r.left)} w=${Math.round(r.width)} right=${Math.round(r.right)}`)
+  }
+
+  document.getElementById("r").textContent = out.join("\n")
+  document.title = "DONE"
+}, { once: true })
+</script>
+</body>
+</html>

@@ -1,0 +1,727 @@
+/* ==========================================================================
+   DASHBOARD — el shell de dashboard.html
+   --------------------------------------------------------------------------
+   Solo el grid de dos columnas. Lo que corresponde al sidebar (incluido su
+   comportamiento en movil) vive en components/sidebar.css, que es donde
+   esta el componente entero.
+
+   NO se replica aqui el bloque "position: fixed; left: -280px" del
+   enunciado: sidebar.css ya hace esa misma cosa con transform, y los dos
+   mecanismos a la vez se sumarian (el elemento receiving las dos reglas
+   se ira dos veces fuera de pantalla y el toggle dejaria de funcionar).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   El shell es de altura FIJA, no minima.
+   Con min-height el grid crecia con el contenido, la pagina entera hacia
+   scroll y sidebar y topbar se iban con ella. Ahora el layout se ata al
+   alto del viewport y se recorta: la unica region que desplaza es #app.
+   -------------------------------------------------------------------------- */
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.dashboard-main {
+    display: flex;
+    flex-direction: column;
+    /* sin min-width:0 un hijo ancho revienta el grid y aparece scroll
+       horizontal en todo el panel */
+    min-width: 0;
+    /* min-height:0 es lo que permite que #app se encoja y pueda tener su
+       propio overflow. Sin esto los hijos de un flex column respetan
+       min-height:auto y no bajan de su contenido, el overflow: auto de
+       #app no se aplicaria y volveria a hacer scroll la pagina. */
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* El contenido del panel: lo unico que desplaza. */
+#app {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* el router llama scrollIntoView al cambiar de vista; con scroll-behavior
+       global el salto queda suave dentro de este contenedor */
+    scroll-behavior: smooth;
+}
+
+/* reset.css deja body en min-height:100vh, mas alto que un 100dvh cuando el
+   movil tiene la barra de direcciones a la vista. Sin esto el body sobra y la
+   pagina recupera el scroll que el shell acaba de quitar. */
+body:has(.dashboard-layout) {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+@media (max-width: 900px) {
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   VISTAS DEL DASHBOARD
+   --------------------------------------------------------------------------
+   Todo con tokens de style.css. Sin literales.
+
+   Sobre .tabla-container: components.css la deja en width 75% porque se hizo
+   para el menu publico, donde la tabla va centrada y estrecha. En el panel
+   administrative interesa el ancho completo, asi que se ensancha solo dentro
+   de las vistas del dashboard en vez de tocar el componente compartido.
+   ========================================================================== */
+
+.dashboard-panel,
+.dashboard-carta,
+.dashboard-categorias {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    min-width: 0;
+}
+
+.dashboard-panel .tabla-container,
+.dashboard-carta .tabla-container,
+.dashboard-categorias .tabla-container {
+    width: 100%;
+    /* en movil la tabla no cabe: que la desplace el contenedor y no la
+       pagina entera (dashboard-main ya lleva min-width:0) */
+    overflow-x: auto;
+}
+
+/* ---------- KPIs ---------- */
+
+.kpis-grid {
+    display: grid;
+    /* auto-fit + minmax: el numero de columnas sale del ancho disponible
+       sin breakpoints escritos a mano (1 movil / 2 tablet / 4 desktop) */
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: var(--space-md);
+}
+
+.kpi-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+}
+
+.kpi-card__icono {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    margin-bottom: var(--space-xs);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--accent);
+}
+
+.kpi-card__label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.kpi-card__valor {
+    font-size: 2rem;
+    line-height: 1.1;
+    color: var(--text);
+}
+
+.kpi-card__sub {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* ---------- secciones ---------- */
+
+.dashboard-seccion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    min-width: 0;
+}
+
+.dashboard-seccion__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.dashboard-seccion__header h1,
+.dashboard-seccion__header h2 {
+    margin: 0;
+}
+
+.dashboard-seccion__header p {
+    margin: var(--space-xs) 0 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* ---------- tablas ---------- */
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.tabla th,
+.tabla td {
+    padding: var(--space-sm) var(--space-md);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabla th {
+    background: var(--table-head);
+    color: var(--text);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.tabla tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tabla tbody tr:hover {
+    background: var(--table-row-hover);
+}
+
+.carta-detalle {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+/* filete de color por area de preparacion, igual que las tarjetas del menu */
+.carta-fila td:first-child {
+    border-left: 3px solid transparent;
+}
+
+.carta-fila--bebidas   td:first-child { border-left-color: var(--cat-bebidas); }
+.carta-fila--postres   td:first-child { border-left-color: var(--cat-postres); }
+.carta-fila--aperitivos td:first-child { border-left-color: var(--cat-aperitivos); }
+
+/* las columnas de accion no se reparten el ancho con el nombre */
+.dashboard-carta .tabla td:nth-last-child(-n+2),
+.dashboard-categorias .tabla td:nth-last-child(-n+2) {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.carta-miniatura {
+    display: block;
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+}
+
+.carta-miniatura--vacia {
+    border: 1px dashed var(--border-strong);
+}
+
+.cat-subfila td {
+    padding-top: 0;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.cat-subfila:hover td {
+    background: none;
+}
+
+/* ---------- pestanas de categoria ---------- */
+
+.tabs-categorias {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+.tab {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--text-subtle);
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tab:hover {
+    background: var(--surface-hover);
+}
+
+.tab--activo {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+}
+
+/* ---------- botones de icono en fila ---------- */
+
+.btn-icono {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-icono:hover {
+    background: var(--surface-hover);
+}
+
+.btn-icono--peligro:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--brand-cream-soft);
+}
+
+/* ---------- chips ---------- */
+
+/* El color va en el borde, no en el texto: los tonos de categoria son
+   legibles sobre crema pero se hunden en el fondo oscuro del panel. */
+.chip {
+    display: inline-block;
+    padding: 2px var(--space-sm);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-subtle);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.chip--barra   { border-color: var(--cat-bebidas); }
+.chip--cocina  { border-color: var(--cat-postres); }
+.chip--vitrina { border-color: var(--cat-aperitivos); }
+
+/* ---------- modal de formulario ---------- */
+
+.modal-form {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    display: grid;
+    place-items: center;
+    padding: var(--space-md);
+    background: var(--overlay);
+    overflow-y: auto;
+}
+
+.modal-form[hidden] {
+    display: none;
+}
+
+.modal-form__contenido {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    width: min(520px, 100%);
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.modal-form__contenido h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.modal-form__campo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.modal-form__acciones {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+}
+
+.modal-form__eliminar {
+    margin-right: auto;
+}
+
+.modal-nota {
+    margin: var(--space-sm) 0 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.modal-nota--peligro {
+    color: var(--danger);
+}
+
+/* ---------- placeholders ---------- */
+
+.dashboard-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    min-height: 60vh;
+    padding: var(--space-xl);
+    text-align: center;
+}
+
+.dashboard-placeholder h1 {
+    margin: 0;
+}
+
+.dashboard-placeholder p {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.dashboard-placeholder__icono {
+    display: grid;
+    place-items: center;
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 1.6rem;
+}
+
+/* ==========================================================================
+   HIDDEN QUE OCULTA DE VERDAD
+   --------------------------------------------------------------------------
+   El atributo hidden solo vale por la regla [hidden] { display: none } del
+   navegador, y cualquier display de autor le gana. Aqui hay varios:
+   .modal-form__campo es flex y .btn es inline-flex, asi que un
+   <button class="btn" hidden> se ve igual. Le pasa a boton Eliminar de carta
+   y categorias (aparecia tambien en el alta) y al campo Estado de los CRUD.
+   !important a proposito: es la unica forma de ganar al display de autor.
+   ========================================================================== */
+.dashboard-panel [hidden],
+.dashboard-carta [hidden],
+.dashboard-categorias [hidden],
+.dashboard-crud [hidden],
+.dashboard-mis [hidden],
+.dashboard-placeholder [hidden] {
+    display: none !important;
+}
+
+/* ==========================================================================
+   CRUD DE PEDIDOS, RESERVAS, MENSAJES Y USUARIOS
+   --------------------------------------------------------------------------
+   .dashboard-crud y .dashboard-mis comparten estructura con las vistas del
+   prompt 4a (seccion > cabecera > tabla), asi que se agrupan con ellas
+   arriba. Lo de aqui es lo que no existia todavia.
+   ========================================================================== */
+
+.dashboard-crud,
+.dashboard-mis {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    min-width: 0;
+}
+
+.dashboard-crud .tabla-container,
+.dashboard-mis .tabla-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* ---------- avisos ---------- */
+
+.aviso-permiso {
+    margin: 0;
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-subtle);
+    font-size: 0.9rem;
+}
+
+.modal-form__aviso {
+    margin: 0;
+    padding: var(--space-sm) var(--space-md);
+    border-left: 3px solid var(--warning);
+    background: var(--surface);
+    color: var(--text-subtle);
+    font-size: 0.85rem;
+}
+
+/* ---------- filas de estado ---------- */
+
+.fila-vacia td {
+    padding: var(--space-xl) var(--space-md);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.fila-vacia--error td {
+    color: var(--danger);
+}
+
+.vacio-inline {
+    color: var(--text-muted);
+}
+
+/* ---------- chips de estado ---------- */
+
+.chip--neutro {
+    border-color: var(--border-strong);
+    color: var(--text-muted);
+}
+
+.chip--estado-p { border-color: var(--state-warning); color: var(--text-subtle); }
+.chip--estado-a { border-color: var(--state-info);    color: var(--text-subtle); }
+.chip--estado-f { border-color: var(--state-success); color: var(--text-subtle); }
+.chip--estado-c { border-color: var(--state-success); color: var(--text-subtle); }
+.chip--estado-x { border-color: var(--state-danger);  color: var(--text-subtle); }
+.chip--estado-l { border-color: var(--state-info);    color: var(--text-subtle); }
+.chip--estado-r { border-color: var(--state-success); color: var(--text-subtle); }
+
+/* ---------- celdas de texto largo ---------- */
+
+.celda-obs {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+
+.dashboard-carta .tabla td:nth-last-child(-n+2),
+.dashboard-categorias .tabla td:nth-last-child(-n+2),
+.dashboard-crud .tabla td:nth-last-child(-n+2) {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.enlace-fila {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* ---------- lineas del pedido ---------- */
+
+.modal-form__fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: var(--space-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.modal-form__fieldset[hidden] {
+    display: none;
+}
+
+.modal-form__fieldset legend {
+    padding: 0 var(--space-xs);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.lista-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.lista-items:empty {
+    display: none;
+}
+
+.lista-items__total {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.lista-items__total strong {
+    color: var(--text);
+    font-size: 1.05rem;
+}
+
+.pedido-item {
+    display: grid;
+    grid-template-columns: 1fr 68px auto auto;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.pedido-item__subtotal {
+    color: var(--text-subtle);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.pedido-item .input {
+    padding: 10px 12px;
+}
+
+/* ---------- detalle ---------- */
+
+.detalle__datos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--space-sm) var(--space-md);
+    margin: 0 0 var(--space-md);
+}
+
+.detalle__datos dt {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detalle__datos dd {
+    margin: 2px 0 0;
+    color: var(--text);
+}
+
+.detalle__obs {
+    padding: var(--space-sm);
+    border-left: 3px solid var(--border-strong);
+    color: var(--text-subtle);
+    font-size: 0.9rem;
+}
+
+.detalle__titulo {
+    margin: var(--space-md) 0 var(--space-sm);
+    font-size: 1rem;
+}
+
+.detalle__asunto {
+    margin: 0 0 var(--space-sm);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.detalle__texto {
+    margin: 0 0 var(--space-md);
+    white-space: pre-wrap;
+    color: var(--text-subtle);
+}
+
+.detalle__meta {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.producto-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: var(--space-sm);
+    padding: var(--space-sm) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.producto-item:last-child {
+    border-bottom: none;
+}
+
+.producto-item strong {
+    text-align: right;
+}
+
+.textarea--corta {
+    min-height: 70px;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 640px) {
+    .dashboard-crud,
+    .dashboard-mis {
+        padding: var(--space-md);
+    }
+
+    .pedido-item {
+        grid-template-columns: 1fr 60px auto;
+    }
+
+    .pedido-item__subtotal {
+        grid-column: 1 / -1;
+        text-align: left;
+    }
+}
+
+
+@media (max-width: 640px) {
+    .dashboard-panel,
+    .dashboard-carta,
+    .dashboard-categorias {
+        padding: var(--space-md);
+    }
+
+    .kpis-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+    .kpis-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .kpis-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    /* con 5 KPIs la quinta tarjeta sola en su fila queda descuadrada */
+    .kpis-grid .kpi-card:last-child:nth-child(5) {
+        grid-column: span 2;
+    }
+}

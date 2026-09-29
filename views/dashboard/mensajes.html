@@ -1,0 +1,117 @@
+﻿<section class="dashboard-crud">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Mensajes</h1>
+            <p class="hero__subtitulo">Revisa y responde consultas.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary js-solo-admin" type="button" id="mensajes-nuevo">+ Nuevo mensaje</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="envelope" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <p class="aviso-permiso" id="mensajes-aviso" hidden></p>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Asunto</th>
+                    <th>Mensaje</th>
+                    <th>Estado</th>
+                    <th title="Editar">(E)</th>
+                    <th class="js-solo-admin" title="Eliminar">(D)</th>
+                </tr>
+            </thead>
+            <tbody id="mensajes-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="mensajes-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="mensajes-modal-titulo">
+            <h2 id="mensajes-modal-titulo">Nuevo mensaje</h2>
+
+            <label class="modal-form__campo" for="mensajes-input-cliente">
+                Cliente
+                <select class="select" id="mensajes-input-cliente" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="mensajes-input-asunto">
+                Asunto
+                <input class="input" type="text" id="mensajes-input-asunto" maxlength="100" placeholder="Consulta sobre el local">
+            </label>
+
+            <label class="modal-form__campo" for="mensajes-input-texto">
+                Mensaje
+                <textarea class="textarea" id="mensajes-input-texto" rows="5" required></textarea>
+            </label>
+
+            <label class="modal-form__campo" for="mensajes-input-estado" id="mensajes-campo-estado" hidden>
+                Estado
+                <select class="select" id="mensajes-input-estado"></select>
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="mensajes-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="mensajes-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,400 @@
+/* ==========================================================================
+   HERO SECTIONS
+   --------------------------------------------------------------------------
+   Bloque de cabecera con imagen de fondo, overlay para legibilidad y
+   contenido en vidrio. Es la UNICA definicion de .hero* en el proyecto:
+   landing.css, auth.css y dashboard.css ya no la repiten.
+
+   Fondo:   imagen AVIF + overlay semitransparente en ::before.
+   Contenido: .hero__contenido con tipografia clara y .hero__acciones.
+   Iconos:  <re-icon weight="filled">, el mismo web component del resto.
+
+   RUTAS DE LAS IMAGENES
+   Este archivo vive en css/components/, asi que la imagen se resuelve con
+   ../../img/avif/. Con ../img se apuntaria a css/img/ y daria 404. Es el
+   mismo error que ya se corrigio en css/pages/auth.css.
+
+   TAMANO DE LOS ICONOS DECORATIVOS
+   Los <re-icon> de .hero__decoracion NO llevan atributo size a proposito: sin
+   ese atributo el componente cae a 1em y hereda el font-size de la caja, que
+   es lo que permite que las reglas responsive (10rem -> 6rem -> 4rem) hagan
+   algo. Si se fija size="160" el icono mide 160px siempre y el responsive
+   queda muerto. El tamano lo manda el CSS.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+.hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    padding: calc(var(--space-xl) + var(--space-lg)) var(--space-xl);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    /* isolation crea un contexto de apilamiento propio: el ::before del
+       overlay y los hijos con z-index no se mezclan con nada de fuera */
+    isolation: isolate;
+    color: var(--white);
+    background-color: var(--brand-brown);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Overlay: velo semitransparente para que el texto se lea sobre la foto */
+.hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+        135deg,
+        var(--overlay) 0%,
+        color-mix(in srgb, var(--overlay) 45%, transparent) 50%,
+        var(--overlay) 100%
+    );
+    pointer-events: none;
+}
+
+/* Sin esto el ::before se pintaria ENCIMA del texto: los hijos del hero
+   suben un nivel sobre el overlay. */
+.hero > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ---------- contenido ---------- */
+.hero__contenido {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    min-width: 0;
+    max-width: 640px;
+}
+
+.hero__etiqueta {
+    display: inline-block;
+    align-self: flex-start;
+    padding: 0.35rem var(--space-md);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background-color: var(--glass-surface);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    color: var(--white);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.hero__titulo {
+    margin: 0;
+    color: var(--white);
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1.1;
+    text-shadow: 0 2px 12px var(--overlay);
+}
+
+.hero__subtitulo {
+    margin: 0;
+    color: var(--text);
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    line-height: 1.5;
+    text-shadow: 0 1px 8px var(--overlay);
+}
+
+.hero__acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+}
+
+/* ---------- decoracion ---------- */
+.hero__decoracion {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    /* 10rem en la base. Sin esto el <re-icon> mide 1em del cuerpo (16px) y en
+       el hero grande de la portada se ve minusculo: --compact y las media
+       queries bajan de aqui. */
+    font-size: 10rem;
+    color: var(--text-subtle);
+    filter: drop-shadow(0 10px 30px var(--overlay));
+    animation: hero-float 6s ease-in-out infinite;
+}
+
+/* El componente se dimensiona con --ri-size, que sin atributo size vale 1em.
+   Fijar width/height en em hace que el tamano lo gobierne el font-size de la
+   caja y no el atributo, que es justo lo que necesitan las media queries. */
+.hero__decoracion re-icon {
+    width: 1em;
+    height: 1em;
+}
+
+@keyframes hero-float {
+    0%, 100% { transform: translateY(0) rotate(0); }
+    50%      { transform: translateY(-12px) rotate(3deg); }
+}
+
+/* ---------- lista con check (pantalla de acceso) ---------- */
+.hero__lista {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin: var(--space-xs) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hero__lista li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.hero__lista re-icon {
+    flex-shrink: 0;
+    color: var(--brand-cream);
+}
+
+/* --------------------------------------------------------------------------
+   Variante compacta: paneles del dashboard y pantalla de acceso
+   -------------------------------------------------------------------------- */
+.hero--compact {
+    gap: var(--space-md);
+    padding: var(--space-xl) var(--space-xl);
+}
+
+.hero--compact .hero__titulo {
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+}
+
+.hero--compact .hero__subtitulo {
+    font-size: clamp(0.9rem, 1.5vw, 1rem);
+}
+
+.hero--compact .hero__decoracion {
+    font-size: 5rem;
+}
+
+/* --------------------------------------------------------------------------
+   Ancho de contenido
+   --------------------------------------------------------------------------
+   Por defecto el hero ocupa todo el ancho disponible. En las paginas de
+   contenido eso lo desalinea del resto: las secciones de la landing se
+   capitalizan en 1100px y centradas (.menu, .nosotros, .features,
+   .destacados__grid), asi que un hero a sangre se sale por los dos lados y el
+   titulo deja de caer sobre la columna de texto de abajo.
+
+   Este modificador lo devuelve a ese ancho. El ancho lo toma de la navbar
+   mediante --shell-ancho / --shell-padding-x: cabecera y portada se miden
+   igual en cualquier pantalla, sin numeros sueltos que se puedan
+   descuadrar por separado.
+
+   OJO con el ancho total: el proyecto no tiene reset global de box-sizing, asi
+   que las cajas son content-box y el exterior es 80% + 2 x 30px. La navbar usa
+   exactamente los mismos dos valores, por eso las dos cajas coinciden.
+   -------------------------------------------------------------------------- */
+.hero--contenido {
+    width: var(--shell-ancho);
+    margin: var(--space-xl) auto;
+    /* aire vertical generoso: el banner es lo primero que ve el visitante y
+       con 64px se leia pegado al navbar y a la seccion de abajo */
+    padding-block: calc(var(--space-xl) * 2);
+    padding-inline: var(--shell-padding-x);
+}
+
+/* El compacto baja a la mitad: sigue siendo una cabecera de seccion, no la
+   portada. Dos clases para que gane al .hero--compact de arriba sin depender
+   del orden de cascada. */
+.hero--contenido.hero--compact {
+    padding-block: calc(var(--space-xl) + var(--space-sm));
+}
+
+/* ==========================================================================
+   VARIANTES POR IMAGEN
+   --------------------------------------------------------------------------
+   Las de fondo claro (light1 durazno, light2 menta) llevan overlay blanco y
+   texto oscuro. Las de fondo oscuro o saturado llevan overlay negro y texto
+   blanco. panel.avif es rosa palo: es clara, pero con texto blanco queda
+   justo, asi que va con overlay oscuro como login.avif.
+   ========================================================================== */
+
+/* --- fondo oscuro: texto blanco --- */
+.hero--reservas { background-image: url("../../img/avif/login.avif"); color: var(--white); }
+.hero--auth     { background-image: url("../../img/avif/dark2.avif"); color: var(--white); }
+.hero--panel    { background-image: url("../../img/avif/dark1.avif"); color: var(--white); }
+
+/* --- fondo claro: texto oscuro --- */
+.hero--home      { background-image: url("../../img/avif/light1.avif"); color: var(--brand-brown); }
+.hero--menu      { background-image: url("../../img/avif/light2.avif"); color: var(--brand-green); }
+
+/* --- rosa palo: overlay oscuro para no perder el texto --- */
+.hero--contacto,
+.hero--nosotros { background-image: url("../../img/avif/panel.avif"); color: var(--white); }
+
+.hero--admin     { background-image: url("../../img/avif/panel.avif"); color: var(--white); }
+
+/* ---------- overlay por variante ---------- */
+
+/* Claras: velo blanco, el texto va en oscuro */
+.hero--home::before,
+.hero--menu::before {
+    background: linear-gradient(
+        135deg,
+        var(--glass-strong) 0%,
+        color-mix(in srgb, var(--glass-strong) 30%, transparent) 50%,
+        var(--glass-strong) 100%
+    );
+}
+
+/* Oscuras y rosa palo: velo negro, el texto va en blanco */
+.hero--reservas::before,
+.hero--auth::before,
+.hero--panel::before,
+.hero--contacto::before,
+.hero--nosotros::before,
+.hero--admin::before {
+    background: linear-gradient(
+        135deg,
+        var(--overlay) 0%,
+        color-mix(in srgb, var(--overlay) 55%, transparent) 50%,
+        var(--overlay) 100%
+    );
+}
+
+/* ---------- texto claro sobre las variantes oscuras ---------- */
+.hero--reservas .hero__titulo,
+.hero--reservas .hero__subtitulo,
+.hero--auth .hero__titulo,
+.hero--auth .hero__subtitulo,
+.hero--panel .hero__titulo,
+.hero--panel .hero__subtitulo,
+.hero--contacto .hero__titulo,
+.hero--contacto .hero__subtitulo,
+.hero--nosotros .hero__titulo,
+.hero--nosotros .hero__subtitulo,
+.hero--admin .hero__titulo,
+.hero--admin .hero__subtitulo {
+    color: inherit;
+}
+
+/* ---------- texto oscuro sobre las variantes claras ---------- */
+.hero--home .hero__titulo,
+.hero--home .hero__subtitulo,
+.hero--menu .hero__titulo,
+.hero--menu .hero__subtitulo {
+    color: inherit;
+    text-shadow: none;
+}
+
+.hero--home .hero__etiqueta,
+.hero--menu .hero__etiqueta {
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: inherit;
+}
+
+.hero--home .hero__decoracion,
+.hero--menu .hero__decoracion {
+    color: inherit;
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 900px) {
+    .hero {
+        flex-direction: column;
+        padding: var(--space-xl) var(--space-lg);
+        text-align: center;
+    }
+
+    .hero__contenido {
+        align-items: center;
+        text-align: center;
+    }
+
+    .hero__etiqueta {
+        align-self: center;
+    }
+
+    .hero__acciones {
+        justify-content: center;
+    }
+
+    .hero__decoracion {
+        font-size: 6rem;
+    }
+
+    .hero--compact .hero__decoracion {
+        font-size: 3.5rem;
+    }
+
+    /* el aire se recorta en tablet: a 900px el hero ya ocupa media pantalla */
+    .hero--contenido {
+        margin-block: var(--space-lg);
+        padding-block: var(--space-xl);
+    }
+
+    .hero--contenido.hero--compact {
+        padding-block: var(--space-md);
+    }
+}
+
+@media (max-width: 600px) {
+    .hero {
+        padding: var(--space-lg) var(--space-md);
+        border-radius: var(--radius-md);
+    }
+
+    /* el resto de secciones de la landing mantienen 24px de padding lateral
+       hasta el final, asi que el hero tambien: si aqui se estrecha a 16, el
+       titulo se sale 8px de la columna de abajo */
+    .hero--contenido {
+        margin-block: var(--space-md);
+        padding-block: var(--space-lg);
+    }
+
+    .hero--contenido.hero--compact {
+        padding-block: var(--space-sm);
+    }
+
+    .hero__titulo {
+        font-size: clamp(1.5rem, 7vw, 2rem);
+    }
+
+    .hero__decoracion {
+        font-size: 4rem;
+    }
+
+    .hero--compact .hero__decoracion {
+        font-size: 2.5rem;
+    }
+}
+
+/* Los botones a todo el ancho en vertical. Antes vivia en landing.css, pero
+   como esa hoja se enlaza despues de esta, ganaba por orden de cascada y
+   dejaba dead el breakpoint de 600px de arriba. Aqui queda al mismo nivel
+   que el resto del hero y sube a 700px, que es donde se apila el contenido. */
+@media (max-width: 700px) {
+    .hero__acciones .btn {
+        width: 100%;
+    }
+}
+
+/* Accesibilidad: sin balanceo para quien pidio menos movimiento */
+@media (prefers-reduced-motion: reduce) {
+    .hero__decoracion {
+        animation: none;
+    }
+}

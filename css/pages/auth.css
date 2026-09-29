@@ -1,5 +1,5 @@
 /* ==========================================================================
-   AUTENTICACIÓN — login.html y register.html
+   AUTENTICACIÓN — auth.html (#/login y #/register)
    --------------------------------------------------------------------------
    Ambas páginas comparten markup exacto (mismos ids, mismas clases) y esta
    única hoja, así que no tiene sentido duplicarla.
@@ -371,5 +371,159 @@
     .btns button:active,
     .registro-link a:hover {
         transform: none;
+    }
+}
+
+/* ==========================================================================
+   AUTH.HTML — division hero + formulario
+   --------------------------------------------------------------------------
+   Arriba viven las reglas de la pantalla de login, y abajo las de
+   auth.html, que usa otra
+   estructura (.auth-split) y otro contenedor (#app, sin navbar ni footer).
+
+   Los campos no se redeclaran aqui: se reutiliza la clase .input de
+   components.css, que ya da el borde redondeado, el foco en color de acento
+   y el arreglo de -webkit-autofill que si no deja un rectangulo amarillo de
+   Chrome sobre el tema oscuro.
+   ========================================================================== */
+
+.auth-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: var(--bg);
+}
+
+/* ---------- hero ----------
+   El hero vive en components/hero.css (.hero, .hero__contenido, .hero__lista).
+   Aqui solo se ajusta al reparto de la pantalla partida: en una columna de
+   media pantalla el bloque va a sangre, sin el radio de las tarjetas. */
+.auth-split__hero {
+    border-radius: 0;
+    padding: var(--space-xl);
+}
+
+.auth-split__hero .hero__contenido {
+    max-width: 480px;
+}
+
+/* ---------- formulario ---------- */
+
+.auth-form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.auth-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    max-width: 420px;
+}
+
+.auth-form h2 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: var(--text);
+}
+
+.auth-form__subtitulo {
+    margin: -0.5rem 0 0.5rem;
+    color: var(--text-muted);
+}
+
+.auth-form__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.auth-form__campo span {
+    padding-left: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-subtle);
+}
+
+/* El hueco se reserva siempre y lo que cambia es la visibilidad: con
+   display:none -> block el formulario salta al aparecer el error y empuja
+   el boton justo cuando el usuario va a pulsarlo. */
+.auth-form__error {
+    min-height: 20px;
+    margin: 0;
+    font-size: 0.9rem;
+    text-align: center;
+    color: var(--danger);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.auth-form__error--visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.auth-form__link {
+    margin: 0.25rem 0 0;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.auth-form__link a {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.auth-form__link a:hover {
+    color: var(--accent-hover);
+}
+
+#login-enviar:disabled,
+#register-enviar:disabled {
+    opacity: 0.7;
+    cursor: progress;
+}
+
+/* ---------- responsive ---------- */
+
+/* En movil el hero pasa debajo del formulario en vez de desaparecer: la
+   foto es lo unico que da contexto a la pantalla de paso y ocupa un alto
+   que el scroll ya esta pagando de todas formas. */
+@media (max-width: 900px) {
+    .auth-split {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-split__hero {
+        order: 2;
+        padding: 2.5rem 1.5rem;
+    }
+
+    .auth-form {
+        order: 1;
+        padding: 2.5rem 1.5rem;
+    }
+
+    .auth-split__hero .hero__lista {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-form {
+        padding: 2rem 1.25rem;
+    }
+
+    .auth-form h2 {
+        font-size: 1.5rem;
+    }
+
+    .auth-split__hero .hero__titulo {
+        font-size: 1.75rem;
     }
 }

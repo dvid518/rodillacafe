@@ -1,0 +1,140 @@
+﻿<section class="dashboard-crud">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Pedidos</h1>
+            <p class="hero__subtitulo">Gestiona los pedidos de clientes.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary js-solo-admin" type="button" id="pedidos-nuevo">+ Nuevo pedido</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="receipt" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <p class="aviso-permiso" id="pedidos-aviso" hidden></p>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Nº</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Detalle</th>
+                    <th title="Editar">(E)</th>
+                    <th class="js-solo-admin" title="Eliminar">(D)</th>
+                </tr>
+            </thead>
+            <tbody id="pedidos-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Todos los modales arrancan con hidden: .modal-form es fixed/inset 0 -->
+    <div class="modal-form" id="pedidos-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="pedidos-modal-titulo">
+            <h2 id="pedidos-modal-titulo">Nuevo pedido</h2>
+
+            <label class="modal-form__campo" for="pedidos-input-cliente">
+                Cliente
+                <select class="select" id="pedidos-input-cliente" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="pedidos-input-tipo">
+                Tipo de atención
+                <select class="select" id="pedidos-input-tipo" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="pedidos-input-estado" id="pedidos-campo-estado" hidden>
+                Estado
+                <select class="select" id="pedidos-input-estado"></select>
+            </label>
+
+            <label class="modal-form__campo" for="pedidos-input-comensales">
+                Comensales
+                <input class="input" type="number" id="pedidos-input-comensales" value="1" min="1" step="1">
+            </label>
+
+            <label class="modal-form__campo" for="pedidos-input-observacion">
+                Observación
+                <textarea class="textarea textarea--corta" id="pedidos-input-observacion" maxlength="200"></textarea>
+            </label>
+
+            <fieldset class="modal-form__fieldset" id="pedidos-items-fieldset">
+                <legend>Productos</legend>
+                <div class="lista-items" id="pedidos-items"></div>
+                <p class="lista-items__total">Total: <strong id="pedidos-total">S/ 0.00</strong></p>
+                <button class="btn btn--ghost btn--sm" type="button" id="pedidos-add-item">+ Añadir producto</button>
+            </fieldset>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="pedidos-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="pedidos-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form" id="pedidos-detalle-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="pedidos-detalle-titulo">
+            <h2 id="pedidos-detalle-titulo">Detalle del pedido</h2>
+            <div class="detalle" id="pedidos-detalle-contenido"></div>
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="pedidos-detalle-cerrar">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</section>

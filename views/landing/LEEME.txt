@@ -1,0 +1,3 @@
+﻿# Vistas parciales. Se llenan en el prompt siguiente.
+# El router pide: views/<vista>.html  (ver js/lib/router.js)
+

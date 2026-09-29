@@ -12,6 +12,9 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    /* sin esto el navegador mete 8px de margen y el contenido no llega al
+       borde: el fondo se ve estrechado en todas las paginas */
+    margin: 0;
     background: var(--bg);
     background-attachment: fixed;
     color: var(--text);
@@ -68,6 +71,13 @@ svg {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Reicon mete su <svg> en un shadow root, asi que el CSS del documento no lo
+   alcanza: hay que centrar tambien al host. El componente ya se declara
+   inline-block y con vertical-align middle, que es lo que hace falta. */
+re-icon {
+    vertical-align: middle;
 }
 
 /* --- Estado global de scroll bloqueado -------------------------------
