@@ -12,7 +12,12 @@ import {
     mapaUsuarios, confirmarBorrado,
 } from "./crud-comun.js"
 
-const CELDAS = 8
+/* Sin la columna del Numero_Pedido: el identificador alfanumerico se sigue
+   generando y guardando (PEDIDO.Numero_Pedido es NOT NULL y lo usan los
+   procedimientos de caja), pero no se muestra ni en la tabla ni en los
+   modales. La fila se identifica por cliente + fecha, y las acciones viajan
+   por data-id, que es el ID_Pedido. */
+const CELDAS = 7
 
 export async function pedidosController(contenedor) {
     const roles = await guardRol(["ADMINISTRADOR", "CAJERO", "MOZO"])
@@ -118,14 +123,13 @@ export async function pedidosController(contenedor) {
         const lista = [...pedidos].sort((a, b) => (b.F_Pedido || "").localeCompare(a.F_Pedido || ""))
         tbody.innerHTML = lista.map(p => `
             <tr>
-                <td>${escaparHTML(String(p.Numero_Pedido ?? p.ID_Pedido))}</td>
                 <td>${escaparHTML(nombreDe(p))}</td>
                 <td>${escaparHTML(formatearFecha(p.F_Pedido, { dateStyle: "short", timeStyle: "short" }))}</td>
                 <td>${escaparHTML(monto(p.Total))}</td>
                 <td>${badge(ESTADO_PEDIDO, p.Situacion)}</td>
-                <td>${iconoBoton("eye", "detalle", p.ID_Pedido, `Ver detalle del pedido ${p.Numero_Pedido ?? p.ID_Pedido}`)}</td>
-                <td>${iconoBoton("pencil", "editar", p.ID_Pedido, `Editar pedido ${p.Numero_Pedido ?? p.ID_Pedido}`)}</td>
-                <td>${esAdmin ? iconoBoton("trash-2", "eliminar", p.ID_Pedido, `Eliminar pedido ${p.Numero_Pedido ?? p.ID_Pedido}`, "btn-icono--peligro") : ""}</td>
+                <td>${iconoBoton("eye", "detalle", p.ID_Pedido, "Ver detalle del pedido")}</td>
+                <td>${iconoBoton("pencil", "editar", p.ID_Pedido, "Editar pedido")}</td>
+                <td>${esAdmin ? iconoBoton("trash-2", "eliminar", p.ID_Pedido, "Eliminar pedido", "btn-icono--peligro") : ""}</td>
             </tr>
         `).join("")
     }
@@ -221,7 +225,7 @@ export async function pedidosController(contenedor) {
         const pedido = pedidos.find(p => String(p.ID_Pedido) === String(id))
         if (!pedido) return
         editandoId = id
-        titulo.textContent = `Editar pedido #${pedido.Numero_Pedido ?? id}`
+        titulo.textContent = "Editar pedido"
         selCliente.value = pedido.ID_Cliente ?? ""
         // el cliente y el tipo no se cambian despues: dar de alta otro pedido
         selCliente.disabled = true
@@ -302,7 +306,7 @@ export async function pedidosController(contenedor) {
         const n = (pedido.DETALLE_PEDIDO || []).length
         confirmarBorrado({
             titulo: "Eliminar pedido",
-            cuerpo: `<p>Se eliminara el pedido <strong>#${escaparHTML(String(pedido.Numero_Pedido ?? pedido.ID_Pedido))}</strong>${n ? ` y sus ${n} linea${n === 1 ? "" : "s"}` : ""}.</p>
+            cuerpo: `<p>Se eliminara el pedido${n ? ` y sus ${n} linea${n === 1 ? "" : "s"}` : ""}.</p>
                      <p class="modal-nota modal-nota--peligro">Borrado fisico, no se puede deshacer.</p>`,
             onConfirm: async () => {
                 const resultado = await orderService.eliminarPedido(id)

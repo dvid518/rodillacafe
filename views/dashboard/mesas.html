@@ -1,0 +1,96 @@
+<section class="dashboard-mesas">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Salón</h1>
+            <p class="hero__subtitulo">
+                Mesas por zona y su estado. Cualquier operativo puede cambiar el
+                estado; solo el administrador crea y edita mesas.
+            </p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary js-solo-admin" type="button" id="mesas-nueva">+ Nueva mesa</button>
+                <button class="btn btn--ghost js-solo-admin" type="button" id="mesas-nueva-zona">+ Nueva zona</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="fork-knife" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <p class="aviso-permiso" id="mesas-aviso" hidden></p>
+
+    <div class="salon" id="mesas-zonas" aria-busy="true">
+        <div class="salon__cargando">
+<div class="salon__zona">
+            <span class="skeleton skeleton--corto"></span>
+            <div class="salon__rejilla">
+                <span class="skeleton skeleton--texto"></span>
+                <span class="skeleton skeleton--texto"></span>
+                <span class="skeleton skeleton--texto"></span>
+                <span class="skeleton skeleton--texto"></span>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- ---------- alta/edicion de mesa ---------- -->
+    <div class="modal-form" id="mesas-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="mesas-modal-titulo">
+            <h2 id="mesas-modal-titulo">Nueva mesa</h2>
+
+            <label class="modal-form__campo" for="mesas-input-numero">
+                Número
+                <input class="input" type="text" id="mesas-input-numero" maxlength="5" required>
+            </label>
+
+            <label class="modal-form__campo" for="mesas-input-zona">
+                Zona
+                <select class="select" id="mesas-input-zona" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="mesas-input-estado">
+                Estado
+                <select class="select" id="mesas-input-estado" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="mesas-input-capacidad">
+                Capacidad
+                <input class="input" type="number" id="mesas-input-capacidad" value="4" min="1" max="50" step="1" required>
+            </label>
+
+            <label class="modal-form__campo" for="mesas-input-detalle">
+                Nota
+                <input class="input" type="text" id="mesas-input-detalle" maxlength="100" placeholder="Terraza, junto a la barra…">
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="mesas-modal-cancelar">Cancelar</button>
+                <button class="btn btn--danger modal-form__eliminar" type="button" id="mesas-modal-eliminar" hidden>Eliminar</button>
+                <button class="btn btn--primary" type="button" id="mesas-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ---------- alta/edicion de zona ---------- -->
+    <div class="modal-form" id="mesas-zona-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="mesas-zona-titulo">
+            <h2 id="mesas-zona-titulo">Nueva zona</h2>
+
+            <label class="modal-form__campo" for="mesas-zona-nombre">
+                Nombre
+                <input class="input" type="text" id="mesas-zona-nombre" maxlength="50" required>
+            </label>
+
+            <label class="modal-form__campo" for="mesas-zona-descripcion">
+                Descripción
+                <input class="input" type="text" id="mesas-zona-descripcion" maxlength="100">
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="mesas-zona-cancelar">Cancelar</button>
+                <button class="btn btn--danger modal-form__eliminar" type="button" id="mesas-zona-eliminar" hidden>Eliminar</button>
+                <button class="btn btn--primary" type="button" id="mesas-zona-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

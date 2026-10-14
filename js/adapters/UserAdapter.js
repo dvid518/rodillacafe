@@ -65,6 +65,7 @@ async function listarUsuarios() {
             Bloqueado,
             ESTADO,
             CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno, EMAIL, Celular ) ),
+            EMPLEADO ( ID_Empleado, PERSONA ( Nombre, Ap_Paterno, EMAIL, Celular ) ),
             USUARIO_ROL ( ID_Rol, ROL ( N_Rol ) )
         `)
         .order("ID_Usuario")

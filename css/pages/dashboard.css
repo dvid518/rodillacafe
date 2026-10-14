@@ -431,6 +431,7 @@ body:has(.dashboard-layout) {
 .dashboard-carta [hidden],
 .dashboard-categorias [hidden],
 .dashboard-crud [hidden],
+.dashboard-mesas [hidden],
 .dashboard-mis [hidden],
 .dashboard-placeholder [hidden] {
     display: none !important;
@@ -445,7 +446,8 @@ body:has(.dashboard-layout) {
    ========================================================================== */
 
 .dashboard-crud,
-.dashboard-mis {
+.dashboard-mis,
+.dashboard-mesas {
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
@@ -724,4 +726,188 @@ body:has(.dashboard-layout) {
     .kpis-grid .kpi-card:last-child:nth-child(5) {
         grid-column: span 2;
     }
+}
+
+/* ==========================================================================
+   FALLO DE CONEXION — backend de Supabase inalcanzable
+   --------------------------------------------------------------------------
+   session/guard.js sustituye el body por este bloque cuando el proyecto no
+   responde: no hay nada del panel que pueda mostrarse. Ocupa toda la pantalla
+   porque no queda ningun layout debajo.
+   ========================================================================== */
+.fallo-conexion,
+.fallo-conexion * {
+    box-sizing: border-box;
+}
+
+.fallo-conexion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: var(--space-lg) var(--space-md);
+    text-align: center;
+    background-color: var(--bg);
+}
+
+.fallo-conexion__titulo {
+    margin: 0;
+    font-size: clamp(20px, 3vw, 28px);
+    color: var(--text);
+}
+
+.fallo-conexion__detalle {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   SALÓN — mesas agrupadas por zona
+   --------------------------------------------------------------------------
+   No es una tabla: una mesa es un objeto con estado, y el mozo lo que hace
+   es tocarla, no compararla con otras en una fila. La rejilla se lee como el
+   plano del local.
+   ========================================================================== */
+.salon {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.salon__zona {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.salon__cabecera {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding-bottom: var(--space-sm);
+    border-bottom: 1px solid var(--border);
+}
+
+.salon__zona-nombre {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.salon__contador {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.salon__acciones {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.salon__rejilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-sm);
+}
+
+.mesa-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    transition: border-color var(--transition), transform var(--transition);
+}
+
+.mesa-card:hover {
+    transform: translateY(-2px);
+}
+
+.mesa-card--sin-color {
+    border-left-color: var(--border-strong);
+}
+
+.mesa-card__cabecera {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-sm);
+}
+
+.mesa-card__numero {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.mesa-card__estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* el punto repite el Color de ESTADO_MESA; si no es un hex valido, la ficha
+   cae al color por defecto de .mesa-card--sin-color */
+.mesa-card__punto {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-full);
+    background-color: var(--accent);
+}
+
+.mesa-card__capacidad {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.mesa-card__detalle {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.mesa-card__selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-top: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.mesa-card__selector .select {
+    flex: 0 0 auto;
+    max-width: 60%;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+.mesa-card__acciones {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.salon .vacio {
+    margin: 0;
+    padding: var(--space-lg) 0;
+    color: var(--text-muted);
+    text-align: center;
 }

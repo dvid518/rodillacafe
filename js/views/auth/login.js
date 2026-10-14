@@ -1,4 +1,5 @@
 import { authService } from "../../services/authService.js"
+import { comprobarBackend } from "../../lib/supabaseClient.js"
 import { Loading } from "../../components/Loading.js"
 
 const ROLES_EMPLEADO = ["ADMINISTRADOR", "CAJERO", "MOZO"]
@@ -90,6 +91,14 @@ export async function loginController(contenedor) {
 
         if (!resultado.ok) {
             libre()
+            /* Un fallo aqui puede ser "no existe ese usuario" o "no hay
+               servidor": sin distinguirlo, el mismo ERR_NAME_NOT_RESOLVED
+               se muestra cinco veces como "credenciales incorrectas". La
+               sonda dice cual de las dos es antes de culpar al usuario. */
+            const backend = await comprobarBackend()
+            if (!backend.ok) {
+                return mostrarError(backend.detalle)
+            }
             return mostrarError(resultado.error?.message || "Credenciales incorrectas")
         }
 

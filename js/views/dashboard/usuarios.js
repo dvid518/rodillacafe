@@ -4,10 +4,14 @@ import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js
 import { escaparHTML } from "../../utils/format.js"
 import {
     abrirModal, cerrarModal, cerrarConEscape, filaVacia, filaError,
-    rolesDe, confirmarBorrado,
+    rolesDe, nombreUsuario, confirmarBorrado,
 } from "./crud-comun.js"
 
-const CELDAS = 7
+/* La columna "Logeo" salio de la tabla y de los modales: es el identificador
+   alfanumerico de la cuenta. Sigue estando en USUARIO — es lo que se le pasa a
+   usp_PromoverAdmin(p_email) — pero no se pinta. Quien entra se reconoce por
+   el nombre de la persona. */
+const CELDAS = 6
 
 /**
  * Solo ADMINISTRADOR. No por la interfaz: RLS de USUARIO es
@@ -41,14 +45,16 @@ export async function usuariosController(contenedor) {
        revoca cualquier otro rol, asi que ofrecer CAJERO/MOZO seria mentir. */
     selRol.innerHTML = '<option value="ADMINISTRADOR">Administrador</option>'
 
+    /* Cliente para los clientes, EMPLEADO para el personal: el personal no tiene
+       CLIENTE, asi que sin el segundo embedding el admin seria invisible en su
+       propia lista. */
     function nombreDe(usuario) {
-        const persona = usuario.CLIENTE?.[0]?.PERSONA?.[0]
-        if (!persona?.Nombre) return "—"
-        return [persona.Nombre, persona.Ap_Paterno].filter(Boolean).join(" ").trim()
+        return nombreUsuario(usuario)
     }
 
     function emailDe(usuario) {
-        return usuario.CLIENTE?.[0]?.PERSONA?.[0]?.EMAIL || "—"
+        const persona = usuario.CLIENTE?.[0]?.PERSONA?.[0] || usuario.EMPLEADO?.[0]?.PERSONA?.[0]
+        return persona?.EMAIL || "—"
     }
 
     function pintarTabla() {
@@ -69,7 +75,6 @@ export async function usuariosController(contenedor) {
             return `
                 <tr>
                     <td>${u.ID_Usuario}</td>
-                    <td>${escaparHTML(u.Logeo || "—")}</td>
                     <td>${escaparHTML(nombreDe(u))}</td>
                     <td>${escaparHTML(emailDe(u))}</td>
                     <td>${escaparHTML(rolesDe(u))}</td>
@@ -85,17 +90,19 @@ export async function usuariosController(contenedor) {
         if (!usuario) return
         editando = usuario
         const nombre = nombreDe(usuario)
-        info.innerHTML = `Vas a promover a <strong>${escaparHTML(nombre === "—" ? (usuario.Logeo || `#${usuario.ID_Usuario}`) : nombre)}</strong>
-                          (${escaparHTML(usuario.Logeo || "sin logeo")}). Su lista de roles passara a ser solo ADMINISTRADOR.`
+        info.innerHTML = `Vas a promover a <strong>${escaparHTML(nombre)}</strong>.
+                          Su lista de roles passara a ser solo ADMINISTRADOR.`
         selRol.value = "ADMINISTRADOR"
         abrirModal(modal, btnGuardar)
     }
 
     async function promover() {
         if (!editando) return
+        // el Logeo es el correo con el que la cuenta se creo: se usa para
+        // llamar a usp_PromoverAdmin y no se muestra
         const email = editando.Logeo
         if (!email) {
-            return notifyWarning("Este usuario no tiene Logeo, no hay correo con el que promoverlo")
+            return notifyWarning("Esta cuenta no tiene correo registrado, no se puede promover")
         }
 
         btnGuardar.disabled = true
@@ -107,7 +114,7 @@ export async function usuariosController(contenedor) {
             return notifyError("No se pudo promover al usuario")
         }
 
-        notifySuccess(`${email} ahora es administrador`)
+        notifySuccess(`${nombreDe(editando)} ahora es administrador`)
         cerrarModal(modal)
         editando = null
         await recargar()
@@ -132,17 +139,18 @@ export async function usuariosController(contenedor) {
         if (!usuario) return
         confirmarBorrado({
             titulo: "Promover a administrador",
-            cuerpo: `<p>${escaparHTML(usuario.Logeo || `#${usuario.ID_Usuario}`)} pasara a ser ADMINISTRADOR
+            cuerpo: `<p>${escaparHTML(nombreDe(usuario))} pasara a ser ADMINISTRADOR
                      y perdera sus roles actuales (${escaparHTML(rolesDe(usuario))}).</p>
                      <p class="modal-nota">Tendria que volver a asignar el resto de roles desde la base de datos.</p>`,
             textoBoton: "Promover",
             onConfirm: async () => {
+                if (!usuario.Logeo) return notifyWarning("Esta cuenta no tiene correo registrado")
                 const resultado = await userService.promoverAAdmin(usuario.Logeo)
                 if (!resultado.ok) {
                     console.error("Error al promover usuario:", resultado.error)
                     return notifyError("No se pudo promover al usuario")
                 }
-                notifySuccess(`${usuario.Logeo} ahora es administrador`)
+                notifySuccess(`${nombreDe(usuario)} ahora es administrador`)
                 await recargar()
             },
         })

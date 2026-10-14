@@ -27,8 +27,12 @@ function formatearHora(iso) {
 }
 
 /**
- * PEDIDO no trae USUARIO embebido (ver PERFIL_SELECT de OrderAdapter), asi
- * que el Logeo del cliente hay que resolverlo aparte contra USUARIO.
+ * PEDIDO no trae USUARIO embebido de forma utilizable (ver PERFIL_SELECT de
+ * OrderAdapter), asi que el nombre hay que resolverlo aparte contra USUARIO.
+ *
+ * El identificador alfanumerico del pedido no se pinta: la fila se identifica
+ * por cliente y fecha. Para un pedido sin cliente resuelto sale "Sin cliente",
+ * que es un dato real, no un identificador.
  */
 function nombreCliente(pedido, usuariosPorId) {
     const usuario = usuariosPorId.get(pedido.ID_Usuario)
@@ -36,8 +40,12 @@ function nombreCliente(pedido, usuariosPorId) {
     if (persona?.Nombre) {
         return escaparHTML(`${persona.Nombre} ${persona.Ap_Paterno || ""}`.trim())
     }
-    if (usuario?.Logeo) return escaparHTML(usuario.Logeo)
-    return "-"
+    // los empleados no tienen CLIENTE: su nombre vive en EMPLEADO.PERSONA
+    const empleado = usuario?.EMPLEADO?.[0]?.PERSONA?.[0]
+    if (empleado?.Nombre) {
+        return escaparHTML(`${empleado.Nombre} ${empleado.Ap_Paterno || ""}`.trim())
+    }
+    return "Sin cliente"
 }
 
 function badge(estado) {
@@ -57,7 +65,9 @@ export async function panelController(contenedor) {
         userService.listarUsuarios()
     ])
 
-    const nombre = perfil.ok ? (perfil.data.nombre || perfil.data.Logeo) : null
+    // sin nombre de persona (empleados que no tienen CLIENTE) se saluda sin
+    // nombre: antes caia al Logeo, que es el identificador de la cuenta
+    const nombre = perfil.ok ? (perfil.data.nombre || "") : ""
     contenedor.querySelector("#panel-bienvenida").textContent = nombre ? `Bienvenido, ${nombre}` : "Bienvenido"
 
     const usuariosPorId = new Map(
@@ -95,15 +105,14 @@ export async function panelController(contenedor) {
         const ultimos = pedidos.data.slice(0, 5)
         tbodyPedidos.innerHTML = ultimos.map(p => `
             <tr>
-                <td>${escaparHTML(String(p.Numero_Pedido ?? p.ID_Pedido))}</td>
                 <td>${nombreCliente(p, usuariosPorId)}</td>
                 <td>${escaparHTML(formatearFecha(p.F_Pedido, { dateStyle: "short", timeStyle: "short" }))}</td>
                 <td>S/ ${Number(p.Total || 0).toFixed(2)}</td>
                 <td>${badge(p.Situacion)}</td>
             </tr>
-        `).join("") || '<tr><td colspan="5" class="vacio">Sin pedidos</td></tr>'
+        `).join("") || '<tr><td colspan="4" class="vacio">Sin pedidos</td></tr>'
     } else {
-        tbodyPedidos.innerHTML = '<tr><td colspan="5" class="vacio">No se pudieron leer los pedidos</td></tr>'
+        tbodyPedidos.innerHTML = '<tr><td colspan="4" class="vacio">No se pudieron leer los pedidos</td></tr>'
     }
 
     const tbodyReservas = contenedor.querySelector("#panel-proximas-reservas")

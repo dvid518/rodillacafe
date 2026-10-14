@@ -7,6 +7,7 @@ import { panelController } from "../views/dashboard/panel.js"
 import { cartaController } from "../views/dashboard/carta.js"
 import { categoriasController } from "../views/dashboard/categorias.js"
 import { pedidosController } from "../views/dashboard/pedidos.js"
+import { mesasController } from "../views/dashboard/mesas.js"
 import { reservasController } from "../views/dashboard/reservas.js"
 import { mensajesController } from "../views/dashboard/mensajes.js"
 import { usuariosController } from "../views/dashboard/usuarios.js"
@@ -19,10 +20,10 @@ import { misMensajesController } from "../views/dashboard/mis-mensajes.js"
    --------------------------------------------------------------------------
    Sidebar + topbar + router interno. Las vistas van en el prompt siguiente.
 
-   Sobre el guard: guard.js se auto-invoca al importarse (ultima linea del
-   modulo) y ya redirige a /login.html si no hay sesion. Por eso aqui NO se
-   vuelve a llamar: seria una segunda peticion a Supabase. Se comprueba el
-   resultado de obtenerSesion() y, si no hay, se redirige uno mismo.
+   Sobre el guard: guardSesion() devuelve la sesion o null. Con null ya ha
+   hecho su trabajo — redirigir a /auth.html o, si el backend de Supabase no
+   responde, pintar el aviso de conexion — asi que aqui no se sigue: si se
+   siguiera, esta pagina volveria a redirigir y se comeria ese aviso.
 
    Tampoco se importa userService: no se usa en este prompt.
    ========================================================================== */
@@ -32,6 +33,7 @@ const RUTAS = {
     "/dashboard/carta":          { vista: "dashboard/carta",        controlador: cartaController },
     "/dashboard/categorias":     { vista: "dashboard/categorias",   controlador: categoriasController },
     "/dashboard/pedidos":        { vista: "dashboard/pedidos",      controlador: pedidosController },
+    "/dashboard/mesas":          { vista: "dashboard/mesas",        controlador: mesasController },
     "/dashboard/reservas":       { vista: "dashboard/reservas",     controlador: reservasController },
     "/dashboard/mensajes":       { vista: "dashboard/mensajes",     controlador: mensajesController },
     "/dashboard/usuarios":       { vista: "dashboard/usuarios",     controlador: usuariosController },
@@ -46,6 +48,7 @@ const TITULOS = {
     "/dashboard/carta":          "Carta",
     "/dashboard/categorias":     "Categorías",
     "/dashboard/pedidos":        "Pedidos",
+    "/dashboard/mesas":          "Salón",
     "/dashboard/reservas":       "Reservas",
     "/dashboard/mensajes":       "Mensajes",
     "/dashboard/usuarios":       "Usuarios",
@@ -64,14 +67,8 @@ function aplicarTemaGuardado() {
 }
 
 async function iniciar() {
-    // import con efecto secundario: guard.js ya redirige solo si no hay sesion
-    guardSesion()
-
-    const sesion = await authService.obtenerSesion()
-    if (!sesion.ok || !sesion.data) {
-        window.location.href = "/auth.html#/login"
-        return
-    }
+    const sesion = await guardSesion()
+    if (!sesion) return
 
     const [perfil, roles] = await Promise.all([
         authService.obtenerPerfil(),

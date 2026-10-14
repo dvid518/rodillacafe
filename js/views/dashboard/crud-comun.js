@@ -144,18 +144,25 @@ export function poblarClientes(select, clientes, { placeholder = "Seleccionar cl
 /* ---------- usuarios ---------- */
 
 /**
+ * Nombre legible de un usuario, para las columnas "Cliente" de pedidos y
+ * reservas. Antes caia al USUARIO.Logeo ("mozo1"), que es el identificador
+ * alfanumerico de la cuenta: queda solo el nombre de la persona — de CLIENTE
+ * para los clientes y de EMPLEADO para el personal, que no tiene CLIENTE — y
+ * como ultimo recurso el ID numerico.
+ *
  * RLS de USUARIO: auth_id = auth.uid() or is_admin(). Un cajero recibe []
  * sin error, asi que el mapa queda vacio y quien lo use cae al ID numerico.
  */
 export function mapaUsuarios(usuarios) {
     const lista = Array.isArray(usuarios) ? usuarios : []
-    return new Map(lista.map(u => {
-        const persona = u.CLIENTE?.[0]?.PERSONA?.[0]
-        const nombre = persona?.Nombre
-            ? [persona.Nombre, persona.Ap_Paterno].filter(Boolean).join(" ").trim()
-            : null
-        return [u.ID_Usuario, nombre || u.Logeo || `Usuario ${u.ID_Usuario}`]
-    }))
+    return new Map(lista.map(u => [u.ID_Usuario, nombreUsuario(u)]))
+}
+
+/** Nombre de la persona detras de una cuenta, sea cliente o empleado. */
+export function nombreUsuario(usuario) {
+    const persona = usuario?.CLIENTE?.[0]?.PERSONA?.[0] || usuario?.EMPLEADO?.[0]?.PERSONA?.[0]
+    if (!persona?.Nombre) return `Usuario #${usuario?.ID_Usuario ?? "?"}`
+    return [persona.Nombre, persona.Ap_Paterno].filter(Boolean).join(" ").trim() || `Usuario #${usuario.ID_Usuario}`
 }
 
 export function rolesDe(usuario) {

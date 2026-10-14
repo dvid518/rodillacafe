@@ -3,32 +3,58 @@ import { icon } from "./Icon.js"
 /* ==========================================================================
    SIDEBAR — navegacion del dashboard
    --------------------------------------------------------------------------
-   El menu depende del rol. Se toma el PRIMER rol de la lista como principal,
-   que es lo mismo que hace el resto del proyecto (roleGuard.js).
+   El menu depende del rol y va agrupado en secciones con su propio encabezado,
+   para que un ADMINISTRADOR (7 destinos) no lea lo mismo que un MOZO (4) y
+   las secciones disappear no salten a la vista al cambiar de rol.
+
+   Cada seccion es { titulo, items }. Se toma el PRIMER rol de la lista como
+   principal, que es lo mismo que hace el resto del proyecto (roleGuard.js).
    ========================================================================== */
 
+const SECCION_GENERAL = "General"
+
 const MENU_ADMIN = [
-    { seccion: "/dashboard",           titulo: "Panel",       icono: "layout-dashboard" },
-    { seccion: "/dashboard/carta",     titulo: "Carta",       icono: "coffee" },
-    { seccion: "/dashboard/categorias",titulo: "Categorías",  icono: "boxes" },
-    { seccion: "/dashboard/pedidos",   titulo: "Pedidos",     icono: "receipt" },
-    { seccion: "/dashboard/reservas",  titulo: "Reservas",    icono: "calendar-days" },
-    { seccion: "/dashboard/mensajes",  titulo: "Mensajes",    icono: "mail" },
-    { seccion: "/dashboard/usuarios",  titulo: "Usuarios",    icono: "users" },
+    { titulo: SECCION_GENERAL, items: [
+        { seccion: "/dashboard",            titulo: "Panel",      icono: "layout-dashboard" },
+    ]},
+    { titulo: "Catálogo", items: [
+        { seccion: "/dashboard/carta",      titulo: "Carta",      icono: "coffee" },
+        { seccion: "/dashboard/categorias", titulo: "Categorías", icono: "boxes" },
+    ]},
+    { titulo: "Operación", items: [
+        { seccion: "/dashboard/pedidos",    titulo: "Pedidos",  icono: "receipt" },
+        { seccion: "/dashboard/mesas",      titulo: "Salón",    icono: "utensils" },
+        { seccion: "/dashboard/reservas",   titulo: "Reservas", icono: "calendar-days" },
+    ]},
+    { titulo: "Administración", items: [
+        { seccion: "/dashboard/mensajes",   titulo: "Mensajes",   icono: "mail" },
+        { seccion: "/dashboard/usuarios",   titulo: "Usuarios",   icono: "users" },
+    ]},
 ]
 
 const MENU_OPERATIVO = [
-    { seccion: "/dashboard",           titulo: "Panel",       icono: "layout-dashboard" },
-    { seccion: "/dashboard/pedidos",   titulo: "Pedidos",     icono: "receipt" },
-    { seccion: "/dashboard/reservas",  titulo: "Reservas",    icono: "calendar-days" },
-    { seccion: "/dashboard/mensajes",  titulo: "Mensajes",    icono: "mail" },
+    { titulo: SECCION_GENERAL, items: [
+        { seccion: "/dashboard",            titulo: "Panel",    icono: "layout-dashboard" },
+    ]},
+    { titulo: "Operación", items: [
+        { seccion: "/dashboard/pedidos",    titulo: "Pedidos",  icono: "receipt" },
+        { seccion: "/dashboard/mesas",      titulo: "Salón",    icono: "utensils" },
+        { seccion: "/dashboard/reservas",   titulo: "Reservas", icono: "calendar-days" },
+    ]},
+    { titulo: "Comunicación", items: [
+        { seccion: "/dashboard/mensajes",   titulo: "Mensajes", icono: "mail" },
+    ]},
 ]
 
 const MENU_CLIENTE = [
-    { seccion: "/dashboard",                titulo: "Panel",        icono: "layout-dashboard" },
-    { seccion: "/dashboard/mis-pedidos",    titulo: "Mis pedidos",  icono: "receipt" },
-    { seccion: "/dashboard/mis-reservas",   titulo: "Mis reservas", icono: "calendar-days" },
-    { seccion: "/dashboard/mis-mensajes",   titulo: "Mis mensajes", icono: "mail" },
+    { titulo: SECCION_GENERAL, items: [
+        { seccion: "/dashboard",             titulo: "Panel",        icono: "layout-dashboard" },
+    ]},
+    { titulo: "Mis gestión", items: [
+        { seccion: "/dashboard/mis-pedidos", titulo: "Mis pedidos",  icono: "receipt" },
+        { seccion: "/dashboard/mis-reservas",titulo: "Mis reservas", icono: "calendar-days" },
+        { seccion: "/dashboard/mis-mensajes",titulo: "Mis mensajes", icono: "mail" },
+    ]},
 ]
 
 export class Sidebar {
@@ -42,6 +68,28 @@ export class Sidebar {
         if (this.rol === "ADMINISTRADOR") return MENU_ADMIN
         if (this.rol === "CAJERO" || this.rol === "MOZO") return MENU_OPERATIVO
         return MENU_CLIENTE
+    }
+
+    _crearEnlace(item) {
+        const a = document.createElement("a")
+        a.className = "sidebar__link"
+        a.href = `#${item.seccion}`
+
+        const activo = item.seccion === this.seccion
+        if (activo) {
+            a.classList.add("sidebar__link--active")
+            // el enlace activo se anuncia, no solo se pinta
+            a.setAttribute("aria-current", "page")
+        }
+
+        const ic = icon(item.icono, { size: 18 })
+        if (ic) a.appendChild(ic)
+
+        const txt = document.createElement("span")
+        txt.textContent = item.titulo
+        a.appendChild(txt)
+
+        return a
     }
 
     render() {
@@ -63,26 +111,26 @@ export class Sidebar {
         const nav = document.createElement("nav")
         nav.className = "sidebar__nav"
 
-        for (const item of this._menu()) {
-            const a = document.createElement("a")
-            a.className = "sidebar__link"
-            a.href = `#${item.seccion}`
+        for (const grupo of this._menu()) {
+            // la lista de cada grupo es su propia <ul>, para que el encabezado
+            // sea de verdad un encabezado del menu y no texto suelto
+            const lista = document.createElement("ul")
+            lista.className = "sidebar__grupo"
 
-            const activo = item.seccion === this.seccion
-            if (activo) {
-                a.classList.add("sidebar__link--active")
-                // el enlace activo se anuncia, no solo se pinta
-                a.setAttribute("aria-current", "page")
+            if (grupo.titulo !== SECCION_GENERAL) {
+                const etiqueta = document.createElement("p")
+                etiqueta.className = "sidebar__seccion"
+                etiqueta.textContent = grupo.titulo
+                lista.appendChild(etiqueta)
             }
 
-            const ic = icon(item.icono, { size: 18 })
-            if (ic) a.appendChild(ic)
+            for (const item of grupo.items) {
+                const li = document.createElement("li")
+                li.appendChild(this._crearEnlace(item))
+                lista.appendChild(li)
+            }
 
-            const txt = document.createElement("span")
-            txt.textContent = item.titulo
-            a.appendChild(txt)
-
-            nav.appendChild(a)
+            nav.appendChild(lista)
         }
 
         const salida = document.createElement("button")

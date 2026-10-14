@@ -3,7 +3,10 @@ import { formatearFecha, escaparHTML } from "../../utils/format.js"
 import { ESTADO_PEDIDO, badge, monto } from "./crud-comun.js"
 import { tablaSimple, botonDetalle } from "./mis-comun.js"
 
-const CELDAS = 5
+/* Sin Numero_Pedido: el cliente ve fecha, total, estado y el detalle, que es
+   lo que le sirve para reconocer un pedido. El identificador alfanumerico se
+   sigue guardando en PEDIDO, pero no sale por pantalla. */
+const CELDAS = 4
 
 export async function misPedidosController(contenedor) {
     return tablaSimple({
@@ -15,11 +18,10 @@ export async function misPedidosController(contenedor) {
         vacio: "Todavía no has hecho ningún pedido",
         filas: (pedidos, boton) => pedidos.map((p, i) => `
             <tr>
-                <td>${escaparHTML(String(p.Numero_Pedido ?? p.ID_Pedido))}</td>
                 <td>${escaparHTML(formatearFecha(p.F_Pedido, { dateStyle: "short", timeStyle: "short" }))}</td>
                 <td>${escaparHTML(monto(p.Total))}</td>
                 <td>${badge(ESTADO_PEDIDO, p.Situacion)}</td>
-                <td>${boton(i, `Ver detalle del pedido ${p.Numero_Pedido ?? p.ID_Pedido}`, (p.DETALLE_PEDIDO || []).length)}</td>
+                <td>${boton(i, "Ver detalle del pedido", (p.DETALLE_PEDIDO || []).length)}</td>
             </tr>
         `).join(""),
         detalle: p => (p.DETALLE_PEDIDO || []).map(d => `
