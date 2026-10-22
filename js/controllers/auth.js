@@ -1,4 +1,5 @@
 import { Router } from "../lib/router.js"
+import { iniciarAnalytics } from "../lib/analytics.js"
 import { loginController } from "../views/auth/login.js"
 import { registerController } from "../views/auth/register.js"
 
@@ -21,6 +22,11 @@ function iniciar() {
     if (!window.location.hash) {
         window.location.hash = "#/login"
     }
+
+    // Despues de poner el hash y antes que el router: asi el primer pageview
+    // ya sale con la ruta real (/auth/login) y el hashchange que dispara el
+    // cambio de arriba no se cuenta como una vista mas.
+    iniciarAnalytics()
 
     const router = new Router({ rutas: RUTAS, contenedor: "#app", porDefecto: "/login" })
     router.start()

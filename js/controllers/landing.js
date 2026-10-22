@@ -1,4 +1,5 @@
 import { Router } from "../lib/router.js"
+import { iniciarAnalytics } from "../lib/analytics.js"
 import { Navbar } from "../components/Navbar.js"
 import { Footer } from "../components/Footer.js"
 import { authService } from "../services/authService.js"
@@ -28,6 +29,10 @@ const RUTAS = {
 const CLAVE_TEMA = "rodilla:theme"
 
 async function iniciar() {
+    // Analytics antes de cualquier otra cosa: el pageview de la vista actual
+    // se manda aunque la sesion tarde en resolverse.
+    iniciarAnalytics()
+
     const raizNavbar = document.getElementById("navbar-root")
 
     // El navbar se pinta YA, sin esperar a Supabase. Antes se montaba solo

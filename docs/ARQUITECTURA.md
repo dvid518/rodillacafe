@@ -119,6 +119,9 @@ la clase de errores introduce por un proceso de build.
 cabeceras, `cleanUrls`) y `.vercelignore` (excluye `sql/` y `work/` del artefacto de despliegue).
 Ver la sección 8.
 
+El proyecto además mide tráfico con **Vercel Web Analytics**, integrado en `js/lib/analytics.js`
+sin dependencias npm: ver §6.1 y §8.4.
+
 ### 2.4 Router: hash-based
 
 La navegación usa **hash routing** (`/#/menu`, `/auth.html#/login`,
@@ -170,7 +173,8 @@ rodilla-main/
 ├── js/
 │   ├── lib/                    ── INFRAESTRUCTURA
 │   │   ├── supabaseClient.js       Única instancia del cliente de Supabase
-│   │   └── router.js               Router hash-based
+│   │   ├── router.js               Router hash-based
+│   │   └── analytics.js            Vercel Web Analytics (pageviews por ruta)
 │   │
 │   ├── adapters/               ── PUERTA A DATOS (7 archivos)
 │   │   ├── AuthAdapter.js          Login, registro, sesión
@@ -538,7 +542,7 @@ pueden importar hacia abajo, nunca al revés.**
               ↓
           adapters/           Traducción a la API de Supabase
               ↓
-          lib/                Cliente de Supabase y router
+          lib/                Cliente de Supabase, router y analytics
 ```
 
 ### 6.1 `lib/` — infraestructura
@@ -547,6 +551,42 @@ pueden importar hacia abajo, nunca al revés.**
 |---|---|
 | `supabaseClient.js` | Instancia única del cliente de Supabase (`createClient` desde `esm.sh`). Exporta `supabase`. |
 | `router.js` | Clase `Router`: hash → `fetch` del parcial → `innerHTML` → controlador → *cleanup*. |
+| `analytics.js` | Vercel Web Analytics: carga el script de tracking y convierte cada ruta del router hash en un *pageview*. |
+
+#### `analytics.js` — medir tráfico en un router hash-based
+
+El proyecto no usa Next.js, así que `import { Analytics } from "@vercel/analytics/next"` no
+aplica: ese *entrypoint* es un componente de React que necesita el runtime de Next.js (App
+Router). La variante que sí corresponde es la que Vercel documenta para sitios HTML planos: un
+stub de `window.va` más el script que sirve el propio despliegue en
+`/_vercel/insights/script.js`. **No hay nada que instalar**: cero dependencias npm, como el
+resto del proyecto.
+
+El módulo hace tres cosas:
+
+1. **Prepara el stub de `window.va`** y carga el script una sola vez. El script real sustituye
+   el stub y reproduce la cola (`window.vaq`), así que se puede llamar a `va()` antes de que
+   cargue.
+2. **Desactiva el auto-track** (`data-disable-auto-track`) y manda los *pageviews* a mano. El
+   auto-track cuenta la ruta del *documento* (`/auth.html`), no la de la *vista*
+   (`/auth/login`).
+3. **Convierte la ruta del hash en un *path***, que es lo que hace útil el dato:
+
+   | URL | Pageview registrado |
+   |---|---|
+   | `index.html` | `/` |
+   | `index.html#/menu` | `/menu` |
+   | `auth.html#/login` | `/auth/login` |
+   | `dashboard.html#/dashboard/carta` | `/dashboard/carta` |
+
+   Sin este paso, el panel mostraría tres páginas (`/`, `/auth`, `/dashboard`) y ninguna sección:
+   el script de Vercel solo cuenta cambios de *path* (`pushState`/`popstate`), y el router de
+   este proyecto navega por hash.
+
+En local no se carga nada (`localhost` y `127.0.0.1` se saltan la integración): el tráfico de
+desarrollo ensuciaría el panel de producción. La API pública es `iniciarAnalytics()` —la llaman
+los tres controladores— más `evento(nombre, datos)` para eventos personalizados (solo disponibles
+en los planes Pro y Enterprise).
 
 ### 6.2 `adapters/` — la puerta a datos
 
@@ -990,10 +1030,26 @@ Configurar en *Supabase → Authentication → URL Configuration*:
 | Reicon | `https://unpkg.com/reicon@1.2.4/cdn/reicon.js`, con `defer` en los 3 HTML |
 | supabase-js | `https://esm.sh/@supabase/supabase-js@2` |
 | Tipografía | Miranda Sans desde Google Fonts |
+| Analytics | `/_vercel/insights/script.js`, servido por el propio despliegue |
 
 **Sin paso de compilación.** No hay `npm install`, ni bundler, ni variables de entorno de build.
 Vercel sirve los archivos tal como están en el repositorio. Los únicos recursos externos son el
 SDK de Supabase, Reicon y la tipografía, todos por CDN versionado.
+
+### 8.4 Web Analytics
+
+La medición se activa **desde el panel de Vercel**, no desde el repositorio:
+
+1. Proyecto `rodillacafe` → **Analytics** → **Enable**.
+2. Redesplegar. Las rutas `/_vercel/insights/*` solo existen en el despliegue siguiente a la
+   activación: si se despliega antes de activarla, el script responde 404 y no se registra nada.
+3. Comprobarlo: al visitar el sitio debe aparecer una petición a
+   `/_vercel/insights/view` en la pestaña *Network*. Para ver los eventos en consola se puede
+   cambiar temporalmente la URL del script por
+   `https://cdn.vercel-insights.com/v1/script.debug.js` (modo *debug*).
+
+El código del frontend ya está listo (`js/lib/analytics.js`, §6.1): no hay nada que instalar ni
+configurar en el repositorio.
 
 ---
 
@@ -1012,7 +1068,7 @@ SDK de Supabase, Reicon y la tipografía, todos por CDN versionado.
 | Páginas HTML raíz | 3 |
 | Parciales HTML | 17 |
 | Hojas CSS | 11 |
-| Módulos JS | 53 |
+| Módulos JS | 54 |
 | Rutas del router | 17 (5 públicas, 2 de acceso, 10 de panel) |
 | Dependencias npm | 0 |
 | Iconos SVG dibujados a mano | 0 |

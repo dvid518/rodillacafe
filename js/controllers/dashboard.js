@@ -1,4 +1,5 @@
 import { Router } from "../lib/router.js"
+import { iniciarAnalytics } from "../lib/analytics.js"
 import { Sidebar } from "../components/Sidebar.js"
 import { Topbar } from "../components/Topbar.js"
 import { guardSesion } from "../session/guard.js"
@@ -67,6 +68,10 @@ function aplicarTemaGuardado() {
 }
 
 async function iniciar() {
+    // Analytics antes del guard: el pageview sale aunque el visitante acabe
+    // redirigido a auth.html (esa redireccion es informacion tambien).
+    iniciarAnalytics()
+
     const sesion = await guardSesion()
     if (!sesion) return
 
