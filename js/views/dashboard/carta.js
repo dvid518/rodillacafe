@@ -48,6 +48,7 @@ export async function cartaController(contenedor) {
     const inputNombre = modalEl.querySelector("#carta-input-nombre")
     const inputPrecio = modalEl.querySelector("#carta-input-precio")
     const inputImagen = modalEl.querySelector("#carta-input-imagen")
+    const previewImagen = modalEl.querySelector("#carta-preview-imagen")
     const selectCategoria = modalEl.querySelector("#carta-input-categoria")
     const selectUnidad = modalEl.querySelector("#carta-input-unidad")
     const tituloModal = modalEl.querySelector("#carta-modal-titulo")
@@ -126,9 +127,32 @@ export async function cartaController(contenedor) {
         selectCategoria.value = producto?.ID_CategoriaProducto ?? ""
         selectUnidad.value = producto?.ID_UnidadMedida ?? ""
         btnEliminar.hidden = !producto
+        actualizarPrevisualizacion()
         modalEl.hidden = false
         document.body.classList.add("sin-scroll")
         inputNombre.focus()
+    }
+
+    /**
+     * Muestra u oculta la previsualizacion de la imagen segun la URL escrita.
+     * Si la URL no es valida o esta vacia, se oculta la miniatura.
+     */
+    function actualizarPrevisualizacion() {
+        const url = inputImagen.value.trim()
+        if (!url) {
+            previewImagen.hidden = true
+            previewImagen.src = ""
+            return
+        }
+        try {
+            new URL(url) // valida que sea una URL bien formada
+        } catch {
+            previewImagen.hidden = true
+            previewImagen.src = ""
+            return
+        }
+        previewImagen.src = url
+        previewImagen.hidden = false
     }
 
     function cerrarModal() {
@@ -264,6 +288,8 @@ export async function cartaController(contenedor) {
     modalEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && e.target.tagName === "INPUT") guardar()
     })
+    inputImagen.addEventListener("input", actualizarPrevisualizacion)
+    inputImagen.addEventListener("change", actualizarPrevisualizacion)
 
     const onEscape = e => { if (e.key === "Escape" && !modalEl.hidden) cerrarModal() }
     document.addEventListener("keydown", onEscape)

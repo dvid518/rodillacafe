@@ -12,6 +12,15 @@
 
     <p class="aviso-permiso" id="usuarios-aviso" hidden></p>
 
+    <!-- ============ BÚSQUEDA Y ACCIONES ============ -->
+    <div class="usuarios-buscar" role="search" aria-label="Buscar usuarios por DNI">
+        <label class="usuarios-buscar__label" for="usuarios-input-dni">Buscar por DNI</label>
+        <input class="input" type="text" id="usuarios-input-dni" placeholder="Ej. 12345678" maxlength="8">
+        <button class="btn btn--primary" type="button" id="usuarios-btn-buscar-dni">Buscar</button>
+        <button class="btn btn--ghost" type="button" id="usuarios-btn-limpiar-dni" hidden>Limpiar</button>
+        <button class="btn btn--primary" type="button" id="usuarios-btn-nuevo">+ Registrar usuario</button>
+    </div>
+
     <div class="tabla-container glass">
         <table class="tabla">
             <thead>
@@ -24,7 +33,7 @@
                     <th>Acciones</th>
                 </tr>
             </thead>
-<tbody id="usuarios-tbody" aria-busy="true">
+            <tbody id="usuarios-tbody" aria-busy="true">
                 <tr class="esqueleto-fila" aria-hidden="true">
                     <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
@@ -69,6 +78,7 @@
         </table>
     </div>
 
+    <!-- ============ MODAL: PROMOVER USUARIO ============ -->
     <div class="modal-form" id="usuarios-modal" hidden>
         <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="usuarios-modal-titulo">
             <h2 id="usuarios-modal-titulo">Promover usuario</h2>
@@ -90,6 +100,51 @@
             <div class="modal-form__acciones">
                 <button class="btn btn--ghost" type="button" id="usuarios-modal-cancelar">Cancelar</button>
                 <button class="btn btn--primary" type="button" id="usuarios-modal-guardar">Promover</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ MODAL: REGISTRAR USUARIO MANUAL ============ -->
+    <div class="modal-form" id="usuarios-modal-registro" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="usuarios-modal-registro-titulo">
+            <h2 id="usuarios-modal-registro-titulo">Registrar usuario (DNI)</h2>
+
+            <p class="modal-nota" id="usuarios-modal-registro-aviso" hidden></p>
+
+            <label class="modal-form__campo" for="usuarios-registro-dni">
+                DNI
+                <input class="input" type="text" id="usuarios-registro-dni" placeholder="12345678" maxlength="8">
+                <button class="btn btn--sm btn--ghost" type="button" id="usuarios-registro-consultar-dni">Consultar DNI</button>
+            </label>
+
+            <label class="modal-form__campo" for="usuarios-registro-nombres">
+                Nombres
+                <input class="input" type="text" id="usuarios-registro-nombres" placeholder="Juan Carlos">
+            </label>
+
+            <label class="modal-form__campo" for="usuarios-registro-apellido-paterno">
+                Apellido paterno
+                <input class="input" type="text" id="usuarios-registro-apellido-paterno" placeholder="Pérez">
+            </label>
+
+            <label class="modal-form__campo" for="usuarios-registro-apellido-materno">
+                Apellido materno
+                <input class="input" type="text" id="usuarios-registro-apellido-materno" placeholder="García">
+            </label>
+
+            <label class="modal-form__campo" for="usuarios-registro-email">
+                Correo (Logeo)
+                <input class="input" type="email" id="usuarios-registro-email" placeholder="juan@correo.com">
+            </label>
+
+            <label class="modal-form__campo" for="usuarios-registro-celular">
+                Celular
+                <input class="input" type="text" id="usuarios-registro-celular" placeholder="999888777">
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="usuarios-modal-registro-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="usuarios-modal-registro-guardar">Registrar</button>
             </div>
         </div>
     </div>
