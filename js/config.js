@@ -8,7 +8,7 @@ export const API_DNI_URL = "https://api.factiliza.com/v1/dni/info/{dni}"
    El sistema las prueba en orden y hace fallback silencioso: si una falla
    pasa a la siguiente sin mostrar nada al usuario. */
 export const API_KEYS_DNI = [
-    "TOKEN_FACTILIZA_1",
-    "TOKEN_FACTILIZA_2",
-    "TOKEN_FACTILIZA_3"
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MjU1MyJ9.jUsgkPb8L3cq_KK_kM3Upnm5_g0rxuEbAOrYH8KxkHM",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MjU1NCJ9.lg-5VDl-zWo3uT_lIHWzJekz8QXUXNYLXJxW4zoFRwM",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MjU2OCJ9.Z0EhXcXfRy3iEdJBy82JJyj0bLU8FODgKQ2ZsZqpnDk"
 ]
