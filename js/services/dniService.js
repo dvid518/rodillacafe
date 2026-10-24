@@ -63,13 +63,25 @@ export async function consultarDNI(dni) {
     }
 
     // Todas las claves agotadas: solo aquí se le avisa al usuario
+    if (claves.length === 0) {
+        console.error("[dniService] No hay claves de API configuradas")
+        return {
+            ok: false,
+            error: {
+                message: "No hay claves de API configuradas para consultar el DNI",
+                agotadas: 0,
+                detalle: null,
+            },
+        }
+    }
+
     console.error("[dniService] Todas las claves de API agotadas:", ultimoError)
     return {
         ok: false,
         error: {
-            message: "No se pudo consultar el DNI: todos los servicios externos están agotados",
+            message: `No se pudo consultar el DNI: todas las ${claves.length} claves de API estan agotadas`,
             agotadas: claves.length,
-            detalle: ultimoError,
+            detalle: ultimoError || { clave: null, message: "sin detalle" },
         },
     }
 }

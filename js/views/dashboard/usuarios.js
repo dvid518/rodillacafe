@@ -328,7 +328,10 @@ export async function usuariosController(contenedor) {
         if (!consulta.ok) {
             console.error("Error al consultar DNI externo:", consulta.error)
             // Solo se notifica al usuario cuando TODAS las claves estan agotadas
-            return notifyError(consulta.error.message || "No se pudo consultar el DNI")
+            const mensaje =
+                consulta.error?.message ||
+                (consulta.error?.agotadas ? `Todas las ${consulta.error.agotadas} claves de API estan agotadas` : "No se pudo consultar el DNI")
+            return notifyError(mensaje)
         }
 
         const d = consulta.data
