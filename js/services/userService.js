@@ -78,6 +78,88 @@ async function registrarUsuarioManual(datos) {
     return { ok: true, data: resultado.data }
 }
 
+/* ---------------------------------------------------------------
+   BÚSQUEDA Y REGISTRO UNIFICADO POR DNI (con fallback silencioso)
+   ---------------------------------------------------------------
+   Flujo completo:
+     1) Busca el DNI en la base de datos (PERSONA -> CLIENTE -> USUARIO).
+        Si existe, devuelve ese usuario (origen: "bd").
+     2) Si no existe, consulta el servicio externo de DNI probando las
+        claves de API en orden. Una clave que falle se descarta en
+        silencio y se prueba la siguiente. El usuario solo se entera si
+        TODAS las claves agotan (se devuelve el error; quien llama
+        decide qué mostrar).
+     3) Si se obtienen datos externos, los devuelve listos para registrar.
+        Si se pide `registrarAutomaticamente`, los guarda en BD.
+   --------------------------------------------------------------- */
+
+/**
+ * @param {string} nDocumento - DNI de 8 dígitos
+ * @param {object} [opciones]
+ * @param {boolean} [opciones.registrarAutomaticamente=false] - si es true, crea
+ *   el usuario en BD con los datos obtenidos del servicio externo
+ * @param {object} [opciones.datosAdicionales] - campos extra para el registro
+ *   (email, celular, logeo, usucre)
+ * @returns {Promise<{ok: true, data, origen: "bd"|"externo", yaExistia: boolean, registrado?: boolean, listoParaRegistrar?: boolean}
+ *          | {ok: false, error: {message, agotadas?}}}
+ */
+async function buscarORegistrarUsuarioPorDNI(nDocumento, opciones = {}) {
+    const { registrarAutomaticamente = false, datosAdicionales = {} } = opciones
+
+    const doc = String(nDocumento).trim()
+    if (!/^\d{8}$/.test(doc)) {
+        return { ok: false, error: { message: "El DNI debe tener 8 dígicos" } }
+    }
+
+    // 1) Buscar en la base de datos
+    const enBD = await buscarUsuarioPorDNI(doc)
+    if (!enBD.ok) {
+        return { ok: false, error: { message: enBD.error?.message || "Error al buscar el DNI en la base de datos" } }
+    }
+    if (enBD.data) {
+        return { ok: true, data: enBD.data, origen: "bd", yaExistia: true }
+    }
+
+    // 2) Consultar servicio externo con fallback silencioso de claves API
+    const consulta = await consultarDNIExterno(doc)
+    if (!consulta.ok) {
+        return {
+            ok: false,
+            error: {
+                message: consulta.error?.message || "No se pudo consultar el DNI en los servicios externos",
+                agotadas: consulta.error.agotadas,
+            },
+        }
+    }
+
+    const d = consulta.data
+    const datosParaRegistrar = {
+        nDocumento: d.dni,
+        nombre: d.nombres || "",
+        apPaterno: d.apellidoPaterno || "",
+        apMaterno: d.apellidoMaterno || "",
+        email: datosAdicionales.email || null,
+        celular: datosAdicionales.celular || null,
+        logeo: datosAdicionales.logeo || String(d.dni),
+        usucre: datosAdicionales.usucre || "WEB",
+        ...datosAdicionales,
+    }
+
+    // 3) Registrar automáticamente si se pide
+    if (registrarAutomaticamente) {
+        const registrado = await registrarUsuarioManual(datosParaRegistrar)
+        if (!registrado.ok) {
+            return {
+                ok: false,
+                error: { message: registrado.error?.message || "No se pudo registrar el usuario", existe: registrado.error.existe },
+            }
+        }
+        return { ok: true, data: registrado.data, origen: "externo", yaExistia: false, registrado: true }
+    }
+
+    return { ok: true, data: datosParaRegistrar, origen: "externo", yaExistia: false, listoParaRegistrar: true }
+}
+
 export const userService = {
     obtenerPerfilActual,
     obtenerRoles,
@@ -87,4 +169,5 @@ export const userService = {
     buscarUsuarioPorDNI,
     consultarDNIExterno,
     registrarUsuarioManual,
+    buscarORegistrarUsuarioPorDNI,
 }

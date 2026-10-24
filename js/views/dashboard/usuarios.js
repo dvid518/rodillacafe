@@ -219,17 +219,47 @@ export async function usuariosController(contenedor) {
             return notifyError("No se pudo buscar el usuario por DNI")
         }
 
-        if (!resultado.data) {
-            filtroDNI = ""
+        if (resultado.data) {
+            // Se encontro en BD: mostrar solo ese usuario en la tabla
+            filtroDNI = dni
+            btnLimpiarDNI.hidden = false
             pintarTabla()
-            return notifyWarning(`No existe un usuario con DNI ${dni} en la base de datos. Puedes registrarlo manualmente.`)
+            notifySuccess(`Usuario encontrado: ${nombreUsuario(resultado.data)}`)
+            return
         }
 
-        // Se encontro: mostrar solo ese usuario en la tabla
-        filtroDNI = dni
-        btnLimpiarDNI.hidden = false
-        pintarTabla()
-        notifySuccess(`Usuario encontrado: ${nombreUsuario(resultado.data)}`)
+        // No esta en BD: consultar servicio externo con fallback silencioso de claves API.
+        // El usuario no sabe que una clave individual fallo; solo se avisa si TODAS agotan.
+        btnBuscarDNI.disabled = true
+        const unificado = await userService.buscarORegistrarUsuarioPorDNI(dni)
+        btnBuscarDNI.disabled = false
+
+        if (!unificado.ok) {
+            console.error("Error al consultar DNI externo:", unificado.error)
+            return notifyError(unificado.error.message || "No se pudo consultar el DNI")
+        }
+
+        if (unificado.origen === "externo" && unificado.listoParaRegistrar) {
+            const d = unificado.data
+            // Abrir el modal de registro con los datos obtenidos precargados
+            inputRegistroDNI.value = d.nDocumento
+            inputNombres.value = d.nombre || ""
+            inputApPaterno.value = d.apPaterno || ""
+            inputApMaterno.value = d.apMaterno || ""
+            inputEmail.value = d.email || ""
+            inputCelular.value = d.celular || ""
+            inputRegistroDNI.disabled = true
+            btnConsultarDNI.disabled = true
+            btnGuardarRegistro.disabled = false
+            ocultarAvisoRegistro()
+            modalRegistro.hidden = false
+            document.body.classList.add("sin-scroll")
+            mostrarAvisoRegistro(
+                `DNI ${dni} no encontrado en la base de datos. Se obtuvieron datos del servicio externo. Revisa y completa los campos antes de registrar.`,
+                "info"
+            )
+            return
+        }
     }
 
     /* ---------- registro manual por DNI ---------- */
