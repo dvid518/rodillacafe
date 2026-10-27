@@ -7,6 +7,7 @@ work/
 firebase.json
 .firebaserc
 firebase-debug.log
+supabase/
 node_modules/
 .env
 .env.local
