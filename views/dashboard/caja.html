@@ -1,0 +1,165 @@
+<section class="dashboard-caja">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Caja</h1>
+            <p class="hero__subtitulo">Apertura de turno, movimientos y arqueo de caja.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary" type="button" id="caja-aperturar">Aperturar caja</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="wallet" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <!-- Estado actual del turno -->
+    <div id="caja-estado-actual" class="tabla-container glass" hidden>
+        <div class="dashboard-seccion__header">
+            <h2>Turno actual</h2>
+        </div>
+        <div class="caja-estado-resumen" id="caja-estado-resumen"></div>
+        <div class="modal-form__acciones" style="margin-top: var(--space-md); display:flex; gap:10px;">
+            <button class="btn btn--primary" type="button" id="caja-nuevo-movimiento">+ Registrar movimiento</button>
+            <button class="btn btn--danger" type="button" id="caja-cerrar">Cerrar caja</button>
+        </div>
+    </div>
+
+    <div id="caja-sin-apertura" class="tabla-container glass" hidden>
+        <div class="dashboard-seccion__header">
+            <h2>Sin caja abierta</h2>
+        </div>
+        <p style="color:var(--text-muted); margin-bottom: var(--space-md);">No hay un turno aperturado. Abre una caja para comenzar a registrar movimientos.</p>
+        <div class="modal-form__acciones">
+            <button class="btn btn--primary" type="button" id="caja-aperturar">Aperturar caja</button>
+        </div>
+    </div>
+
+    <!-- Movimientos del turno actual -->
+    <div id="caja-movimientos-section" hidden>
+        <div class="dashboard-seccion__header">
+            <h2>Movimientos del turno</h2>
+        </div>
+        <div class="tabla-container glass caja-tabla-container">
+            <table class="tabla">
+                <thead>
+                    <tr>
+                        <th>Hora</th>
+                        <th>Concepto</th>
+                        <th>Tipo</th>
+                        <th>Método</th>
+                        <th>Monto</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody id="caja-movimientos-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Historial de cajas cerradas -->
+    <div class="dashboard-seccion__header">
+        <h2>Historial de turnos</h2>
+    </div>
+    <div class="tabla-container glass caja-tabla-container">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Turno</th>
+                    <th>Fecha apertura</th>
+                    <th>Fecha cierre</th>
+                    <th>Inicial</th>
+                    <th>Ingresos</th>
+                    <th>Egresos</th>
+                    <th>Sistema</th>
+                    <th>Declarado</th>
+                    <th>Diferencia</th>
+                </tr>
+            </thead>
+            <tbody id="caja-historial-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- Modal de apertura -->
+    <div class="modal-form" id="caja-modal-apertura" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="caja-modal-apertura-titulo">
+            <h2 id="caja-modal-apertura-titulo">Aperturar caja</h2>
+
+            <label class="modal-form__campo" for="caja-input-caja">
+                Caja
+                <select class="select" id="caja-input-caja"></select>
+            </label>
+
+            <label class="modal-form__campo" for="caja-input-monto-inicial">
+                Monto inicial (S/)
+                <input class="input" type="number" id="caja-input-monto-inicial" value="100" min="0" step="0.01">
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="caja-apertura-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="caja-apertura-guardar">Aperturar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de cierre -->
+    <div class="modal-form" id="caja-modal-cierre" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="caja-modal-cierre-titulo">
+            <h2 id="caja-modal-cierre-titulo">Cerrar caja</h2>
+
+            <div id="caja-cierre-resumen" style="margin-bottom: var(--space-md); padding: var(--space-md); background:var(--surface-strong); border-radius: var(--radius-md);"></div>
+
+            <label class="modal-form__campo" for="caja-input-monto-declarado">
+                Monto declarado (S/)
+                <input class="input" type="number" id="caja-input-monto-declarado" min="0" step="0.01">
+            </label>
+
+            <label class="modal-form__campo" for="caja-input-observacion-cierre">
+                Observación
+                <textarea class="textarea textarea--corta" id="caja-input-observacion-cierre" maxlength="200"></textarea>
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="caja-cierre-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="caja-cierre-guardar">Cerrar caja</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de movimiento -->
+    <div class="modal-form" id="caja-modal-movimiento" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="caja-modal-movimiento-titulo">
+            <h2 id="caja-modal-movimiento-titulo">Registrar movimiento</h2>
+
+            <label class="modal-form__campo" for="caja-input-concepto">
+                Concepto
+                <select class="select" id="caja-input-concepto" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="caja-input-metodo">
+                Método de pago
+                <select class="select" id="caja-input-metodo" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="caja-input-monto">
+                Monto (S/)
+                <input class="input" type="number" id="caja-input-monto" min="0.01" step="0.01" required>
+            </label>
+
+            <label class="modal-form__campo" for="caja-input-descripcion">
+                Descripción
+                <textarea class="textarea textarea--corta" id="caja-input-descripcion" maxlength="200"></textarea>
+            </label>
+
+            <label class="modal-form__campo" for="caja-input-documento">
+                Documento (opcional)
+                <input class="input" type="text" id="caja-input-documento" placeholder="Nº de comprobante">
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="caja-movimiento-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="caja-movimiento-guardar">Registrar</button>
+            </div>
+        </div>
+    </div>
+</section>

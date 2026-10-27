@@ -1,0 +1,60 @@
+<section class="dashboard-inventario">
+    <header class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Inventario</h1>
+            <p class="hero__subtitulo">Controla el stock de productos.</p>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="package" weight="filled"></re-icon>
+        </div>
+    </header>
+
+    <div class="dashboard-seccion__header">
+        <h2>Productos con stock controlado</h2>
+        <label class="toggle">
+            <input type="checkbox" id="inventario-filtro-bajo">
+            Solo bajo stock
+        </label>
+    </div>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Stock actual</th>
+                    <th>Stock mínimo</th>
+                    <th>Estado</th>
+                    <th>Ajustar</th>
+                </tr>
+            </thead>
+            <tbody id="inventario-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- Modal ajustar stock -->
+    <div class="modal-form" id="inventario-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="inventario-modal-titulo">
+            <h2 id="inventario-modal-titulo">Ajustar stock</h2>
+
+            <div id="inventario-modal-producto" style="margin-bottom: var(--space-md); padding: var(--space-sm); background:var(--surface-strong); border-radius: var(--radius-md); font-size:14px;"></div>
+
+            <label class="modal-form__campo" for="inventario-input-stock">
+                Nuevo stock
+                <input class="input" type="number" id="inventario-input-stock" min="0" step="0.01" required>
+            </label>
+
+            <label class="modal-form__campo" for="inventario-input-motivo">
+                Motivo
+                <textarea class="textarea textarea--corta" id="inventario-input-motivo" maxlength="200" placeholder="Ej: Ajuste por inventario físico"></textarea>
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="inventario-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="inventario-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

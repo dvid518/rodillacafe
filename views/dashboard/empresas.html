@@ -1,0 +1,109 @@
+<section class="dashboard-crud">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Empresas</h1>
+            <p class="hero__subtitulo">Gestiona empresas con RUC.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary" type="button" id="empresas-nuevo">+ Nueva empresa</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="building" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>RUC</th>
+                    <th>Razón Social</th>
+                    <th>Nombre Comercial</th>
+                    <th>Dirección</th>
+                    <th>Teléfono</th>
+                    <th>Email</th>
+                    <th title="Editar">(E)</th>
+                    <th title="Eliminar">(D)</th>
+                </tr>
+            </thead>
+            <tbody id="empresas-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="empresas-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="empresas-modal-titulo">
+            <h2 id="empresas-modal-titulo">Nueva empresa</h2>
+
+            <label class="modal-form__campo" for="empresas-input-ruc">
+                RUC
+                <input class="input" type="text" id="empresas-input-ruc" maxlength="11" required>
+            </label>
+
+            <label class="modal-form__campo" for="empresas-input-razon">
+                Razón Social
+                <input class="input" type="text" id="empresas-input-razon" required>
+            </label>
+
+            <label class="modal-form__campo" for="empresas-input-comercial">
+                Nombre Comercial
+                <input class="input" type="text" id="empresas-input-comercial">
+            </label>
+
+            <label class="modal-form__campo" for="empresas-input-direccion">
+                Dirección
+                <input class="input" type="text" id="empresas-input-direccion">
+            </label>
+
+            <label class="modal-form__campo" for="empresas-input-telefono">
+                Teléfono
+                <input class="input" type="text" id="empresas-input-telefono">
+            </label>
+
+            <label class="modal-form__campo" for="empresas-input-email">
+                Email
+                <input class="input" type="email" id="empresas-input-email">
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="empresas-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="empresas-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

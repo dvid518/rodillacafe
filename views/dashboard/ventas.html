@@ -1,0 +1,151 @@
+<section class="dashboard-crud">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Ventas</h1>
+            <p class="hero__subtitulo">Registra y gestiona las ventas de la caja.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary" type="button" id="ventas-nuevo">+ Nueva venta</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="dollar-sign" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Nº Venta</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Cajero</th>
+                    <th>Caja / Turno</th>
+                    <th>Total</th>
+                    <th>Situación</th>
+                    <th title="Ver">(V)</th>
+                    <th title="Anular">(A)</th>
+                </tr>
+            </thead>
+            <tbody id="ventas-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="ventas-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="ventas-modal-titulo">
+            <h2 id="ventas-modal-titulo">Nueva venta</h2>
+
+            <label class="modal-form__campo" for="ventas-input-cliente">
+                Cliente
+                <select class="select" id="ventas-input-cliente"></select>
+            </label>
+
+            <div class="modal-form__campo" style="display:flex; gap:10px; align-items:end;">
+                <span style="font-size:14px; color:var(--text-muted);">Tipo documento</span>
+                <label style="display:flex; align-items:center; gap:6px; margin:0;">
+                    <input type="radio" name="ventas-tipo-doc" value="Boleta" checked> Boleta
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; margin:0;">
+                    <input type="radio" name="ventas-tipo-doc" value="Factura"> Factura
+                </label>
+            </div>
+
+            <label class="modal-form__campo" for="ventas-input-apertura">
+                Apertura de caja
+                <select class="select" id="ventas-input-apertura" required></select>
+            </label>
+
+            <label class="modal-form__campo" for="ventas-input-pago">
+                Método de pago
+                <select class="select" id="ventas-input-pago" required></select>
+            </label>
+
+            <fieldset class="modal-form__fieldset" id="ventas-items-fieldset">
+                <legend>Productos</legend>
+                <div class="lista-items" id="ventas-items"></div>
+                <p class="lista-items__total">Total: <strong id="ventas-total">S/ 0.00</strong></p>
+                <button class="btn btn--ghost btn--sm" type="button" id="ventas-add-item">+ Añadir producto</button>
+            </fieldset>
+
+            <div class="modal-form__campo" for="ventas-input-pagado">
+                Efectivo recibido
+                <input class="input" type="number" id="ventas-input-pagado" step="0.01" min="0">
+            </div>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="ventas-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="ventas-modal-guardar">Registrar venta</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-form" id="ventas-detalle-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="ventas-detalle-titulo">
+            <h2 id="ventas-detalle-titulo">Detalle de venta</h2>
+
+            <div class="modal-form__campo" style="display:flex; justify-content:space-between; gap:10px; font-size:14px; color:var(--text-muted); margin-bottom:var(--space-sm);">
+                <span><strong>Venta:</strong> <span id="det-venta-id">-</span></span>
+                <span><strong>Fecha:</strong> <span id="det-venta-fecha">-</span></span>
+                <span><strong>Cliente:</strong> <span id="det-venta-cliente">-</span></span>
+                <span><strong>Total:</strong> <span id="det-venta-total">S/ 0.00</span></span>
+            </div>
+
+            <table class="tabla" style="margin-top:var(--space-sm);">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody id="det-venta-items"></tbody>
+            </table>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:var(--space-sm); font-size:14px; color:var(--text-muted);">
+                <span><strong>Subtotal:</strong> <span id="det-subtotal">S/ 0.00</span></span>
+                <span><strong>IGV (18%):</strong> <span id="det-igv">S/ 0.00</span></span>
+                <span><strong>Total:</strong> <span id="det-total">S/ 0.00</span></span>
+            </div>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="ventas-detalle-cerrar">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</section>

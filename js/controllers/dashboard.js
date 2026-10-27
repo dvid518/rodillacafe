@@ -8,8 +8,15 @@ import { panelController } from "../views/dashboard/panel.js"
 import { cartaController } from "../views/dashboard/carta.js"
 import { categoriasController } from "../views/dashboard/categorias.js"
 import { pedidosController } from "../views/dashboard/pedidos.js"
+import { ventasController } from "../views/dashboard/ventas.js"
+import { cajaController } from "../views/dashboard/caja.js"
+import { inventarioController } from "../views/dashboard/inventario.js"
+import { reportesController } from "../views/dashboard/reportes.js"
+import { simulacionController } from "../views/dashboard/simulacion.js"
 import { mesasController } from "../views/dashboard/mesas.js"
 import { reservasController } from "../views/dashboard/reservas.js"
+import { clientesController } from "../views/dashboard/clientes.js"
+import { empresasController } from "../views/dashboard/empresas.js"
 import { mensajesController } from "../views/dashboard/mensajes.js"
 import { usuariosController } from "../views/dashboard/usuarios.js"
 import { misPedidosController } from "../views/dashboard/mis-pedidos.js"
@@ -34,6 +41,13 @@ const RUTAS = {
     "/dashboard/carta":          { vista: "dashboard/carta",        controlador: cartaController },
     "/dashboard/categorias":     { vista: "dashboard/categorias",   controlador: categoriasController },
     "/dashboard/pedidos":        { vista: "dashboard/pedidos",      controlador: pedidosController },
+    "/dashboard/clientes":       { vista: "dashboard/clientes",     controlador: clientesController },
+    "/dashboard/empresas":       { vista: "dashboard/empresas",     controlador: empresasController },
+    "/dashboard/ventas":         { vista: "dashboard/ventas",       controlador: ventasController },
+    "/dashboard/caja":           { vista: "dashboard/caja",         controlador: cajaController },
+    "/dashboard/inventario":     { vista: "dashboard/inventario",   controlador: inventarioController },
+    "/dashboard/reportes":       { vista: "dashboard/reportes",     controlador: reportesController },
+    "/dashboard/simulacion":     { vista: "dashboard/simulacion",   controlador: simulacionController },
     "/dashboard/mesas":          { vista: "dashboard/mesas",        controlador: mesasController },
     "/dashboard/reservas":       { vista: "dashboard/reservas",     controlador: reservasController },
     "/dashboard/mensajes":       { vista: "dashboard/mensajes",     controlador: mensajesController },
@@ -49,6 +63,13 @@ const TITULOS = {
     "/dashboard/carta":          "Carta",
     "/dashboard/categorias":     "Categorías",
     "/dashboard/pedidos":        "Pedidos",
+    "/dashboard/ventas":         "Ventas",
+    "/dashboard/caja":           "Caja",
+    "/dashboard/inventario":     "Inventario",
+    "/dashboard/reportes":       "Reportes",
+    "/dashboard/simulacion":     "Simulacion",
+    "/dashboard/clientes":       "Clientes",
+    "/dashboard/empresas":       "Empresas",
     "/dashboard/mesas":          "Salón",
     "/dashboard/reservas":       "Reservas",
     "/dashboard/mensajes":       "Mensajes",

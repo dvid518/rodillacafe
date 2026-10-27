@@ -24,7 +24,6 @@
 .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
     width: 250px;
     /* 100% y no 100vh: el shell (.dashboard-layout) ya tiene alto definido,
        asi que el sidebar se ajusta a la fila del grid y no a un alto propio
@@ -33,7 +32,7 @@
     padding: var(--space-lg) var(--space-md);
     background-color: var(--bg);
     border-right: 1px solid var(--border);
-    overflow-y: auto;
+    overflow: hidden;
     flex: 0 0 auto;
 }
 
@@ -43,6 +42,7 @@
     gap: 2px;
     padding: 0 var(--space-sm) var(--space-md);
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .sidebar__logo {
@@ -69,6 +69,24 @@
     flex-direction: column;
     gap: var(--space-lg);
     flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: var(--space-lg);
+}
+
+/* Scrollbar sutil para el nav del sidebar */
+.sidebar__nav::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar__nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar__nav::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 3px;
+}
+.sidebar__nav::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
 }
 
 /* --- secciones --- */
@@ -131,6 +149,7 @@
     font-size: 15px;
     cursor: pointer;
     transition: background-color var(--transition), color var(--transition);
+    flex-shrink: 0;
 }
 
 .sidebar__logout:hover {
@@ -146,6 +165,7 @@
     text-transform: uppercase;
     color: var(--text-muted);
     text-align: center;
+    flex-shrink: 0;
 }
 
 /* --- movil --- */

@@ -69,7 +69,7 @@ export async function cartaController(contenedor) {
             const n = cat.id === "todas"
                 ? productosActuales.length
                 : productosActuales.filter(p => p.ID_CategoriaProducto === cat.id).length
-            btn.textContent = `${cat.nombre} (${n})`
+            btn.textContent = `${cat.N_CategoriaProducto ?? cat.nombre} (${n})`
             tabsEl.appendChild(btn)
         }
     }

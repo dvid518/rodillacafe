@@ -23,10 +23,17 @@ const MENU_ADMIN = [
     ]},
     { titulo: "Operación", items: [
         { seccion: "/dashboard/pedidos",    titulo: "Pedidos",  icono: "receipt" },
+        { seccion: "/dashboard/ventas",     titulo: "Ventas",   icono: "dollar-sign" },
+        { seccion: "/dashboard/caja",       titulo: "Caja",     icono: "wallet" },
+        { seccion: "/dashboard/inventario", titulo: "Inventario", icono: "package" },
+        { seccion: "/dashboard/reportes",   titulo: "Reportes", icono: "chart-column" },
+        { seccion: "/dashboard/simulacion", titulo: "Simulación", icono: "play-circle" },
         { seccion: "/dashboard/mesas",      titulo: "Salón",    icono: "utensils" },
         { seccion: "/dashboard/reservas",   titulo: "Reservas", icono: "calendar-days" },
     ]},
     { titulo: "Administración", items: [
+        { seccion: "/dashboard/clientes",   titulo: "Clientes",   icono: "users" },
+        { seccion: "/dashboard/empresas",   titulo: "Empresas",   icono: "building" },
         { seccion: "/dashboard/mensajes",   titulo: "Mensajes",   icono: "mail" },
         { seccion: "/dashboard/usuarios",   titulo: "Usuarios",   icono: "users" },
     ]},
@@ -38,6 +45,8 @@ const MENU_OPERATIVO = [
     ]},
     { titulo: "Operación", items: [
         { seccion: "/dashboard/pedidos",    titulo: "Pedidos",  icono: "receipt" },
+        { seccion: "/dashboard/ventas",     titulo: "Ventas",   icono: "dollar-sign" },
+        { seccion: "/dashboard/caja",       titulo: "Caja",     icono: "wallet" },
         { seccion: "/dashboard/mesas",      titulo: "Salón",    icono: "utensils" },
         { seccion: "/dashboard/reservas",   titulo: "Reservas", icono: "calendar-days" },
     ]},
@@ -66,7 +75,14 @@ export class Sidebar {
 
     _menu() {
         if (this.rol === "ADMINISTRADOR") return MENU_ADMIN
-        if (this.rol === "CAJERO" || this.rol === "MOZO") return MENU_OPERATIVO
+        if (this.rol === "CAJERO") return MENU_OPERATIVO
+        if (this.rol === "MOZO") {
+            // MOZO no ve la caja: filtrar el ítem "/dashboard/caja"
+            return MENU_OPERATIVO.map(grupo => ({
+                ...grupo,
+                items: grupo.items.filter(item => item.seccion !== "/dashboard/caja")
+            }))
+        }
         return MENU_CLIENTE
     }
 

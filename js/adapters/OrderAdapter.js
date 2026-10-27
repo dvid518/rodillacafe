@@ -201,6 +201,9 @@ async function eliminar(id) {
  * un fallo de red podria dejarla a medias.
  */
 async function crearManual(datos) {
+    const sesion = await resolverSesion()
+    if (!sesion.ok) return sesion
+
     if (!datos.ID_Cliente) return { ok: false, error: { message: "Falta el cliente" } }
     if (!datos.ID_TipoAtencion) return { ok: false, error: { message: "Falta el tipo de atención" } }
 
@@ -220,7 +223,7 @@ async function crearManual(datos) {
         .from("PEDIDO")
         .insert({
             ID_Cliente: datos.ID_Cliente,
-            ID_Usuario: datos.ID_Usuario || null,
+            ID_Usuario: sesion.data.ID_Usuario,
             ID_TipoAtencion: datos.ID_TipoAtencion,
             Numero_Pedido: generarNumeroPedido(),
             N_Comensales: Number(datos.N_Comensales) || 1,
@@ -244,7 +247,6 @@ async function crearManual(datos) {
         Cantidad: Math.max(1, Number(it.Cantidad) || 1),
         Precio: Number(it.Precio) || 0,
         Descuento: 0,
-        Sub_Total: (Math.max(1, Number(it.Cantidad) || 1)) * (Number(it.Precio) || 0),
         USUCRE: datos.USUCRE || "WEB",
     }))
 

@@ -323,6 +323,21 @@
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
+    background-color: var(--surface-strong);
+    color: var(--text);
+}
+
+/* Opciones del desplegable: legibles en ambos temas (fondo y texto). */
+/* Nota: algunos navegadores no respetan el estilo de <option> en el
+   dropdown nativo; si persiste, convendría un <select> custom. */
+select option {
+    background-color: var(--surface-solid);
+    color: var(--text);
+}
+
+[data-theme="light"] select option {
+    background-color: #ffffff;
+    color: var(--brand-green);
 }
 
 .field {

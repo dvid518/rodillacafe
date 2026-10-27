@@ -1,0 +1,111 @@
+<section class="dashboard-crud">
+    <section class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Clientes</h1>
+            <p class="hero__subtitulo">Gestiona clientes naturales y jurídicos.</p>
+            <div class="hero__acciones">
+                <button class="btn btn--primary" type="button" id="clientes-nuevo">+ Nuevo cliente</button>
+            </div>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="users" weight="filled"></re-icon>
+        </div>
+    </section>
+
+    <div class="tabla-container glass">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tipo</th>
+                    <th>Nombre / Razón Social</th>
+                    <th>Documento</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Puntos</th>
+                    <th title="Editar">(E)</th>
+                    <th title="Eliminar">(D)</th>
+                </tr>
+            </thead>
+            <tbody id="clientes-tbody" aria-busy="true">
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal-form" id="clientes-modal" hidden>
+        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="clientes-modal-titulo">
+            <h2 id="clientes-modal-titulo">Nuevo cliente</h2>
+
+            <label class="modal-form__campo" for="clientes-input-tipo">
+                Tipo de cliente
+                <select class="select" id="clientes-input-tipo" required>
+                    <option value="N" selected>Natural (persona)</option>
+                    <option value="J">Jurídico (empresa)</option>
+                </select>
+            </label>
+
+            <div id="clientes-campo-persona">
+                <label class="modal-form__campo" for="clientes-input-persona">
+                    Persona
+                    <select class="select" id="clientes-input-persona" required></select>
+                </label>
+            </div>
+
+            <div id="clientes-campo-empresa" hidden>
+                <label class="modal-form__campo" for="clientes-input-empresa">
+                    Empresa
+                    <select class="select" id="clientes-input-empresa" required></select>
+                </label>
+            </div>
+
+            <label class="modal-form__campo" for="clientes-input-puntos">
+                Puntos
+                <input class="input" type="number" id="clientes-input-puntos" value="0" min="0">
+            </label>
+
+            <label class="modal-form__campo" for="clientes-input-observacion">
+                Observación
+                <textarea class="textarea textarea--corta" id="clientes-input-observacion" maxlength="200"></textarea>
+            </label>
+
+            <div class="modal-form__acciones">
+                <button class="btn btn--ghost" type="button" id="clientes-modal-cancelar">Cancelar</button>
+                <button class="btn btn--primary" type="button" id="clientes-modal-guardar">Guardar</button>
+            </div>
+        </div>
+    </div>
+</section>

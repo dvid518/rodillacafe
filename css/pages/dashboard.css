@@ -77,7 +77,8 @@ body:has(.dashboard-layout) {
 
 .dashboard-panel,
 .dashboard-carta,
-.dashboard-categorias {
+.dashboard-categorias,
+.dashboard-caja {
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
@@ -87,7 +88,8 @@ body:has(.dashboard-layout) {
 
 .dashboard-panel .tabla-container,
 .dashboard-carta .tabla-container,
-.dashboard-categorias .tabla-container {
+.dashboard-categorias .tabla-container,
+.dashboard-caja .tabla-container {
     width: 100%;
     /* en movil la tabla no cabe: que la desplace el contenedor y no la
        pagina entera (dashboard-main ya lleva min-width:0) */
@@ -966,4 +968,169 @@ body:has(.dashboard-layout) {
     padding: var(--space-lg) 0;
     color: var(--text-muted);
     text-align: center;
+}
+
+/* ==========================================================================
+   CAJA — estilos del módulo de caja
+   ========================================================================== */
+
+/* Contenedor de métricas del turno actual */
+.caja-metricas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+/* Tarjeta individual de métrica */
+.caja-metrica {
+    background: var(--surface-strong);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.caja-metrica__titulo {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.caja-metrica__valor {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.caja-metrica__valor--negativo {
+    color: var(--state-danger);
+}
+
+.caja-metrica__valor--positivo {
+    color: var(--state-success);
+}
+
+/* Resumen de cierre */
+.caja-cierre-resumen {
+    margin-bottom: var(--space-md);
+    padding: var(--space-md);
+    background: var(--surface-strong);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    color: var(--text);
+}
+
+.caja-cierre-resumen__fila {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.caja-cierre-resumen__etiqueta {
+    color: var(--text-muted);
+}
+
+.caja-cierre-resumen__valor {
+    font-weight: 600;
+}
+
+/* Tabla de movimientos y historial con scroll horizontal en móvil */
+.caja-tabla-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 900px) {
+    .caja-metricas {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ==========================================================================
+   INVENTARIO y REPORTES — estilos consistentes con Caja
+   ========================================================================== */
+
+.dashboard-inventario,
+.dashboard-reportes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    min-width: 0;
+}
+
+.dashboard-inventario .tabla-container,
+.dashboard-reportes .tabla-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Filtro de fechas de reportes */
+.reportes-filtro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    align-items: center;
+    padding: var(--space-md) 0;
+}
+
+.reportes-filtro label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.reportes-filtro input[type="date"] {
+    padding: 10px 14px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    background-color: var(--surface-strong);
+    color: var(--text);
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.reportes-filtro input[type="date"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    background-color: var(--surface-hover);
+}
+
+/* Chip de estado para inventario */
+.chip--estado-estado-agotado,
+.chip--estado-estado-bajo,
+.chip--estado-estado-normal {
+    /* se heredan los colores de chip--estado-* existentes */
+}
+
+@media (max-width: 900px) {
+    .reportes-filtro {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .reportes-filtro input[type="date"] {
+        min-width: auto;
+        width: 100%;
+    }
+}
+
+/* ---------- reportes: acciones y gráfico ---------- */
+
+.reportes-acciones {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin: 1rem 0;
+}
+
+#reportes-grafico-dias {
+    max-height: 400px;
+    margin: 1rem 0;
 }

@@ -1,0 +1,46 @@
+<section class="dashboard-simulacion">
+    <header class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Simulaci&oacute;n</span>
+            <h1 class="hero__titulo">Simulaci&oacute;n de proceso completo</h1>
+            <p class="hero__subtitulo">Ejecuta un flujo end-to-end: cliente &rarr; pedido &rarr; venta &rarr; pago &rarr; inventario &rarr; reporte.</p>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="play-circle" weight="filled"></re-icon>
+        </div>
+    </header>
+
+    <div class="reportes-filtro">
+        <label>
+            <span>Productos de prueba</span>
+            <select id="sim-productos">
+                <option value="2">2 productos</option>
+                <option value="3">3 productos</option>
+                <option value="1">1 producto</option>
+            </select>
+        </label>
+        <button class="btn btn--primary" type="button" id="sim-ejecutar">Simular proceso completo</button>
+        <button class="btn btn--ghost" type="button" id="sim-limpiar">Limpiar</button>
+    </div>
+
+    <div class="simulacion-estado" id="sim-estado" style="margin-top: var(--space-lg); padding: var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); min-height: 100px;">
+        <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Ejecuci&oacute;n</h3>
+        <div id="sim-pasos" style="font-size: 0.9rem; line-height: 1.6; color: var(--text);">
+            <p style="color: var(--text-muted);">Pulsa "Simular proceso completo" para iniciar el flujo end-to-end.</p>
+        </div>
+    </div>
+
+    <div class="simulacion-resumen" id="sim-resumen" style="margin-top: var(--space-lg); display: none; padding: var(--space-md); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);">
+        <h3 style="margin-top: 0; font-size: 1rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Resumen de IDs generados</h3>
+        <table class="tabla" style="margin-top: var(--space-sm);">
+            <thead>
+                <tr>
+                    <th>Entidad</th>
+                    <th>ID</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody id="sim-resumen-tbody"></tbody>
+        </table>
+    </div>
+</section>

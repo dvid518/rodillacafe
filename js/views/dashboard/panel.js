@@ -5,6 +5,7 @@ import { productService } from "../../services/productService.js"
 import { categoryService } from "../../services/categoryService.js"
 import { authService } from "../../services/authService.js"
 import { userService } from "../../services/userService.js"
+import { reporteService } from "../../services/reporteService.js"
 import { formatearFecha, escaparHTML } from "../../utils/format.js"
 import { icono, NOMBRES } from "../../components/Icon.js"
 
@@ -55,6 +56,9 @@ function badge(estado) {
 }
 
 export async function panelController(contenedor) {
+    let intervaloRefresco = null
+    let graficoVentas = null
+
     const [perfil, pedidos, reservas, mensajes, productos, categorias, usuarios] = await Promise.all([
         authService.obtenerPerfil(),
         orderService.listarTodos(),
@@ -139,5 +143,119 @@ export async function panelController(contenedor) {
         tbodyReservas.innerHTML = '<tr><td colspan="4" class="vacio">No se pudieron leer las reservas</td></tr>'
     }
 
+    /* ---------- grafico de ventas por dia ---------- */
+
+    async function cargarGraficoVentas() {
+        const canvas = document.getElementById("panel-grafico-ventas")
+        if (!canvas) return
+        if (graficoVentas) graficoVentas.destroy()
+
+        const hoy = new Date()
+        const hace7 = new Date(hoy)
+        hace7.setDate(hoy.getDate() - 6)
+        const formatoISO = d => d.toISOString().split("T")[0]
+
+        const r = await reporteService.ventasPorDia(formatoISO(hace7), formatoISO(hoy), "E")
+        const data = r.ok ? r.data : []
+
+        // Rellenar dias sin ventas con 0
+        const dias = []
+        const valores = {}
+        data.forEach(d => { valores[String(d.fecha).split("T")[0]] = Number(d.total || 0) })
+        for (let i = 0; i < 7; i++) {
+            const dia = new Date(hoy)
+            dia.setDate(hoy.getDate() - 6 + i)
+            const key = formatoISO(dia)
+            dias.push(key)
+            valores[key] = valores[key] || 0
+        }
+        dias.sort()
+
+        graficoVentas = new window.Chart(canvas.getContext("2d"), {
+            type: "line",
+            data: {
+                labels: dias.map(d => {
+                    const dd = new Date(d + "T00:00:00")
+                    return dd.toLocaleDateString("es-PE", { day: "numeric", month: "short" })
+                }),
+                datasets: [{
+                    label: "Ventas (S/)",
+                    data: dias.map(d => valores[d]),
+                    borderColor: "#a82b13",
+                    backgroundColor: "rgba(168, 43, 19, 0.1)",
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => `S/ ${v}` } } }
+            }
+        })
+    }
+
+    /* ---------- refresco periodico de KPIs ---------- */
+
+    async function refrescarKPIs() {
+        const [rPedidos, rReservas, rMensajes, rProductos, rCategorias] = await Promise.all([
+            orderService.listarTodos(),
+            reservationService.listarTodas(),
+            messageService.listarTodos(),
+            productService.listarProductosAdmin(),
+            categoryService.listarCategorias()
+        ])
+        const conteo = (r) => (r.ok ? r.data.length : null)
+        const kpis = [
+            { titulo: "Pedidos", valor: conteo(rPedidos), icono: "receipt" },
+            { titulo: "Reservas", valor: conteo(rReservas), icono: "calendar-days" },
+            { titulo: "Mensajes", valor: conteo(rMensajes), icono: "mail" },
+            { titulo: "Productos", valor: conteo(rProductos), icono: "coffee" },
+            { titulo: "Categorias", valor: conteo(rCategorias), icono: "boxes" }
+        ]
+        const grid = contenedor.querySelector("#kpis-grid")
+        if (!grid) return
+        grid.replaceChildren(...kpis.map(kpi => {
+            const card = document.createElement("article")
+            card.className = "kpi-card glass"
+            card.innerHTML = `
+                <span class="kpi-card__icono" data-icono="${kpi.icono}"></span>
+                <span class="kpi-card__label">${escaparHTML(kpi.titulo)}</span>
+                <strong class="kpi-card__valor">${kpi.valor === null ? "--" : kpi.valor}</strong>
+            `
+            return card
+        }))
+        hidratarIconos(grid)
+        await cargarGraficoVentas()
+    }
+
+    /* ---------- auto-refresh cada 30s ---------- */
+
+    intervaloRefresco = setInterval(refrescarKPIs, 30000)
+
+    /* ---------- boton actualizar manual ---------- */
+
+    const btnActualizar = contenedor.querySelector("#panel-actualizar")
+    if (btnActualizar) {
+        btnActualizar.addEventListener("click", () => {
+            btnActualizar.disabled = true
+            btnActualizar.textContent = "Actualizando..."
+            refrescarKPIs().finally(() => {
+                btnActualizar.disabled = false
+                btnActualizar.textContent = "Actualizar"
+            })
+        })
+    }
+
+    await cargarGraficoVentas()
+
     hidratarIconos(contenedor)
+
+    return () => {
+        if (intervaloRefresco) clearInterval(intervaloRefresco)
+        if (graficoVentas) graficoVentas.destroy()
+        document.removeEventListener("keydown", onEscape)
+        document.body.classList.remove("sin-scroll")
+    }
 }

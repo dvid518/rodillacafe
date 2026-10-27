@@ -1,0 +1,78 @@
+<section class="dashboard-reportes">
+    <header class="hero hero--admin hero--compact">
+        <div class="hero__contenido">
+            <span class="hero__etiqueta">Módulo</span>
+            <h1 class="hero__titulo">Reportes</h1>
+            <p class="hero__subtitulo">Analiza las ventas del período.</p>
+        </div>
+        <div class="hero__decoracion" aria-hidden="true">
+            <re-icon icon="chart-column" weight="filled"></re-icon>
+        </div>
+    </header>
+
+    <!-- Filtro de fechas y estado -->
+    <div class="reportes-filtro">
+        <label>Desde
+            <input type="date" id="reportes-fecha-desde">
+        </label>
+        <label>Hasta
+            <input type="date" id="reportes-fecha-hasta">
+        </label>
+        <label>Estado
+            <select id="reportes-filtro-estado">
+                <option value="E" selected>Emitida</option>
+                <option value="X">Anulada</option>
+            </select>
+        </label>
+        <button class="btn btn--primary" type="button" id="reportes-aplicar">Aplicar</button>
+    </div>
+
+    <!-- Acciones de exportación -->
+    <div class="reportes-acciones">
+        <button class="btn btn--ghost" id="reportes-exportar-pdf">Exportar PDF</button>
+        <button class="btn btn--ghost" id="reportes-exportar-excel">Exportar Excel</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="caja-metricas" id="reportes-kpis"></div>
+
+    <!-- Ventas por día -->
+    <div class="dashboard-seccion">
+        <header class="dashboard-seccion__header"><h2>Ventas por día</h2></header>
+        <canvas id="reportes-grafico-dias" height="100"></canvas>
+    </div>
+
+    <!-- Productos más vendidos -->
+    <div class="dashboard-seccion__header">
+        <h2>Productos más vendidos</h2>
+    </div>
+    <div class="tabla-container glass caja-tabla-container">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Total vendido</th>
+                </tr>
+            </thead>
+            <tbody id="reportes-productos-tbody"></tbody>
+        </table>
+    </div>
+
+    <!-- Ventas por método de pago -->
+    <div class="dashboard-seccion__header">
+        <h2>Ventas por método de pago</h2>
+    </div>
+    <div class="tabla-container glass caja-tabla-container">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Método</th>
+                    <th>Operaciones</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody id="reportes-metodos-tbody"></tbody>
+        </table>
+    </div>
+</section>

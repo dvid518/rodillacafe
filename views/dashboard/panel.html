@@ -9,6 +9,7 @@
             <div class="hero__acciones">
                 <a href="#/dashboard/pedidos" class="btn btn--primary">Ver pedidos</a>
                 <a href="#/dashboard/carta" class="btn btn--ghost">Gestionar carta</a>
+                <button class="btn btn--ghost" type="button" id="panel-actualizar">Actualizar</button>
             </div>
         </div>
         <div class="hero__decoracion" aria-hidden="true">
@@ -65,6 +66,15 @@
                 </thead>
                 <tbody id="panel-ultimos-pedidos"></tbody>
             </table>
+        </div>
+    </section>
+
+    <section class="dashboard-seccion">
+        <header class="dashboard-seccion__header">
+            <h2>Ventas por día (últimos 7 días)</h2>
+        </header>
+        <div class="tabla-container glass">
+            <canvas id="panel-grafico-ventas" height="120"></canvas>
         </div>
     </section>
 
