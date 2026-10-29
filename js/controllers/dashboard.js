@@ -12,7 +12,6 @@ import { ventasController } from "../views/dashboard/ventas.js"
 import { cajaController } from "../views/dashboard/caja.js"
 import { inventarioController } from "../views/dashboard/inventario.js"
 import { reportesController } from "../views/dashboard/reportes.js"
-import { simulacionController } from "../views/dashboard/simulacion.js"
 import { mesasController } from "../views/dashboard/mesas.js"
 import { reservasController } from "../views/dashboard/reservas.js"
 import { clientesController } from "../views/dashboard/clientes.js"
@@ -47,7 +46,6 @@ const RUTAS = {
     "/dashboard/caja":           { vista: "dashboard/caja",         controlador: cajaController },
     "/dashboard/inventario":     { vista: "dashboard/inventario",   controlador: inventarioController },
     "/dashboard/reportes":       { vista: "dashboard/reportes",     controlador: reportesController },
-    "/dashboard/simulacion":     { vista: "dashboard/simulacion",   controlador: simulacionController },
     "/dashboard/mesas":          { vista: "dashboard/mesas",        controlador: mesasController },
     "/dashboard/reservas":       { vista: "dashboard/reservas",     controlador: reservasController },
     "/dashboard/mensajes":       { vista: "dashboard/mensajes",     controlador: mensajesController },
@@ -67,7 +65,6 @@ const TITULOS = {
     "/dashboard/caja":           "Caja",
     "/dashboard/inventario":     "Inventario",
     "/dashboard/reportes":       "Reportes",
-    "/dashboard/simulacion":     "Simulacion",
     "/dashboard/clientes":       "Clientes",
     "/dashboard/empresas":       "Empresas",
     "/dashboard/mesas":          "Salón",

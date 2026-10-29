@@ -70,9 +70,19 @@
         <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="ventas-modal-titulo">
             <h2 id="ventas-modal-titulo">Nueva venta</h2>
 
+            <label class="modal-form__campo" for="ventas-buscar-cliente">
+                Buscar cliente
+                <input class="input" type="search" id="ventas-buscar-cliente" placeholder="Escribe para buscar cliente...">
+            </label>
+
             <label class="modal-form__campo" for="ventas-input-cliente">
                 Cliente
                 <select class="select" id="ventas-input-cliente"></select>
+            </label>
+
+            <label class="modal-form__campo" for="ventas-input-cajero">
+                Cajero
+                <select class="select" id="ventas-input-cajero"></select>
             </label>
 
             <div class="modal-form__campo" style="display:flex; gap:10px; align-items:end;">

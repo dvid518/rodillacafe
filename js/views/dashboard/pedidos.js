@@ -32,6 +32,7 @@ export async function pedidosController(contenedor) {
 
     const titulo = modal.querySelector("#pedidos-modal-titulo")
     const selCliente = modal.querySelector("#pedidos-input-cliente")
+    const inBuscarCliente = modal.querySelector("#pedidos-buscar-cliente")
     const selTipo = modal.querySelector("#pedidos-input-tipo")
     const selEstado = modal.querySelector("#pedidos-input-estado")
     const campoEstado = modal.querySelector("#pedidos-campo-estado")
@@ -85,6 +86,19 @@ export async function pedidosController(contenedor) {
     }
 
     poblarClientes(selCliente, clientes)
+    const optsCliente = [...selCliente.options]
+    if (inBuscarCliente) {
+        inBuscarCliente.addEventListener("input", () => {
+            const q = inBuscarCliente.value.toLowerCase()
+            for (const opt of optsCliente) {
+                if (opt.value === "") {
+                    opt.hidden = false
+                    continue
+                }
+                opt.hidden = !opt.textContent.toLowerCase().includes(q)
+            }
+        })
+    }
     selTipo.replaceChildren(...tipos.map(t => {
         const o = document.createElement("option")
         o.value = t.ID_TipoAtencion
@@ -209,6 +223,8 @@ export async function pedidosController(contenedor) {
         editandoId = null
         titulo.textContent = "Nuevo pedido"
         selCliente.value = ""
+        inBuscarCliente.value = ""
+        for (const opt of selCliente.options) opt.hidden = false
         selCliente.disabled = false
         selTipo.value = tipos[0]?.ID_TipoAtencion ?? ""
         selTipo.disabled = false

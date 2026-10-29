@@ -27,7 +27,6 @@ const MENU_ADMIN = [
         { seccion: "/dashboard/caja",       titulo: "Caja",     icono: "wallet" },
         { seccion: "/dashboard/inventario", titulo: "Inventario", icono: "package" },
         { seccion: "/dashboard/reportes",   titulo: "Reportes", icono: "chart-column" },
-        { seccion: "/dashboard/simulacion", titulo: "Simulación", icono: "play-circle" },
         { seccion: "/dashboard/mesas",      titulo: "Salón",    icono: "utensils" },
         { seccion: "/dashboard/reservas",   titulo: "Reservas", icono: "calendar-days" },
     ]},
@@ -149,21 +148,7 @@ export class Sidebar {
             nav.appendChild(lista)
         }
 
-        const salida = document.createElement("button")
-        salida.className = "sidebar__logout"
-        salida.type = "button"
-        const icSalir = icon("log-out", { size: 18 })
-        if (icSalir) salida.appendChild(icSalir)
-        const txtSalir = document.createElement("span")
-        txtSalir.textContent = "Cerrar sesión"
-        salida.appendChild(txtSalir)
-        if (this.onLogout) salida.addEventListener("click", this.onLogout)
-
-        const pie = document.createElement("p")
-        pie.className = "sidebar__rol"
-        pie.textContent = this.rol
-
-        aside.append(marca, nav, salida, pie)
+        aside.append(marca, nav)
         return aside
     }
 

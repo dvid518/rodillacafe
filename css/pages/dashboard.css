@@ -12,50 +12,52 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   El shell es de altura FIJA, no minima.
-   Con min-height el grid crecia con el contenido, la pagina entera hacia
-   scroll y sidebar y topbar se iban con ella. Ahora el layout se ata al
-   alto del viewport y se recorta: la unica region que desplaza es #app.
+   Dos contenedores con scroll independiente que permanecen estables en la
+   pantalla:
+     * .sidebar  : columna fija de 250px con su propio scroll vertical.
+     * #app      : contenido principal con su propio scroll vertical.
+   La topbar se queda pegada arriba (no hace scroll con el resto).
    -------------------------------------------------------------------------- */
+body.dashboard {
+    height: 100vh;
+    overflow: hidden;
+}
+
 .dashboard-layout {
     display: grid;
     grid-template-columns: 250px 1fr;
     height: 100vh;
-    height: 100dvh;
     overflow: hidden;
+}
+
+.sidebar {
+    height: 100vh;
+    overflow-y: auto;
 }
 
 .dashboard-main {
     display: flex;
     flex-direction: column;
-    /* sin min-width:0 un hijo ancho revienta el grid y aparece scroll
-       horizontal en todo el panel */
     min-width: 0;
-    /* min-height:0 es lo que permite que #app se encoja y pueda tener su
-       propio overflow. Sin esto los hijos de un flex column respetan
-       min-height:auto y no bajan de su contenido, el overflow: auto de
-       #app no se aplicaria y volveria a hacer scroll la pagina. */
-    min-height: 0;
+    height: 100vh;
     overflow: hidden;
 }
 
-/* El contenido del panel: lo unico que desplaza. */
+/* La topbar no se mueve con el scroll del contenido. */
+.topbar {
+    flex-shrink: 0;
+}
+
+/* Solo el contenido de #app hace scroll. */
 #app {
-    flex: 1 1 auto;
+    flex: 1;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    padding-bottom: 2rem;
     /* el router llama scrollIntoView al cambiar de vista; con scroll-behavior
        global el salto queda suave dentro de este contenedor */
     scroll-behavior: smooth;
-}
-
-/* reset.css deja body en min-height:100vh, mas alto que un 100dvh cuando el
-   movil tiene la barra de direcciones a la vista. Sin esto el body sobra y la
-   pagina recupera el scroll que el shell acaba de quitar. */
-body:has(.dashboard-layout) {
-    min-height: 100vh;
-    min-height: 100dvh;
 }
 
 @media (max-width: 900px) {

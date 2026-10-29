@@ -255,7 +255,6 @@ export async function panelController(contenedor) {
     return () => {
         if (intervaloRefresco) clearInterval(intervaloRefresco)
         if (graficoVentas) graficoVentas.destroy()
-        document.removeEventListener("keydown", onEscape)
         document.body.classList.remove("sin-scroll")
     }
 }

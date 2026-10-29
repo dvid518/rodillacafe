@@ -1,19 +1,22 @@
-import { supabase } from "../../lib/supabaseClient.js"
 import { ventaService } from "../../services/ventaService.js"
 import { clientService } from "../../services/clientService.js"
+import { cajaService } from "../../services/cajaService.js"
+import { userService } from "../../services/userService.js"
 import { productService } from "../../services/productService.js"
 import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
-import { escaparHTML, formatearPrecio } from "../../utils/format.js"
+import { escaparHTML, formatearPrecio, formatearFecha } from "../../utils/format.js"
+import { poblarClientes } from "./crud-comun.js"
 
 const ESTADO_VENTA = { P: "Pendiente", C: "Completada", X: "Anulada" }
 
 export async function ventasController(contenedor) {
-    const [ventasR, clientesR, productosR, sesion] = await Promise.all([
+    const [ventasR, clientesR, productosR, usuariosR, sesion] = await Promise.all([
         ventaService.listarVentas(),
         clientService.listarClientes(),
         productService.listarProductosAdmin(),
+        userService.listarUsuarios(),
         authService.obtenerSesion()
     ])
 
@@ -22,6 +25,7 @@ export async function ventasController(contenedor) {
     let ventas = ventasR.ok ? ventasR.data : []
     let clientes = clientesR.ok ? clientesR.data : []
     let productos = productosR.ok ? productosR.data : []
+    let usuarios = usuariosR.ok ? usuariosR.data : []
     let aperturas = []
     let metodosPago = []
     let editandoId = null
@@ -29,8 +33,10 @@ export async function ventasController(contenedor) {
     const tbodyEl = contenedor.querySelector("#ventas-tbody")
     const modalEl = contenedor.querySelector("#ventas-modal")
     const selCliente = modalEl.querySelector("#ventas-input-cliente")
+    const selCajero = modalEl.querySelector("#ventas-input-cajero")
     const selApertura = modalEl.querySelector("#ventas-input-apertura")
     const selPago = modalEl.querySelector("#ventas-input-pago")
+    const inBuscarCliente = modalEl.querySelector("#ventas-buscar-cliente")
     const listaItems = modalEl.querySelector("#ventas-items")
     const elTotal = modalEl.querySelector("#ventas-total")
     const inPagado = modalEl.querySelector("#ventas-input-pagado")
@@ -54,38 +60,38 @@ export async function ventasController(contenedor) {
     /* ---------- catálogos de caja ---------- */
 
     async function cargarCaja() {
-        const [rAperturas, rPagos] = await Promise.all([
-            supabase
-                .from("APERTURA_CAJA")
-                .select("ID_AperturaCaja, Numero_Turno, CAJA ( N_Caja ), Situacion")
-                .eq("Situacion", "A")
-                .order("Numero_Turno", { ascending: false }),
-            supabase
-                .from("METODO_PAGO")
-                .select("ID_MetodoPago, N_MetodoPago")
-                .eq("ESTADO", "1")
-                .order("N_MetodoPago")
+        const [rApertura, rPagos] = await Promise.all([
+            cajaService.obtenerAperturaAbierta(),
+            cajaService.listarMetodosPago(),
         ])
-        if (!rAperturas.error) aperturas = rAperturas.data || []
-        if (!rPagos.error) metodosPago = rPagos.data || []
+        if (rApertura.ok && rApertura.data) {
+            const a = rApertura.data
+            const caja = a.CAJA?.[0]?.N_Caja || "Caja"
+            const o = document.createElement("option")
+            o.value = a.ID_AperturaCaja
+            o.selected = true
+            o.textContent = `Turno ${a.Numero_Turno} — ${escaparHTML(caja)}`
+            selApertura.replaceChildren(o)
+            aperturas = [a]
+        } else {
+            selApertura.replaceChildren()
+            aperturas = []
+        }
+        if (rPagos.ok) {
+            metodosPago = rPagos.data || []
+            selPago.replaceChildren(
+                ...metodosPago.map(m => {
+                    const o = document.createElement("option")
+                    o.value = m.ID_MetodoPago
+                    o.textContent = escaparHTML(m.N_MetodoPago || "Pago")
+                    return o
+                })
+            )
+        }
+    }
 
-        selApertura.replaceChildren(
-            ...aperturas.map(a => {
-                const o = document.createElement("option")
-                o.value = a.ID_AperturaCaja
-                const caja = a.CAJA?.[0]?.N_Caja || "Caja"
-                o.textContent = `Turno ${a.Numero_Turno} — ${escaparHTML(caja)}`
-                return o
-            })
-        )
-        selPago.replaceChildren(
-            ...metodosPago.map(m => {
-                const o = document.createElement("option")
-                o.value = m.ID_MetodoPago
-                o.textContent = escaparHTML(m.N_MetodoPago || "Pago")
-                return o
-            })
-        )
+    function fechaLegible(iso) {
+        return formatearFecha(iso, { dateStyle: "short", timeStyle: "short" }).replace(/, /g, " ")
     }
 
     /* ---------- tabla ---------- */
@@ -111,7 +117,7 @@ export async function ventasController(contenedor) {
             return `
                 <tr data-id="${v.ID_Venta}">
                     <td>#${v.ID_Venta}</td>
-                    <td>${escaparHTML(v.F_Venta || "-")}</td>
+                    <td>${escaparHTML(fechaLegible(v.F_Venta))}</td>
                     <td>${escaparHTML(nombreClienteDe(v))}</td>
                     <td>${escaparHTML(cajero)}</td>
                     <td>${cajaTexto}</td>
@@ -179,6 +185,8 @@ export async function ventasController(contenedor) {
         editandoId = null
         titulo.textContent = "Nueva venta"
         selCliente.value = ""
+        inBuscarCliente.value = ""
+        for (const opt of selCliente.options) opt.hidden = false
         const tipoDocBoleta = modalEl.querySelector('input[name="ventas-tipo-doc"][value="Boleta"]')
         if (tipoDocBoleta) tipoDocBoleta.checked = true
         selApertura.value = ""
@@ -300,7 +308,7 @@ export async function ventasController(contenedor) {
             ? `${persona.Nombre} ${persona.Ap_Paterno || ""}`.trim()
             : (cliente ? `Cliente #${cliente.ID_Cliente}` : "-")
 
-        const fecha = venta.F_Venta ? new Date(venta.F_Venta).toLocaleString("es-PE", { dateStyle: "short", timeStyle: "short" }) : "-"
+        const fecha = fechaLegible(venta.F_Venta)
         const total = Number(venta.Total || 0)
         const subTotal = Number(venta.Sub_Total || 0)
         const igv = Number(venta.IGV || 0)
@@ -351,6 +359,40 @@ export async function ventasController(contenedor) {
 
     await cargarCaja()
     pintarTabla()
+
+    /* Select de clientes (nombre completo de PERSONA) */
+    poblarClientes(selCliente, clientes)
+    const optsCliente = [...selCliente.options]
+    if (inBuscarCliente) {
+        inBuscarCliente.addEventListener("input", () => {
+            const q = inBuscarCliente.value.toLowerCase()
+            for (const opt of optsCliente) {
+                if (opt.value === "") {
+                    opt.hidden = false
+                    continue
+                }
+                opt.hidden = !opt.textContent.toLowerCase().includes(q)
+            }
+        })
+    }
+
+    /* Select de cajeros: solo ADMINISTRADOR / CAJERO, mostrando el Logeo */
+    if (selCajero) {
+        const cajeros = (usuarios || []).filter(u =>
+            (u.USUARIO_ROL || []).some(r => {
+                const rol = r.ROL?.[0]?.N_Rol
+                return rol === "ADMINISTRADOR" || rol === "CAJERO"
+            })
+        )
+        selCajero.replaceChildren(
+            ...cajeros.map(u => {
+                const o = document.createElement("option")
+                o.value = u.ID_Usuario
+                o.textContent = escaparHTML(u.Logeo || `Usuario #${u.ID_Usuario}`)
+                return o
+            })
+        )
+    }
 
     tbodyEl.addEventListener("click", e => {
         const btn = e.target.closest("[data-accion]")

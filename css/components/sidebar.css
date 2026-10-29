@@ -25,14 +25,15 @@
     display: flex;
     flex-direction: column;
     width: 250px;
-    /* 100% y no 100vh: el shell (.dashboard-layout) ya tiene alto definido,
-       asi que el sidebar se ajusta a la fila del grid y no a un alto propio
-       que dejaria de cuadrar cuando difieran 100vh y 100dvh en movil. */
-    height: 100%;
+    /* 100vh para que el sidebar ocupe todo el alto del viewport y no se quede
+       bloqueado en medio de la pantalla cortando el logo superior y los
+       botones finales (Usuarios, Reportes, etc.). El layout padre usa
+       align-items: stretch para estirarlo junto con el main. */
+    height: 100vh;
     padding: var(--space-lg) var(--space-md);
     background-color: var(--bg);
     border-right: 1px solid var(--border);
-    overflow: hidden;
+    overflow-y: auto;
     flex: 0 0 auto;
 }
 
@@ -69,8 +70,7 @@
     flex-direction: column;
     gap: var(--space-lg);
     flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+    min-height: 0;
     padding-bottom: var(--space-lg);
 }
 
@@ -135,37 +135,6 @@
 .sidebar__link--active:hover {
     background-color: var(--accent);
     color: var(--accent-text);
-}
-
-.sidebar__logout {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-full);
-    background-color: transparent;
-    color: var(--text);
-    font-size: 15px;
-    cursor: pointer;
-    transition: background-color var(--transition), color var(--transition);
-    flex-shrink: 0;
-}
-
-.sidebar__logout:hover {
-    background-color: var(--state-danger);
-    border-color: var(--state-danger);
-    color: var(--white);
-}
-
-.sidebar__rol {
-    margin: 0;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    text-align: center;
-    flex-shrink: 0;
 }
 
 /* --- movil --- */
