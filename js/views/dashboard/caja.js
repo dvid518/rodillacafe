@@ -27,7 +27,7 @@ export async function cajaController(contenedor) {
     const tbodyMovimientos = contenedor.querySelector("#caja-movimientos-tbody")
     const tbodyHistorial = contenedor.querySelector("#caja-historial-tbody")
 
-    const btnAperturar = contenedor.querySelector("#caja-aperturar")
+    const botonesAperturar = [...contenedor.querySelectorAll("[data-caja-aperturar]")]
     const btnNuevoMovimiento = contenedor.querySelector("#caja-nuevo-movimiento")
     const btnCerrar = contenedor.querySelector("#caja-cerrar")
 
@@ -237,7 +237,7 @@ export async function cajaController(contenedor) {
 
     function renderHistorial() {
         if (!aperturasCerradas.length) {
-            tbodyHistorial.innerHTML = '<tr class="fila-vacia"><td colspan="9">Sin turnos cerrados.</td></tr>'
+            tbodyHistorial.innerHTML = '<tr class="fila-vacia"><td colspan="8">Sin turnos cerrados.</td></tr>'
             return
         }
 
@@ -250,11 +250,13 @@ export async function cajaController(contenedor) {
             const diferencia = Number(a.Diferencia || 0)
             const esCuadrada = diferencia === 0
 
+            const fechaApertura = formatearFecha(a.F_Apertura, { dateStyle: "short", timeStyle: "short" })
+            const fechaCierre = formatearFecha(a.F_Cierre, { dateStyle: "short", timeStyle: "short" })
+
             return `
                 <tr data-id="${a.ID_AperturaCaja}">
-                    <td>${escaparHTML(a.Numero_Turno || "-")}</td>
-                    <td>${escaparHTML(a.F_Apertura || "-")}</td>
-                    <td>${escaparHTML(a.F_Cierre || "-")}</td>
+                    <td>${escaparHTML(fechaApertura)}</td>
+                    <td>${escaparHTML(fechaCierre)}</td>
                     <td>S/ ${formatearPrecio(inicial)}</td>
                     <td>S/ ${formatearPrecio(ingresos)}</td>
                     <td>S/ ${formatearPrecio(egresos)}</td>
@@ -416,11 +418,13 @@ export async function cajaController(contenedor) {
 
     /* ---------- eventos ---------- */
 
-    btnAperturar.addEventListener("click", () => {
-        inMontoInicial.value = "100"
-        modalApertura.hidden = false
-        document.body.classList.add("sin-scroll")
-        selCaja.focus()
+    botonesAperturar.forEach(btn => {
+        btn.addEventListener("click", () => {
+            inMontoInicial.value = "100"
+            modalApertura.hidden = false
+            document.body.classList.add("sin-scroll")
+            selCaja.focus()
+        })
     })
 
     btnAperturaCancelar.addEventListener("click", () => {

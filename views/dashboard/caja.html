@@ -5,7 +5,7 @@
             <h1 class="hero__titulo">Caja</h1>
             <p class="hero__subtitulo">Apertura de turno, movimientos y arqueo de caja.</p>
             <div class="hero__acciones">
-                <button class="btn btn--primary" type="button" id="caja-aperturar">Aperturar caja</button>
+                <button class="btn btn--primary" type="button" id="caja-aperturar" data-caja-aperturar>Aperturar caja</button>
             </div>
         </div>
         <div class="hero__decoracion" aria-hidden="true">
@@ -31,7 +31,7 @@
         </div>
         <p style="color:var(--text-muted); margin-bottom: var(--space-md);">No hay un turno aperturado. Abre una caja para comenzar a registrar movimientos.</p>
         <div class="modal-form__acciones">
-            <button class="btn btn--primary" type="button" id="caja-aperturar">Aperturar caja</button>
+            <button class="btn btn--primary" type="button" id="caja-aperturar-vacio" data-caja-aperturar>Aperturar caja</button>
         </div>
     </div>
 
@@ -65,7 +65,6 @@
         <table class="tabla">
             <thead>
                 <tr>
-                    <th>Turno</th>
                     <th>Fecha apertura</th>
                     <th>Fecha cierre</th>
                     <th>Inicial</th>
