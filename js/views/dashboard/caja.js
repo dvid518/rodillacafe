@@ -319,46 +319,38 @@ export async function cajaController(contenedor) {
     }
 
     async function cerrar() {
-        // 1️⃣  Aseguramos que haya una caja abierta
         if (!aperturaAbierta || !aperturaAbierta.ID_AperturaCaja) {
-          return notifyWarning("No hay una caja abierta para cerrar.");
+            return notifyWarning("No hay una caja abierta para cerrar.")
         }
-      
-        // 2️⃣  Leemos los valores del formulario
-        const montoDeclarado = Number(inMontoDeclarado.value) || 0;
-        const observacion = inObservacionCierre.value.trim() || null; // <-- valor tal como lo escribe el usuario
-      
-        // 3️⃣  **Truncamos** la observación a 30 caracteres (o la dejamos vacía)
-        let observacionClean = (observacion ?? "").trim();   // quita espacios al inicio/final
-        if (observacionClean.length > 30) {
-          observacionClean = observacionClean.slice(0, 30); // solo los primeros 30 caracteres
-        }
-      
-        // 4️⃣  Validamos que el monto no sea negativo
-        if (montoDeclarado < 0) {
-          return notifyWarning("El monto declarado no puede ser negativo");
-        }
-      
-        // 5️⃣  Llamada original a la API (ahora con la cadena ya recortada)
-        btnCierreGuardar.disabled = true;
+
+        const montoDeclarado = Number(inMontoDeclarado.value) || 0
+        if (montoDeclarado < 0) return notifyWarning("El monto declarado no puede ser negativo")
+
+        // La columna APERTURA_CAJA.Observacion es varchar(200)
+        const observacion = inObservacionCierre.value.trim().substring(0, 200) || null
+
+        btnCierreGuardar.disabled = true
         const resultado = await cajaService.cerrarCaja(
-          aperturaAbierta.ID_AperturaCaja,
-          montoDeclarado,
-          observacionClean
-        );
-        btnCierreGuardar.disabled = false;
+            aperturaAbierta.ID_AperturaCaja,
+            montoDeclarado,
+            observacion
+        )
+        btnCierreGuardar.disabled = false
+
         if (!resultado.ok) {
-          console.error("Error al cerrar caja:", resultado.error);
-          return notifyError(resultado.error?.message || "No se pudo cerrar la caja");
+            console.error("Error al cerrar caja:", resultado.error)
+            return notifyError(resultado.error?.message || "No se pudo cerrar la caja")
         }
-        const dif = Number(resultado.data.Diferencia || 0);
+
+        const dif = Number(resultado.data?.Diferencia || 0)
         const msg = dif === 0
-          ? "Caja cerrada cuadrada"
-          : `Caja cerrada con diferencia de S/ ${formatearPrecio(Math.abs(dif))}`;
-        notifySuccess(msg);
-        modalCierre.hidden = true;
-        document.body.classList.remove("sin-scroll");
-      }
+            ? "Caja cerrada cuadrada"
+            : `Caja cerrada con diferencia de S/ ${formatearPrecio(Math.abs(dif))}`
+        notifySuccess(msg)
+        modalCierre.hidden = true
+        document.body.classList.remove("sin-scroll")
+        await recargar()
+    }
 
     async function abrirMovimiento() {
         if (!aperturaAbierta) return

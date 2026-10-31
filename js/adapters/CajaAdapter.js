@@ -18,6 +18,16 @@ const MOVIMIENTO_SELECT = `
     USUARIO ( Logeo )
 `
 
+/**
+ * Usuario para las columnas de auditoría USUCRE/USUMOD.
+ * En la BD esas columnas son varchar(30) mientras que USUARIO.Logeo es
+ * varchar(120) (puede ser un email completo), así que se recorta para
+ * evitar el error 22001 "value too long for type character varying(30)".
+ */
+function usuarioAuditoria(sesion) {
+    return String(sesion?.data?.Logeo || "WEB").substring(0, 30)
+}
+
 async function resolverSesion() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, error: { message: "Sin sesión" } }
@@ -70,6 +80,8 @@ async function aperturarCaja(idCaja, montoInicial) {
     const sesion = await resolverSesion()
     if (!sesion.ok) return sesion
 
+    const usuAuditoria = usuarioAuditoria(sesion)
+
     const { data: existente } = await supabase
         .from("APERTURA_CAJA")
         .select("ID_AperturaCaja")
@@ -90,7 +102,7 @@ async function aperturarCaja(idCaja, montoInicial) {
             Monto_Inicial: Number(montoInicial) || 0,
             Monto_Sistema: Number(montoInicial) || 0,
             Situacion: "A",
-            USUCRE: sesion.data.Logeo
+            USUCRE: usuAuditoria
         })
         .select(APERTURA_SELECT)
         .maybeSingle()
@@ -140,6 +152,8 @@ async function registrarMovimiento(datos) {
     const sesion = await resolverSesion()
     if (!sesion.ok) return sesion
 
+    const usuAuditoria = usuarioAuditoria(sesion)
+
     const { data: concepto, error: errConcepto } = await supabase
         .from("CONCEPTO_CAJA")
         .select("ID_TipoMovimiento, Afecta_Efectivo")
@@ -165,11 +179,11 @@ async function registrarMovimiento(datos) {
             ID_MetodoPago: Number(datos.ID_MetodoPago),
             ID_Usuario: sesion.data.ID_Usuario,
             Monto: Number(datos.Monto),
-            Descripcion: datos.Descripcion || null,
-            Documento: datos.Documento || null,
-            Numero_Operacion: datos.Numero_Operacion || null,
+            Descripcion: datos.Descripcion ? String(datos.Descripcion).substring(0, 200) : null,
+            Documento: datos.Documento ? String(datos.Documento).substring(0, 200) : null,
+            Numero_Operacion: datos.Numero_Operacion ? String(datos.Numero_Operacion).substring(0, 30) : null,
             Afecta_Efectivo: afectaEfectivo,
-            USUCRE: sesion.data.Logeo
+            USUCRE: usuAuditoria
         })
         .select(MOVIMIENTO_SELECT)
         .maybeSingle()
@@ -181,6 +195,8 @@ async function registrarMovimiento(datos) {
 async function cerrarCaja(idApertura, montoDeclarado, observacion) {
     const sesion = await resolverSesion()
     if (!sesion.ok) return sesion
+
+    const usuAuditoria = usuarioAuditoria(sesion)
 
     const { data: apertura, error: errAp } = await supabase
         .from("APERTURA_CAJA")
@@ -221,7 +237,7 @@ async function cerrarCaja(idApertura, montoDeclarado, observacion) {
             Diferencia: diferencia,
             Situacion: "C",
             Observacion: observacion || null,
-            USUMOD: sesion.data.Logeo,
+            USUMOD: usuAuditoria,
             FECMOD: new Date().toISOString()
         })
         .eq("ID_AperturaCaja", idApertura)

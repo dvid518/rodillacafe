@@ -1046,6 +1046,15 @@ body.dashboard {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Los botones de acciones (Registrar movimiento / Cerrar caja) van juntos y
+   con poco gap. El scale(1.05) global de .btn:hover los agranda visualmente y
+   los hace superponerse, dando la sensación de que el contenedor se mueve.
+   Aquí mantenemos solo el cambio de color como feedback. */
+.dashboard-caja .modal-form__acciones .btn:hover,
+.dashboard-caja .modal-form__acciones .btn:active {
+    transform: none;
+}
+
 @media (max-width: 900px) {
     .caja-metricas {
         grid-template-columns: 1fr;
