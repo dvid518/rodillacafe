@@ -1062,6 +1062,329 @@ body.dashboard {
 }
 
 /* ==========================================================================
+   VENTAS — modal de nueva venta con dos columnas
+   ========================================================================== */
+
+/* Contenedor del modal: más ancho y rectangular para ventas.
+   Hereda el fondo translúcido (vidrio) de .glass para que no se transparente
+   ni se vea sólido como antes. */
+#ventas-modal .modal-form__contenido {
+    width: min(1200px, 95vw);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Contenedor del modal: dos paneles lado a lado */
+.venta-modal .venta-modal__cuerpo {
+    display: flex;
+    gap: var(--space-lg);
+    margin-top: var(--space-md);
+    align-items: flex-start;
+}
+
+.venta-modal .venta-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    min-width: 0;
+}
+
+/* Izquierda: productos (60%) */
+.venta-modal .venta-panel--productos {
+    flex: 1 1 60%;
+    max-height: 70vh;
+    overflow: hidden;
+}
+
+.venta-modal .venta-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xs);
+}
+
+.venta-modal .venta-panel__header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.venta-modal .venta-panel__buscar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex-shrink: 0;
+}
+
+.venta-modal .venta-panel__buscar .input--sm {
+    width: 170px;
+    font-size: 0.9rem;
+    padding: 6px 8px;
+}
+
+.venta-modal .venta-panel__productos {
+    display: grid;
+    /* Grid uniforme: todas las tarjetas mismo ancho mínimo (punto 2) */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-sm);
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.venta-modal .venta-panel__vacio {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: var(--space-md);
+}
+
+/* Tarjeta de producto (solo lectura, flujo de facturación) */
+/* Lista de productos del pedido (tabla simple, solo lectura) */
+.venta-lista-pedido {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.venta-lista-pedido__fila {
+    display: grid;
+    grid-template-columns: 60px 1fr 100px 100px;
+    gap: var(--space-sm);
+    align-items: center;
+    padding: var(--space-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.venta-lista-pedido__cantidad {
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-align: center;
+}
+
+.venta-lista-pedido__nombre {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.venta-lista-pedido__precio {
+    color: var(--text-secondary);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.venta-lista-pedido__subtotal {
+    color: var(--accent);
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Estado vacío cuando no hay pedido seleccionado */
+.venta-vacio {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: var(--space-md);
+}
+
+.venta-aviso {
+    font-size: 0.8rem;
+    margin-top: var(--space-xs);
+    color: var(--text-muted);
+}
+
+.venta-aviso--info {
+    color: var(--text-secondary);
+}
+
+/* Derecha: datos de venta (40%) */
+.venta-modal .venta-panel--venta {
+    flex: 0 0 42%;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.venta-modal .venta-campo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.venta-modal .venta-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.venta-modal .venta-cliente-wrap {
+    display: flex;
+    gap: var(--space-xs);
+    align-items: flex-start;
+}
+
+.venta-modal .venta-cliente-wrap .input--sm,
+.venta-modal .venta-cliente-wrap select.input--sm {
+    flex: 1;
+    min-width: 0;
+}
+
+.venta-modal .venta-caja {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.venta-modal .venta-caja__estado {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: color-mix(in srgb, var(--state-success) 10%, transparent);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    min-height: 48px;
+}
+
+.venta-modal .venta-caja__estado--activo {
+    color: var(--state-success);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.venta-modal .venta-caja__estado--cerrado {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.venta-modal .btn-abrir-caja {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 8px;
+}
+
+.venta-modal .venta-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-xs);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.venta-modal .venta-total__etiqueta {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.venta-modal .venta-total__valor {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.venta-modal .venta-efectivo {
+    margin-top: var(--space-xs);
+}
+
+.venta-modal .venta-modal__acciones {
+    margin-top: var(--space-md);
+    display: flex;
+    gap: var(--space-sm);
+}
+
+/* Resumen inferior (opcional, se puede mostrar cuando hay items) */
+.venta-modal .venta-resumen {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border);
+}
+
+.venta-modal .venta-resumen h3 {
+    margin: 0 0 var(--space-sm) 0;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.venta-modal .venta-resumen__items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: var(--space-sm);
+}
+
+.venta-modal .venta-resumen__total {
+    display: flex;
+    justify-content: flex-end;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Inputs pequeños */
+.input--sm {
+    font-size: 0.9rem;
+    padding: 6px 8px;
+}
+
+select.input--sm {
+    font-size: 0.9rem;
+    padding: 6px 8px;
+}
+
+/* Botón abrir caja */
+.venta-modal .btn-abrir-caja {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Responsive: una columna en móvil */
+@media (max-width: 700px) {
+    .venta-modal .venta-modal__cuerpo {
+        flex-direction: column;
+    }
+
+    .venta-modal .venta-panel--productos,
+    .venta-modal .venta-panel--venta {
+        flex: 1 1 100%;
+        max-height: none;
+    }
+
+    .venta-modal .venta-panel__productos {
+        max-height: 40vh;
+    }
+
+    .venta-modal .venta-panel--venta {
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+
+/* ==========================================================================
    INVENTARIO y REPORTES — estilos consistentes con Caja
    ========================================================================== */
 

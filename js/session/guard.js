@@ -1,6 +1,37 @@
 import { authService } from "../services/authService.js"
 import { comprobarBackend, limpiarSesion, configInvalida } from "../lib/supabaseClient.js"
 
+/* ==========================================================================
+   LIMITE DE SESION — 10 minutos, no configurable
+   --------------------------------------------------------------------------
+   La sesion expira un tiempo fijo despues de iniciarse. Al superar el
+   limite se borra la sesion y se envia al login. No es un ajuste de usuario.
+   ========================================================================== */
+export const LIMITE_SESION_MIN = 10
+const LIMITE_SESION_MS = LIMITE_SESION_MIN * 60 * 1000
+const CLAVE_INICIO = "rodilla:sesion_inicio"
+
+function inicioSesionGuardado() {
+    const raw = localStorage.getItem(CLAVE_INICIO)
+    return raw ? Number(raw) : null
+}
+
+/** true si ya pasaron los 10 minutos desde que se inicio sesion (o nunca se inicio). */
+export function sesionExpirada() {
+    const inicio = inicioSesionGuardado()
+    return inicio === null || Date.now() - inicio > LIMITE_SESION_MS
+}
+
+/** Marca el momento en que el usuario inicio sesion. Se llama al hacer login. */
+export function marcarInicioSesion() {
+    localStorage.setItem(CLAVE_INICIO, String(Date.now()))
+}
+
+/** Borra la marca de inicio de sesion. Se llama al cerrar sesion. */
+export function limpiarInicioSesion() {
+    localStorage.removeItem(CLAVE_INICIO)
+}
+
 function esPaginaPublica() {
     const ruta = window.location.pathname
     // auth.html es la nueva pantalla de login+registro. Sin esta linea,
@@ -98,6 +129,17 @@ export async function guardSesion() {
     // el guard lo dejaría pasar y el ciclo se repetiría.
     if (esPaginaPublica()) {
         window.location.href = "/index.html"
+        return null
+    }
+    // Limite de sesion: 10 minutos desde el inicio. Superado el limite se
+    // borra la sesion y se envia al login con aviso.
+    if (sesionExpirada()) {
+        await limpiarSesion()
+        limpiarInicioSesion()
+        const params = new URLSearchParams()
+        params.set("expirada", "1")
+        params.set("redirect", destinoActual())
+        window.location.href = `/auth.html?${params.toString()}`
         return null
     }
     return sesion.data

@@ -1,5 +1,6 @@
 import { AuthAdapter } from "../adapters/AuthAdapter.js"
 import { UserAdapter } from "../adapters/UserAdapter.js"
+import { limpiarInicioSesion } from "../session/guard.js"
 
 async function login(email, password) {
     const resultado = await AuthAdapter.signIn(email, password)
@@ -14,7 +15,9 @@ async function registro(nombre, email, password) {
 }
 
 async function logout() {
-    return AuthAdapter.signOut()
+    const resultado = await AuthAdapter.signOut()
+    limpiarInicioSesion()
+    return resultado
 }
 
 async function obtenerSesion() {

@@ -1,42 +1,93 @@
 /* ==========================================================================
-   ROUTER — hash based, sin dependencias
+   ROUTER — History API (pushState), sin dependencias
    --------------------------------------------------------------------------
-   Convierte #/algo en contenido de views/<algo>.html dentro de un contenedor.
+   Convierte /algo en contenido de views/<algo>.html dentro de un contenedor.
+   Usa history.pushState en lugar de hash, así las URLs quedan limpias:
+     http://localhost:8000/dashboard/ventas
+   en vez de:
+     http://localhost:8000/dashboard.html#/dashboard/ventas
 
-   Decisiones sobre la version basica del enunciado:
+   Requisito del servidor: debe servir dashboard.html (o index.html, auth.html)
+   para cualquier ruta bajo su sección, p. ej. /dashboard/* -> dashboard.html.
+   En Vercel se logra con vercel.json (rewrite). En desarrollo local, una
+   regla de 404.html puede hacer el fallback al SPA.
 
-   - teardown(): innerHTML = "" NO llama al destructor de la vista anterior.
-     Si un controlador registra listeners (click, scroll, setInterval) se
-     quedan vivos y se acumulan en cada navegacion. Por eso el controlador
-     puede devolver una funcion de limpieza, que se ejecuta al salir.
-
-   - ruta desconocida: la version basia hacia caer en silencio sobre la vista
-     por defecto y ademas guardaba this.actual = ruta (la pedida, no la
-     cargada). Aqui se distingue: se avisa por consola, se carga la de
-     defecto, y this.actual guarda la ruta REALMENTE cargada.
-
-   - fetch necesita http(s). Abierto con file:// el navegador bloquea las
-     peticiones a archivos locales y todas las vistas fallan.
+   Decisiones:
+   - ruta desconocida: avisa por consola, carga la por defecto, y this.actual
+     guarda la ruta REALMENTE cargada.
+   - barras finales: se normalizan (elimina "/" al final excepto en la raíz).
+   - fetch necesita http(s). Abierto con file:// el navegador bloquea peticiones
+     a archivos locales y todas las vistas fallan.
    ========================================================================== */
 
 const BASE_VISTAS = "views/"
+
+/** Elimina barra final excepto en la raíz "/" y extensión .html. */
+function normalizarRuta(ruta) {
+    if (ruta.endsWith(".html")) {
+        ruta = ruta.slice(0, -5)
+    }
+    if (ruta.length > 1 && ruta.endsWith("/")) {
+        return ruta.slice(0, -1)
+    }
+    return ruta
+}
+
+/** Convierte una ruta con parámetros (:id, :slug, etc.) en una RegExp
+    que extrae los valores capturados. Ejemplo:
+      ruta: "/dashboard/pedido/:id"
+      pathname: "/dashboard/pedido/201"
+      resultado: { match: true, params: { id: "201" } }
+*/
+function hacerMatcherRuta(rutaPatron) {
+    const segmentos = rutaPatron.split("/").filter(s => s.length > 0)
+    const partesRegex = []
+    const nombresParams = []
+
+    for (const seg of segmentos) {
+        if (seg.startsWith(":")) {
+            const nombre = seg.slice(1)
+            nombresParams.push(nombre)
+            partesRegex.push("([^/]+)")
+        } else {
+            partesRegex.push(seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        }
+    }
+
+    const regex = new RegExp("^" + partesRegex.join("/") + "$")
+
+    return {
+        matcher: (pathname) => {
+            const m = pathname.match(regex)
+            if (!m) return null
+            const params = {}
+            nombresParams.forEach((nombre, i) => {
+                params[nombre] = m[i + 1]
+            })
+            return { params }
+        },
+        patron: rutaPatron
+    }
+}
 
 export class Router {
     constructor({ rutas, contenedor, porDefecto = "/" } = {}) {
         this.rutas = rutas || {}
         this.contenedor = contenedor
-        this.porDefecto = porDefecto
+        this.porDefecto = normalizarRuta(porDefecto)
         this.actual = null
         this.limpieza = null
-        this._enHashchange = () => this.navigate(this.obtenerRutaActual())
+        this.navegando = false  // evita navegaciones dobles concurrentes
+        this._enPopstate = () => this.navigate(this.obtenerRutaActual())
     }
 
     obtenerRutaActual() {
-        const hash = window.location.hash.replace(/^#/, "")
-        return hash || this.porDefecto
+        let ruta = window.location.pathname
+        if (!ruta || ruta === "/") return this.porDefecto
+        return normalizarRuta(ruta)
     }
 
-    /** Ejecuta la limpieza que dejo la vista anterior, si dejo alguna. */
+    /** Ejecuta la limpieza que dejó la vista anterior, si dejó alguna. */
     _limpiar() {
         if (typeof this.limpieza === "function") {
             try {
@@ -48,17 +99,52 @@ export class Router {
         this.limpieza = null
     }
 
-    async navigate(ruta) {
-        const pedida = ruta
-        let entrada = this.rutas[pedida]
-
-        if (!entrada) {
-            console.warn(`[Router] ruta sin definir: "${pedida}" -> cae en "${this.porDefecto}"`)
-            entrada = this.rutas[this.porDefecto]
+    /** Resuelve una ruta contra el mapa de rutas, soportando parámetros
+        dinámicos (:id, :slug, etc.). Devuelve { entrada, params } o null. */
+    resolverRuta(ruta) {
+        // Búsqueda exacta primero
+        if (this.rutas[ruta]) {
+            return { entrada: this.rutas[ruta], params: {} }
         }
-        if (!entrada) return
 
-        this.actual = pedida
+        // Búsqueda con parámetros dinámicos
+        for (const [patron, entrada] of Object.entries(this.rutas)) {
+            const matcher = hacerMatcherRuta(patron)
+            const resultado = matcher.matcher(ruta)
+            if (resultado) {
+                return { entrada, params: resultado.params }
+            }
+        }
+
+        return null
+    }
+
+    async navigate(ruta, reemplazar = false) {
+        const pedida = normalizarRuta(ruta)
+
+        // Evitar navegación doble: si ya estamos navegando, ignorar
+        if (this.navegando) return
+
+        // Evitar navegar a la misma ruta que ya está cargada
+        if (pedida === this.actual && !reemplazar) return
+
+        let resolucion = this.resolverRuta(pedida)
+
+        if (!resolucion) {
+            console.warn(`[Router] ruta sin definir: "${pedida}" -> cae en "${this.porDefecto}"`)
+            resolucion = this.resolverRuta(this.porDefecto)
+        }
+
+        if (!resolucion) return
+
+        this.actual = resolucion.entrada.patron || pedida  // guarda el patrón de ruta, no la URL cruda
+
+        // Sincroniza la URL del navegador sin recargar la página
+        if (reemplazar) {
+            history.replaceState(null, "", pedida)
+        } else {
+            history.pushState(null, "", pedida)
+        }
 
         const nodo = document.querySelector(this.contenedor)
         if (!nodo) {
@@ -66,15 +152,16 @@ export class Router {
             return
         }
 
+        this.navegando = true
         this._limpiar()
 
         try {
-            const respuesta = await fetch(`${BASE_VISTAS}${entrada.vista}.html`)
-            if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status} al pedir ${entrada.vista}`)
+            const respuesta = await fetch(`${BASE_VISTAS}${resolucion.entrada.vista}.html`)
+            if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status} al pedir ${resolucion.entrada.vista}`)
             nodo.innerHTML = await respuesta.text()
 
-            if (typeof entrada.controlador === "function") {
-                const limpieza = await entrada.controlador(nodo)
+            if (typeof resolucion.entrada.controlador === "function") {
+                const limpieza = await resolucion.entrada.controlador(nodo, resolucion.params)
                 if (typeof limpieza === "function") this.limpieza = limpieza
             }
 
@@ -83,22 +170,29 @@ export class Router {
             console.error("Error en router:", error)
             nodo.innerHTML =
                 '<p class="router-error">No se pudo cargar la vista. Revisa la consola.</p>'
+        } finally {
+            this.navegando = false
         }
     }
 
     start() {
-        window.addEventListener("hashchange", this._enHashchange)
-        this.navigate(this.obtenerRutaActual())
+        // Navega a la ruta actual al iniciar
+        this.navigate(this.obtenerRutaActual(), true)
+        window.addEventListener("popstate", this._enPopstate)
     }
 
     stop() {
-        window.removeEventListener("hashchange", this._enHashchange)
+        window.removeEventListener("popstate", this._enPopstate)
         this._limpiar()
     }
 
-    static irA(ruta) {
-        if (window.location.hash === `#${ruta}`) return
-        window.location.hash = ruta
+    /** Navega programáticamente a una ruta (ej. desde un botón del sidebar). */
+    irA(ruta) {
+        const normalizada = normalizarRuta(ruta)
+        const urlDestino = normalizada === "/" ? "/" : normalizada
+        if (window.location.pathname === urlDestino) return
+        history.pushState(null, "", urlDestino)
+        window.dispatchEvent(new PopStateEvent("popstate"))
     }
 }
 

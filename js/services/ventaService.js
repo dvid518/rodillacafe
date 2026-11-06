@@ -24,9 +24,16 @@ async function obtenerDetalleVenta(idVenta) {
     return { ok: true, data: resultado.data }
 }
 
+async function listarPedidosPendientes() {
+    const resultado = await VentaAdapter.listarPedidosPendientes()
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: resultado.data }
+}
+
 export const ventaService = {
     listarVentas,
     crearVenta,
     anularVenta,
-    obtenerDetalleVenta
+    obtenerDetalleVenta,
+    listarPedidosPendientes
 }

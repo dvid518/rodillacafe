@@ -68,6 +68,69 @@ async function eliminar(id) {
     return { ok: true, data: null }
 }
 
+/* ---------------------------------------------------------------
+   CLIENTE NATURAL RÁPIDO (desde el módulo de ventas)
+   Crea PERSONA + CLIENTE vinculada en un solo paso.
+   --------------------------------------------------------------- */
+async function crearClienteNatural(datos) {
+    const {
+        nombre = "",
+        apPaterno = "",
+        apMaterno = null,
+        nDocumento = null,
+        email = null,
+        celular = null,
+        usucre = "WEB"
+    } = datos
+
+    // 1) Tipo de identidad DNI (o el primero disponible)
+    const { data: tipoDoc } = await supabase
+        .from("TIPO_IDENTIDAD")
+        .select("ID_TipoIdentidad")
+        .eq("ESTADO", "1")
+        .order("N_TipoIdentidad")
+        .limit(1)
+        .maybeSingle()
+    if (!tipoDoc?.ID_TipoIdentidad) {
+        return { ok: false, error: { message: "No hay tipo de identidad configurado" } }
+    }
+
+    // 2) Insertar PERSONA
+    const { data: persona, error: errPersona } = await supabase
+        .from("PERSONA")
+        .insert({
+            ID_TipoIdentidad: Number(tipoDoc.ID_TipoIdentidad),
+            N_Documento: String(nDocumento || "").trim() || null,
+            Nombre: String(nombre || "").trim() || null,
+            Ap_Paterno: String(apPaterno || "").trim() || null,
+            Ap_Materno: apMaterno ? String(apMaterno).trim() || null : null,
+            EMAIL: String(email || "").trim() || null,
+            Celular: String(celular || "").trim() || null,
+            USUCRE: String(usucre).substring(0, 30),
+            ESTADO: "1",
+        })
+        .select()
+        .maybeSingle()
+    if (errPersona) return { ok: false, error: errPersona }
+
+    // 3) Insertar CLIENTE (Tipo_Cliente = 'N' persona natural)
+    const { data: cliente, error: errCliente } = await supabase
+        .from("CLIENTE")
+        .insert({
+            ID_Persona: persona.ID_Persona,
+            Tipo_Cliente: "N",
+            USUCRE: String(usucre).substring(0, 30),
+            ESTADO: "1",
+        })
+        .select()
+        .maybeSingle()
+    if (errCliente) return { ok: false, error: errCliente }
+
+    return { ok: true, data: { ...cliente, persona } }
+}
+
+export const ClientAdapter = { listar, crear, actualizar, eliminar, listarPersonas, listarEmpresas, crearClienteNatural }
+
 async function listarPersonas() {
     const { data, error } = await supabase
         .from("PERSONA")
@@ -88,4 +151,4 @@ async function listarEmpresas() {
     return { ok: true, data }
 }
 
-export const ClientAdapter = { listar, crear, actualizar, eliminar, listarPersonas, listarEmpresas }
+

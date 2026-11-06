@@ -1,21 +1,25 @@
 import { ventaService } from "../../services/ventaService.js"
 import { clientService } from "../../services/clientService.js"
+import { dniService } from "../../services/dniService.js"
+import { rucService } from "../../services/rucService.js"
 import { cajaService } from "../../services/cajaService.js"
 import { userService } from "../../services/userService.js"
-import { productService } from "../../services/productService.js"
 import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
 import { escaparHTML, formatearPrecio, formatearFecha } from "../../utils/format.js"
 import { poblarClientes } from "./crud-comun.js"
+import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
 const ESTADO_VENTA = { P: "Pendiente", C: "Completada", X: "Anulada" }
 
+/* Cliente genérico para boletas simples (sin DNI). ID_Cliente es NOT NULL en VENTA. */
+const ID_CLIENTE_CONSUMIDOR_FINAL = 67
+
 export async function ventasController(contenedor) {
-    const [ventasR, clientesR, productosR, usuariosR, sesion] = await Promise.all([
+    const [ventasR, clientesR, usuariosR, sesion] = await Promise.all([
         ventaService.listarVentas(),
         clientService.listarClientes(),
-        productService.listarProductosAdmin(),
         userService.listarUsuarios(),
         authService.obtenerSesion()
     ])
@@ -24,26 +28,48 @@ export async function ventasController(contenedor) {
 
     let ventas = ventasR.ok ? ventasR.data : []
     let clientes = clientesR.ok ? clientesR.data : []
-    let productos = productosR.ok ? productosR.data : []
     let usuarios = usuariosR.ok ? usuariosR.data : []
-    let aperturas = []
     let metodosPago = []
     let editandoId = null
+
+    /* Apertura abierta en memoria (para mostrarla en el modal) */
+    let aperturaAbierta = null
 
     const tbodyEl = contenedor.querySelector("#ventas-tbody")
     const modalEl = contenedor.querySelector("#ventas-modal")
     const selCliente = modalEl.querySelector("#ventas-input-cliente")
     const selCajero = modalEl.querySelector("#ventas-input-cajero")
-    const selApertura = modalEl.querySelector("#ventas-input-apertura")
+    const selPedido = modalEl.querySelector("#ventas-input-pedido")
+    const avisoPedido = modalEl.querySelector("#venta-aviso-pedido")
     const selPago = modalEl.querySelector("#ventas-input-pago")
     const inBuscarCliente = modalEl.querySelector("#ventas-buscar-cliente")
-    const listaItems = modalEl.querySelector("#ventas-items")
+    const listaPedido = modalEl.querySelector("#venta-lista-pedido")
+    const avisoSinPedido = modalEl.querySelector("#venta-aviso-sin-pedido")
     const elTotal = modalEl.querySelector("#ventas-total")
     const inPagado = modalEl.querySelector("#ventas-input-pagado")
     const btnGuardar = modalEl.querySelector("#ventas-modal-guardar")
     const btnCancelar = modalEl.querySelector("#ventas-modal-cancelar")
     const btnNuevo = contenedor.querySelector("#ventas-nuevo")
+    const btnNuevoCliente = modalEl.querySelector("#ventas-nuevo-cliente")
+    const cajaEstado = modalEl.querySelector("#ventas-caja-estado")
     const titulo = modalEl.querySelector("#ventas-modal-titulo")
+
+    /* Documento / cliente por DNI o RUC */
+    const radiosTipoDoc = modalEl.querySelectorAll('input[name="ventas-tipo-doc"]')
+    const campoDocumento = modalEl.querySelector("#venta-documento-campo")
+    const inDocumento = modalEl.querySelector("#ventas-input-documento")
+    const btnBuscarDocumento = modalEl.querySelector("#ventas-buscar-documento")
+    const avisoDocumento = modalEl.querySelector("#venta-aviso-documento")
+    const campoClienteEncontrado = modalEl.querySelector("#venta-cliente-encontrado")
+    const clienteNombreEl = modalEl.querySelector("#venta-cliente-nombre")
+    const clienteDocEl = modalEl.querySelector("#venta-cliente-doc")
+    const clienteIdInput = modalEl.querySelector("#venta-cliente-id")
+
+    /* Pedido seleccionado (con DETALLE_PEDIDO embebido) */
+    let pedidoSeleccionado = null
+
+    /* Cliente resuelto por DNI/RUC (se rellena al buscar) */
+    let clientePorDocumento = null
 
     /* Modal de detalle */
     const detModalEl = contenedor.querySelector("#ventas-detalle-modal")
@@ -65,17 +91,26 @@ export async function ventasController(contenedor) {
             cajaService.listarMetodosPago(),
         ])
         if (rApertura.ok && rApertura.data) {
-            const a = rApertura.data
+            aperturaAbierta = rApertura.data
+            const a = aperturaAbierta
             const caja = a.CAJA?.[0]?.N_Caja || "Caja"
-            const o = document.createElement("option")
-            o.value = a.ID_AperturaCaja
-            o.selected = true
-            o.textContent = `Turno ${a.Numero_Turno} — ${escaparHTML(caja)}`
-            selApertura.replaceChildren(o)
-            aperturas = [a]
+            cajaEstado.innerHTML = `
+                <span class="venta-caja__estado--activo">${icono("circle-check", { size: 14 })} Turno ${a.Numero_Turno} — ${escaparHTML(caja)}</span>
+            `
         } else {
-            selApertura.replaceChildren()
-            aperturas = []
+            aperturaAbierta = null
+            cajaEstado.innerHTML = `
+                <button class="btn btn--primary btn-abrir-caja" type="button" id="ventas-abrir-caja">
+                    ${icono("plus", { size: 14 })} Abrir caja
+                </button>
+                <span class="venta-caja__estado--cerrado">No hay turno aperturado</span>
+            `
+            const btnAbrir = cajaEstado.querySelector("#ventas-abrir-caja")
+            if (btnAbrir) {
+                btnAbrir.addEventListener("click", () => {
+                    notifyWarning("Abre un turno en la pestaña Caja antes de registrar una venta.")
+                })
+            }
         }
         if (rPagos.ok) {
             metodosPago = rPagos.data || []
@@ -94,7 +129,7 @@ export async function ventasController(contenedor) {
         return formatearFecha(iso, { dateStyle: "short", timeStyle: "short" }).replace(/, /g, " ")
     }
 
-    /* ---------- tabla ---------- */
+    /* ---------- tabla de ventas ---------- */
 
     function nombreClienteDe(venta) {
         const p = venta.CLIENTE?.[0]?.PERSONA?.[0]
@@ -134,70 +169,304 @@ export async function ventasController(contenedor) {
         }).join("")
     }
 
-    /* ---------- lineas de productos ---------- */
+    /* ---------- detalle del pedido a facturar (solo lectura) ---------- */
 
-    function totalItems() {
-        let suma = 0
-        for (const fila of listaItems.querySelectorAll(".venta-item")) {
-            const sel = fila.querySelector(".item-producto")
-            const cant = Number(fila.querySelector(".item-cantidad").value) || 0
-            const precio = Number(sel.selectedOptions[0]?.dataset.precio || 0)
-            suma += cant * precio
+    function renderizarDetallePedido(pedido) {
+        listaPedido.replaceChildren()
+        const lineas = (pedido && pedido.DETALLE_PEDIDO) || []
+
+        if (!lineas.length) {
+            avisoSinPedido.hidden = false
+            avisoSinPedido.textContent = "El pedido seleccionado no tiene productos."
+            elTotal.textContent = "S/ 0.00"
+            return
         }
-        return suma
-    }
 
-    function pintarTotal() {
-        const subTotal = totalItems()
+        avisoSinPedido.hidden = true
+
+        let subTotal = 0
+        for (const d of lineas) {
+            const cantidad = Number(d.Cantidad || 0)
+            const precio = Number(d.Precio || 0)
+            const subtotal = cantidad * precio
+            subTotal += subtotal
+            const producto = d.PRODUCTO?.[0] || {}
+            const nombre = escaparHTML(producto.N_Producto || `Producto ${d.ID_Producto}`)
+
+            const fila = document.createElement("div")
+            fila.className = "venta-lista-pedido__fila"
+            fila.innerHTML = `
+                <span class="venta-lista-pedido__cantidad">${cantidad}</span>
+                <span class="venta-lista-pedido__nombre">${nombre}</span>
+                <span class="venta-lista-pedido__precio">S/ ${formatearPrecio(precio)}</span>
+                <span class="venta-lista-pedido__subtotal">S/ ${formatearPrecio(subtotal)}</span>
+            `
+            listaPedido.appendChild(fila)
+        }
+
         const igv = Number((subTotal * 0.18).toFixed(2))
         const total = Number((subTotal + igv).toFixed(2))
         elTotal.textContent = `S/ ${formatearPrecio(total)}`
-        return { subTotal, igv, total }
     }
 
-    function agregarItem() {
-        const fila = document.createElement("div")
-        fila.className = "venta-item"
-        const opciones = ['<option value="">Producto…</option>'].concat(
-            [...productos]
-                .sort((a, b) => a.N_Producto.localeCompare(b.N_Producto))
-                .map(p => `<option value="${p.ID_Producto}" data-precio="${Number(p.Precio)}">${escaparHTML(p.N_Producto)} — S/ ${formatearPrecio(p.Precio)}</option>`)
-        ).join("")
-
-        fila.innerHTML = `
-            <select class="select item-producto">${opciones}</select>
-            <input class="input item-cantidad" type="number" min="1" step="1" value="1" aria-label="Cantidad">
-            <button class="btn-icono btn-icono--peligro item-quitar" type="button" title="Quitar línea" aria-label="Quitar línea">${icono("x", { size: 16 })}</button>
-        `
-        fila.querySelector(".item-producto").addEventListener("change", pintarTotal)
-        fila.querySelector(".item-cantidad").addEventListener("input", pintarTotal)
-        fila.querySelector(".item-quitar").addEventListener("click", () => {
-            fila.remove()
-            pintarTotal()
-        })
-        listaItems.appendChild(fila)
-        pintarTotal()
+    function seleccionarPedido(idPedido) {
+        if (!idPedido) {
+            pedidoSeleccionado = null
+            listaPedido.replaceChildren()
+            avisoSinPedido.hidden = false
+            avisoSinPedido.textContent = "Selecciona un pedido para ver sus productos."
+            elTotal.textContent = "S/ 0.00"
+            return
+        }
+        const pedidoObj = pedidosPorId.get(Number(idPedido))
+        pedidoSeleccionado = pedidoObj || null
+        renderizarDetallePedido(pedidoSeleccionado)
     }
+
+    /* Mapa ID_Pedido -> objeto pedido (con DETALLE_PEDIDO embebido) */
+    const pedidosPorId = new Map()
 
     /* ---------- modal ---------- */
 
-    function abrirNuevo() {
+    async function abrirNuevo() {
         editandoId = null
         titulo.textContent = "Nueva venta"
         selCliente.value = ""
         inBuscarCliente.value = ""
         for (const opt of selCliente.options) opt.hidden = false
-        const tipoDocBoleta = modalEl.querySelector('input[name="ventas-tipo-doc"][value="Boleta"]')
+        const tipoDocBoleta = modalEl.querySelector('input[name="ventas-tipo-doc"][value="simple"]')
         if (tipoDocBoleta) tipoDocBoleta.checked = true
-        selApertura.value = ""
         selPago.value = ""
         inPagado.value = ""
-        listaItems.replaceChildren()
-        agregarItem()
-        pintarTotal()
+        selPedido.value = ""
+        pedidoSeleccionado = null
+        listaPedido.replaceChildren()
+        avisoSinPedido.hidden = false
+        avisoSinPedido.textContent = "Selecciona un pedido para ver sus productos."
+        elTotal.textContent = "S/ 0.00"
+        const resumenEl = modalEl.querySelector("#venta-resumen")
+        if (resumenEl) resumenEl.hidden = true
+
+        await cargarPedidosPendientes()
+
+        cambiarTipoDocumento()
+
         modalEl.hidden = false
         document.body.classList.add("sin-scroll")
-        selCliente.focus()
+        selPedido.focus()
+    }
+
+    async function cargarPedidosPendientes() {
+        const r = await ventaService.listarPedidosPendientes()
+        selPedido.replaceChildren()
+        pedidosPorId.clear()
+
+        if (!r.ok || !r.data.length) {
+            const o = document.createElement("option")
+            o.value = ""
+            o.disabled = true
+            o.textContent = "No hay pedidos pendientes"
+            selPedido.appendChild(o)
+            selPedido.disabled = true
+            if (avisoPedido) avisoPedido.hidden = false
+            btnGuardar.disabled = true
+            console.warn("No hay pedidos pendientes para facturar:", r.ok ? null : r.error)
+            return
+        }
+
+        selPedido.disabled = false
+        if (avisoPedido) avisoPedido.hidden = true
+        btnGuardar.disabled = false
+
+        const optVacio = document.createElement("option")
+        optVacio.value = ""
+        optVacio.textContent = "Selecciona un pedido"
+        selPedido.appendChild(optVacio)
+
+        for (const p of r.data) {
+            const mesa = unwrapEmbed(p.MESA)?.Numero || null
+            const clienteObj = unwrapEmbed(p.CLIENTE)
+            const personaObj = clienteObj ? unwrapEmbed(clienteObj.PERSONA) : null
+
+            const nomCliente = personaObj
+                ? `${personaObj.Nombre} ${personaObj.Ap_Paterno || ""}`.trim()
+                : null
+
+            const partes = [`#${p.ID_Pedido}`]
+            if (mesa) partes.push(`Mesa ${mesa}`)
+            if (nomCliente) partes.push(`- ${nomCliente}`)
+            else partes.push(`- Cliente #${p.ID_Cliente}`)
+
+            const o = document.createElement("option")
+            o.value = p.ID_Pedido
+            o.textContent = partes.join(" ")
+            selPedido.appendChild(o)
+            pedidosPorId.set(Number(p.ID_Pedido), p)
+        }
+    }
+
+    /* ---------- tipo de documento y búsqueda por DNI/RUC ---------- */
+
+    function cambiarTipoDocumento() {
+        const activo = [...radiosTipoDoc].find(r => r.checked)
+        const esConDocumento = activo && (activo.value === "dni" || activo.value === "ruc")
+        const esSimple = activo && activo.value === "simple"
+
+        if (campoDocumento) campoDocumento.hidden = !esConDocumento
+        if (campoClienteEncontrado) campoClienteEncontrado.hidden = true
+
+        clientePorDocumento = null
+        clienteIdInput.value = ""
+        clienteNombreEl.textContent = ""
+        clienteDocEl.textContent = ""
+        inDocumento.value = ""
+        if (avisoDocumento) avisoDocumento.textContent = ""
+
+        // Aviso informativo de Consumidor Final (solo boleta simple)
+        const avisoCF = document.getElementById("venta-aviso-consumidor-final")
+        if (avisoCF) avisoCF.hidden = !esSimple
+
+        // Si es boleta simple, limpiar cliente del select también
+        if (esSimple) {
+            selCliente.value = ""
+        }
+    }
+
+    async function buscarDocumento() {
+        const doc = String(inDocumento.value || "").trim()
+        if (!doc) {
+            notifyWarning("Ingresa un número de documento")
+            return
+        }
+
+        const esRUC = doc.length === 11
+        const esDNI = doc.length === 8
+
+        if (!esRUC && !esDNI) {
+            notifyWarning("El documento debe tener 8 dígitos (DNI) o 11 (RUC)")
+            return
+        }
+
+        btnBuscarDocumento.disabled = true
+        btnBuscarDocumento.textContent = "Buscando..."
+
+        try {
+            let resultado
+            if (esRUC) {
+                resultado = await rucService.consultarRUC(doc)
+            } else {
+                resultado = await dniService.consultarDNI(doc)
+            }
+
+            if (!resultado.ok) {
+                if (avisoDocumento) {
+                    avisoDocumento.textContent = resultado.error?.message || "No se encontró el documento"
+                    avisoDocumento.style.color = "var(--state-danger)"
+                }
+                notifyError(resultado.error?.message || "No se encontró el documento")
+                return
+            }
+
+            const data = resultado.data
+
+            if (data.yaExiste) {
+                // Ya está en BD: necesitamos resolver el ID_Cliente
+                // Para DNI: buscar en CLIENTE por persona. Para RUC: buscar por empresa.
+                // Intentamos resolver vía userService.buscarUsuarioPorDNI o listarClientes
+                // Aquí usamos un enfoque directo: buscar cliente por documento
+                const clientes = await clientService.listarClientes()
+                let clienteEncontrado = null
+                if (clientes.ok) {
+                    clienteEncontrado = (clientes.data || []).find(c => {
+                        const p = c.PERSONA?.[0]
+                        const e = c.EMPRESA?.[0]
+                        if (esRUC && e) return e.RUC === doc
+                        if (esDNI && p) return p.N_Documento === doc
+                        return false
+                    })
+                }
+                if (!clienteEncontrado) {
+                    notifyError("El documento existe en la base de datos pero no tiene cliente asociado")
+                    return
+                }
+                clientePorDocumento = clienteEncontrado
+                clienteIdInput.value = clienteEncontrado.ID_Cliente
+                clienteNombreEl.textContent = esRUC
+                    ? clienteEncontrado.EMPRESA?.[0]?.Razon_Social || "Empresa"
+                    : `${clienteEncontrado.PERSONA?.[0]?.Nombre || ""} ${clienteEncontrado.PERSONA?.[0]?.Ap_Paterno || ""}`.trim()
+                clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${doc}`
+                if (avisoDocumento) {
+                    avisoDocumento.textContent = "Cliente encontrado en la base de datos"
+                    avisoDocumento.style.color = "var(--state-success)"
+                }
+                if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
+                notifySuccess("Cliente encontrado")
+            } else {
+                // No existe en BD: ofrecer crear desde Factiliza
+                const nombre = esRUC
+                    ? data.razonSocial || data.nombreComercial || ""
+                    : `${data.nombres || ""} ${data.apellidoPaterno || ""} ${data.apellidoMaterno || ""}`.trim()
+
+                const crear = confirm(
+                    `El documento ${doc} no está en la base de datos.\n\n${nombre}\n¿Desea agregarlo como cliente?`
+                )
+                if (!crear) {
+                    if (avisoDocumento) {
+                        avisoDocumento.textContent = "Documento no registrado"
+                        avisoDocumento.style.color = "var(--text-muted)"
+                    }
+                    return
+                }
+
+                const datosCliente = {
+                    nombre: esRUC ? "" : (data.nombres || ""),
+                    apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
+                    apMaterno: esRUC ? "" : (data.apellidoMaterno || ""),
+                    nDocumento: esRUC ? null : doc,
+                    email: esRUC ? (data.email || "") : (data.email || ""),
+                    celular: esRUC ? (data.telefono || "") : "",
+                    usucre: usucre
+                }
+
+                const rCrear = await clientService.crearClienteNatural({
+                    ...datosCliente,
+                    nDocumento: esRUC ? null : doc,
+                    nombre: esRUC ? data.razonSocial || data.nombreComercial || "" : (data.nombres || ""),
+                    apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
+                    apMaterno: esRUC ? "" : (data.apellidoMaterno || "")
+                })
+
+                if (!rCrear.ok) {
+                    notifyError(rCrear.error?.message || "No se pudo crear el cliente")
+                    return
+                }
+
+                const nuevo = rCrear.data
+                clientePorDocumento = {
+                    ID_Cliente: nuevo.ID_Cliente,
+                    Tipo_Cliente: esRUC ? "J" : "N",
+                    PERSONA: esRUC ? null : [{ Nombre: data.nombres || "", Ap_Paterno: data.apellidoPaterno || "", Ap_Materno: data.apellidoMaterno || "", N_Documento: doc }],
+                    EMPRESA: esRUC ? [{ RUC: doc, Razon_Social: data.razonSocial || "", Nombre_Comercial: data.nombreComercial || "" }] : null
+                }
+                clienteIdInput.value = nuevo.ID_Cliente
+                clienteNombreEl.textContent = esRUC
+                    ? (data.razonSocial || data.nombreComercial || "")
+                    : `${data.nombres || ""} ${data.apellidoPaterno || ""}`.trim()
+                clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${doc}`
+                if (avisoDocumento) {
+                    avisoDocumento.textContent = "Cliente creado y listo para facturar"
+                    avisoDocumento.style.color = "var(--state-success)"
+                }
+                if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
+                notifySuccess("Cliente creado correctamente")
+            }
+        } catch (err) {
+            console.error("Error buscando documento:", err)
+            notifyError("Error al consultar el documento")
+        } finally {
+            btnBuscarDocumento.disabled = false
+            btnBuscarDocumento.textContent = "Buscar"
+        }
     }
 
     function cerrarModal() {
@@ -207,42 +476,53 @@ export async function ventasController(contenedor) {
     }
 
     async function guardar() {
-        const idCliente = Number(selCliente.value) || null
-        const idApertura = Number(selApertura.value)
+        if (!aperturaAbierta || !aperturaAbierta.ID_AperturaCaja) {
+            return notifyWarning("No hay una caja abierta. Abre un turno antes de registrar la venta.")
+        }
+        const idApertura = Number(aperturaAbierta.ID_AperturaCaja)
         const idPago = Number(selPago.value)
-        const tipoDoc = modalEl.querySelector('input[name="ventas-tipo-doc"]:checked').value
+        const idPedido = Number(selPedido.value) || null
+        const tipoDocRaw = modalEl.querySelector('input[name="ventas-tipo-doc"]:checked').value
+        const tipoDoc = tipoDocRaw === "ruc" ? "Factura" : "Boleta"
 
-        if (!idApertura) return notifyWarning("Selecciona una apertura de caja")
         if (!idPago) return notifyWarning("Selecciona un método de pago")
-
-        const items = [...listaItems.querySelectorAll(".venta-item")]
-            .map(fila => {
-                const sel = fila.querySelector(".item-producto")
-                const cant = Number(fila.querySelector(".item-cantidad").value)
-                return {
-                    ID_Producto: Number(sel.value),
-                    Cantidad: cant,
-                    Precio: Number(sel.selectedOptions[0]?.dataset.precio || 0)
-                }
-            })
-            .filter(it => it.ID_Producto)
-
-        if (!items.length) return notifyWarning("Añade al menos un producto")
-        if (items.some(it => !it.Cantidad || it.Cantidad < 1)) {
-            return notifyWarning("Todas las cantidades deben ser al menos 1")
+        if (!idPedido) return notifyWarning("Selecciona un pedido")
+        if (!pedidoSeleccionado || !pedidoSeleccionado.DETALLE_PEDIDO?.length) {
+            return notifyWarning("El pedido seleccionado no tiene productos para facturar")
         }
 
-        const totals = pintarTotal()
+        /* Resolver ID_Cliente según tipo de documento */
+        let idCliente = null
+        if (tipoDocRaw === "dni" || tipoDocRaw === "ruc") {
+            if (!clientePorDocumento) {
+                return notifyWarning("Busca y selecciona un cliente por DNI/RUC antes de continuar")
+            }
+            idCliente = clientePorDocumento.ID_Cliente
+        } else if (tipoDocRaw === "simple") {
+            idCliente = ID_CLIENTE_CONSUMIDOR_FINAL
+        }
+
+        /* Los productos vienen del pedido seleccionado (solo lectura).
+           facturar_venta lee DETALLE_PEDIDO del pedido. */
+        const productosVenta = (pedidoSeleccionado.DETALLE_PEDIDO || []).map(d => ({
+            ID_Producto: Number(d.ID_Producto),
+            Cantidad: Number(d.Cantidad || 0),
+            Precio: Number(d.Precio || 0)
+        }))
+
+        const totals = renderizarDetallePedido(pedidoSeleccionado) // recalcula el total mostrado
         const tPagado = Number(inPagado.value) || totals.total
 
         const datos = {
             ID_Cliente: idCliente,
             ID_AperturaCaja: idApertura,
+            ID_Pedido: idPedido,
             TipoDocumento: tipoDoc,
             ID_MetodoPago: idPago,
             T_Pagado: tPagado,
+            Monto_Recibido: tPagado,
             USUCRE: usucre,
-            productos: items
+            productos: productosVenta
         }
 
         btnGuardar.disabled = true
@@ -257,6 +537,7 @@ export async function ventasController(contenedor) {
         notifySuccess("Venta registrada")
         cerrarModal()
         await recargar()
+        await cargarCaja()
     }
 
     async function anularVenta(id) {
@@ -297,7 +578,7 @@ export async function ventasController(contenedor) {
             console.error("Error al obtener detalle:", resultado.error)
             return notifyError("No se pudo cargar el detalle de la venta")
         }
-        const items = resultado.data || []
+        const itemsDet = resultado.data || []
 
         const venta = ventas.find(v => v.ID_Venta === idVenta)
         if (!venta) return
@@ -321,10 +602,10 @@ export async function ventasController(contenedor) {
         detIgv.textContent = `S/ ${igv.toFixed(2)}`
         detTotalLabel.textContent = `S/ ${total.toFixed(2)}`
 
-        if (!items.length) {
+        if (!itemsDet.length) {
             detItems.innerHTML = '<tr><td colspan="4" class="vacio">Sin productos en el detalle.</td></tr>'
         } else {
-            detItems.innerHTML = items.map(it => {
+            detItems.innerHTML = itemsDet.map(it => {
                 const nombre = it.PRODUCTO?.[0]?.N_Producto || `Producto ${it.ID_Producto}`
                 const cantidad = Number(it.Cantidad || 0)
                 const precio = Number(it.Precio || 0)
@@ -355,12 +636,102 @@ export async function ventasController(contenedor) {
         pintarTabla()
     }
 
+    /* ---------- crear cliente rápido desde la venta ---------- */
+
+    async function crearClienteRapido() {
+        const Modal = (await import("../../components/Modal.js")).Modal
+
+        const formHtml = `
+            <div style="display:flex; flex-direction:column; gap: var(--space-sm);">
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">Nombre *</label>
+                    <input class="input" type="text" id="ncli-nombre" placeholder="Nombres" required>
+                </div>
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">Apellido paterno *</label>
+                    <input class="input" type="text" id="ncli-apellido" placeholder="Apellido paterno" required>
+                </div>
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">N° Documento (DNI)</label>
+                    <input class="input" type="text" id="ncli-dni" placeholder="Ej. 12345678" maxlength="8">
+                </div>
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">Celular</label>
+                    <input class="input" type="text" id="ncli-celular" placeholder="Ej. 999 888 777">
+                </div>
+                <p class="modal-nota" style="font-size:0.85rem; color:var(--text-muted); margin-top:var(--space-xs);">
+                    Los campos marcados con * son obligatorios.
+                </p>
+            </div>
+        `
+
+        const modal = new Modal({
+            title: "Nuevo cliente",
+            body: formHtml,
+            actions: [
+                { label: "Cancelar", className: "btn btn--ghost" },
+                {
+                    label: "Crear cliente",
+                    className: "btn btn--primary",
+                    onClick: async (m, boton) => {
+                        boton.disabled = true
+                        const nombre = document.getElementById("ncli-nombre")?.value?.trim() || ""
+                        const apellido = document.getElementById("ncli-apellido")?.value?.trim() || ""
+                        const dni = document.getElementById("ncli-dni")?.value?.trim() || null
+                        const celular = document.getElementById("ncli-celular")?.value?.trim() || null
+
+                        if (!nombre) {
+                            boton.disabled = false
+                            return notifyWarning("Ingresa el nombre")
+                        }
+                        if (!apellido) {
+                            boton.disabled = false
+                            return notifyWarning("Ingresa el apellido paterno")
+                        }
+
+                        const resultado = await clientService.crearClienteNatural({
+                            nombre,
+                            apPaterno: apellido,
+                            nDocumento: dni,
+                            celular,
+                            usucre
+                        })
+
+                        boton.disabled = false
+
+                        if (!resultado.ok) {
+                            console.error("Error al crear cliente:", resultado.error)
+                            return notifyError(resultado.error?.message || "No se pudo crear el cliente")
+                        }
+
+                        const nuevoCliente = resultado.data
+                        notifySuccess("Cliente creado")
+
+                        // Recargar lista de clientes y seleccionar el nuevo
+                        const r = await clientService.listarClientes()
+                        if (r.ok) {
+                            clientes = r.data
+                            poblarClientes(selCliente, clientes)
+                            const nuevoOpt = [...selCliente.options].find(
+                                o => Number(o.value) === nuevoCliente.ID_Cliente
+                            )
+                            if (nuevoOpt) selCliente.value = nuevoOpt.value
+                        }
+
+                        m.close()
+                    }
+                }
+            ]
+        })
+        modal.open()
+    }
+
     /* ---------- eventos ---------- */
 
     await cargarCaja()
     pintarTabla()
 
-    /* Select de clientes (nombre completo de PERSONA) */
+    /* Select de clientes */
     poblarClientes(selCliente, clientes)
     const optsCliente = [...selCliente.options]
     if (inBuscarCliente) {
@@ -376,7 +747,7 @@ export async function ventasController(contenedor) {
         })
     }
 
-    /* Select de cajeros: solo ADMINISTRADOR / CAJERO, mostrando el Logeo */
+    /* Select de cajeros: solo ADMINISTRADOR / CAJERO */
     if (selCajero) {
         const cajeros = (usuarios || []).filter(u =>
             (u.USUARIO_ROL || []).some(r => {
@@ -394,6 +765,11 @@ export async function ventasController(contenedor) {
         )
     }
 
+    /* Pedido a Facturar: contexto de mesa/turno para facturación */
+    selPedido.addEventListener("change", e => {
+        seleccionarPedido(e.target.value)
+    })
+
     tbodyEl.addEventListener("click", e => {
         const btn = e.target.closest("[data-accion]")
         if (!btn) return
@@ -409,7 +785,13 @@ export async function ventasController(contenedor) {
     btnNuevo.addEventListener("click", abrirNuevo)
     btnCancelar.addEventListener("click", cerrarModal)
     btnGuardar.addEventListener("click", guardar)
-    modalEl.querySelector("#ventas-add-item").addEventListener("click", agregarItem)
+    btnNuevoCliente.addEventListener("click", crearClienteRapido)
+
+    /* Tipo de documento: mostrar/ocultar campo DNI/RUC */
+    radiosTipoDoc.forEach(r => r.addEventListener("change", cambiarTipoDocumento))
+
+    btnBuscarDocumento.addEventListener("click", buscarDocumento)
+
     modalEl.addEventListener("click", e => { if (e.target === modalEl) cerrarModal() })
     modalEl.addEventListener("keydown", e => {
         if (e.key === "Enter" && e.target.tagName === "INPUT") guardar()

@@ -60,7 +60,10 @@
 
 .btn:hover,
 .btn-agregar:hover {
-    transform: scale(1.05);
+    /* Sin transform en hover: agrandar el botón desplaza el layout de los
+       contenedores padre (p. ej. los botones "Registrar movimiento" y
+       "Cerrar caja" de caja se superponen y mueven el contenedor). El
+       feedback visual ya lo da el cambio de color de cada variante. */
 }
 
 .btn:active {

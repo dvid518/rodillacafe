@@ -137,15 +137,16 @@ async function iniciar() {
         raizTopbar.replaceChildren(topbar.render())
     }
 
+    const router = new Router({ rutas: RUTAS, contenedor: "#app", porDefecto: "/dashboard" })
+
     sidebar = new Sidebar({
         seccion: null,
         rol: rolPrincipal,
         onLogout: cerrarSesion,
+        onNavigate: (ruta) => router.irA(ruta),
     })
     document.getElementById("sidebar-root").replaceChildren(sidebar.render())
     pintarTopbar()
-
-    const router = new Router({ rutas: RUTAS, contenedor: "#app", porDefecto: "/dashboard" })
 
     // al navegar se resaltan el item del sidebar y el titulo del topbar
     const marcar = () => {
@@ -160,6 +161,25 @@ async function iniciar() {
     window.addEventListener("hashchange", marcar)
     router.start()
     marcar()
+    window.addEventListener("popstate", marcar)
+
+    /* Red de seguridad: intercepta cualquier clic en un enlace interno del
+       panel, aunque el Sidebar servido este cacheado sin su propio listener o
+       el clic caiga en un icono con shadow DOM. En fase de captura corre antes
+       que cualquier handler hijo, asi que el navegador nunca sigue el href. */
+    document.addEventListener("click", (ev) => {
+        if (ev.defaultPrevented) return
+        if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return
+        const enlace = ev.target instanceof Element ? ev.target.closest("a") : null
+        if (!enlace) return
+        const href = enlace.getAttribute("href")
+        if (!href) return
+        // compatibilidad con enlaces legacy #/dashboard/... y quita query/hash
+        const destino = (href.startsWith("#/") ? href.slice(1) : href).split(/[?#]/)[0]
+        if (!destino.startsWith("/dashboard")) return
+        ev.preventDefault()
+        router.irA(destino)
+    }, true)
 
     aplicarTemaGuardado()
     window.__router = router

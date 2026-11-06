@@ -4,6 +4,13 @@
   "buildCommand": null,
   "installCommand": null,
   "framework": null,
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/dashboard/(.*)", "destination": "/dashboard.html" },
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/auth/(.*)", "destination": "/auth.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*).(avif|jpg|jpeg|png|svg|webp|woff|woff2)",

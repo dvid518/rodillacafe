@@ -31,106 +31,96 @@ async function listar() {
     return { ok: true, data }
 }
 
+async function listarPedidosPendientes() {
+    const { data, error } = await supabase
+        .from("PEDIDO")
+        .select(`
+            ID_Pedido,
+            Numero_Pedido,
+            ID_Mesa,
+            MESA ( Numero ),
+            ID_Cliente,
+            Situacion,
+            F_Pedido,
+            Total,
+            CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) ),
+            DETALLE_PEDIDO (
+                ID_DetallePedido,
+                ID_Producto,
+                Cantidad,
+                Precio,
+                Sub_Total,
+                Nota,
+                PRODUCTO ( N_Producto, Imagen )
+            )
+        `)
+        .in("Situacion", ["P", "A"])
+        .order("F_Pedido", { ascending: false })
+    if (error) return { ok: false, error }
+    return { ok: true, data: data || [] }
+}
+
 async function crear(datos) {
     // datos: {
-    //   ID_Cliente, ID_AperturaCaja, TipoDocumento, ID_MetodoPago,
-    //   productos: [{ ID_Producto, Cantidad, Precio }]
+    //   ID_Cliente, ID_AperturaCaja, ID_Pedido, TipoDocumento, ID_MetodoPago,
+    //   T_Pagado, Monto_Recibido, USUCRE, productos: [{ ID_Producto, Cantidad, Precio }]
     // }
-    const usucol = datos.USUCRE || "WEB"
 
-    // 1) Cabecera de venta (totales en cero, se actualizan despues)
-    const { data: venta, error: errVenta } = await supabase
-        .from("VENTA")
-        .insert({
-            ID_Cliente: datos.ID_Cliente || null,
-            ID_AperturaCaja: datos.ID_AperturaCaja || null,
-            TipoDocumento: datos.TipoDocumento || null,
-            ID_MetodoPago: datos.ID_MetodoPago || null,
-            Sub_Total: 0,
-            Descuento: 0,
-            IGV: 0,
-            Total: 0,
-            T_Pagado: 0,
-            Vuelto: 0,
-            Situacion: "P",
-            USUCRE: usucol,
-            ESTADO: "1"
-        })
-        .select("ID_Venta")
+    /* ---------- 0. Resolver usuario de la sesión activa ---------- */
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { ok: false, error: { message: "No hay sesión de usuario activa" } }
+    }
+    const { data: usuario, error: errUsuario } = await supabase
+        .from("USUARIO")
+        .select("ID_Usuario")
+        .eq("auth_id", user.id)
+        .eq("ESTADO", "1")
         .maybeSingle()
-    if (errVenta) return { ok: false, error: errVenta }
+    if (errUsuario || !usuario) {
+        return { ok: false, error: { message: "Usuario no vinculado a la sesión activa" } }
+    }
+    const idUsuario = usuario.ID_Usuario
 
-    // 2) Detalle de venta
-    const productos = Array.isArray(datos.productos) ? datos.productos : []
-    if (!productos.length) {
-        await supabase.from("VENTA").delete().eq("ID_Venta", venta.ID_Venta)
-        return { ok: false, error: { message: "La venta necesita al menos un producto" } }
+    /* ---------- 1. Validaciones previas ---------- */
+    if (!datos.ID_AperturaCaja) {
+        return { ok: false, error: { message: "No hay caja abierta" } }
+    }
+    if (datos.ID_Pedido == null) {
+        return { ok: false, error: { message: "Selecciona un pedido" } }
+    }
+    if (datos.ID_Cliente == null) {
+        return { ok: false, error: { message: "Selecciona un cliente" } }
     }
 
-    const detalle = productos.map(p => ({
-        ID_Venta: venta.ID_Venta,
-        ID_Producto: Number(p.ID_Producto),
-        Cantidad: Math.max(1, Number(p.Cantidad) || 1),
-        Precio: Number(p.Precio) || 0,
-        USUCRE: usucol
-    }))
+    /* ---------- 2. Llamada al procedimiento almacenado ---------- */
+    // facturar_venta valida: permiso admin/cajero, apertura abierta,
+    // existencia del pedido (P/A), tipo doc 01->cliente jurídico, genera
+    // Numero_Venta, calcula totales, inserta VENTA/DETALLE_VENTA/PAGO_VENTA,
+    // emite boleta/factura, descuenta Stock_Actual, registra movimiento de caja
+    // y cierra el pedido / libera la mesa.
+    const tipoDocumento = datos.TipoDocumento === "Factura" ? "01" : "03"
+    const montorecibido = Number(datos.Monto_Recibido || datos.T_Pagado || 0)
 
-    const { error: errDetalle } = await supabase
-        .from("DETALLE_VENTA")
-        .insert(detalle)
-    if (errDetalle) {
-        await supabase.from("VENTA").delete().eq("ID_Venta", venta.ID_Venta)
-        return { ok: false, error: errDetalle }
+    const { data, error } = await supabase.rpc("facturar_venta", {
+        p_id_pedido: Number(datos.ID_Pedido),
+        p_id_cliente: Number(datos.ID_Cliente),
+        p_id_usuario: idUsuario,
+        p_id_aperturacaja: Number(datos.ID_AperturaCaja),
+        p_tipodocumento: tipoDocumento,
+        p_id_metodopago: datos.ID_MetodoPago ? Number(datos.ID_MetodoPago) : null,
+        p_montorecibido: montorecibido,
+        p_referencia: null,
+        p_descuento: 0
+    })
+
+    if (error) {
+        console.error("Error en facturar_venta:", error)
+        return { ok: false, error }
     }
 
-    // 3) Totales (Sub_Total / IGV / Total). IGV al 18%.
-    const subTotal = detalle.reduce((s, d) => s + d.Cantidad * d.Precio, 0)
-    const igv = Number((subTotal * 0.18).toFixed(2))
-    const total = Number((subTotal + igv).toFixed(2))
-
-    const { error: errTotal } = await supabase
-        .from("VENTA")
-        .update({ Sub_Total: subTotal, IGV: igv, Total: total })
-        .eq("ID_Venta", venta.ID_Venta)
-    if (errTotal) {
-        await supabase.from("VENTA").delete().eq("ID_Venta", venta.ID_Venta)
-        return { ok: false, error: errTotal }
-    }
-
-    // 4) Pago de la venta
-    const tPagado = Number(datos.T_Pagado) || total
-    const vuelto = Number((tPagado - total).toFixed(2))
-    const { error: errPago } = await supabase
-        .from("PAGO_VENTA")
-        .insert({
-            ID_Venta: venta.ID_Venta,
-            ID_MetodoPago: datos.ID_MetodoPago || null,
-            Monto: tPagado,
-            Vuelto: vuelto,
-            USUCRE: usucol,
-            ESTADO: "1"
-        })
-    if (errPago) {
-        await supabase.from("VENTA").delete().eq("ID_Venta", venta.ID_Venta)
-        return { ok: false, error: errPago }
-    }
-
-    // 5) Descontar stock si el producto lo controla
-    for (const p of productos) {
-        const { data: prod } = await supabase
-            .from("PRODUCTO")
-            .select("Controla_Stock, Stock")
-            .eq("ID_Producto", p.ID_Producto)
-            .maybeSingle()
-        if (prod && prod.Controla_Stock === "1") {
-            await supabase
-                .from("PRODUCTO")
-                .update({ Stock: Number((prod.Stock || 0) - p.Cantidad) })
-                .eq("ID_Producto", p.ID_Producto)
-        }
-    }
-
-    return { ok: true, data: { ...venta, Total: total, Sub_Total: subTotal, IGV: igv } }
+    // facturar_venta retorna directamente el ID_Venta (número entero)
+    return { ok: true, data: { ID_Venta: data } }
 }
 
 async function anular(id, motivo) {
@@ -160,4 +150,4 @@ async function obtenerDetalle(idVenta) {
     return { ok: true, data: data || [] }
 }
 
-export const VentaAdapter = { listar, crear, anular, obtenerDetalle }
+export const VentaAdapter = { listar, crear, anular, obtenerDetalle, listarPedidosPendientes }

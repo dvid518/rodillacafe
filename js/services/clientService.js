@@ -12,6 +12,12 @@ async function crearCliente(datos) {
     return { ok: true, data: resultado.data }
 }
 
+async function crearClienteNatural(datos) {
+    const resultado = await ClientAdapter.crearClienteNatural(datos)
+    if (!resultado.ok) return { ok: false, error: resultado.error }
+    return { ok: true, data: resultado.data }
+}
+
 async function actualizarCliente(id, datos) {
     const resultado = await ClientAdapter.actualizar(id, datos)
     if (!resultado.ok) return { ok: false, error: resultado.error }
@@ -39,6 +45,7 @@ async function listarEmpresasDisponibles() {
 export const clientService = {
     listarClientes,
     crearCliente,
+    crearClienteNatural,
     actualizarCliente,
     eliminarCliente,
     listarPersonasDisponibles,

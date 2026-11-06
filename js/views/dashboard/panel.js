@@ -72,7 +72,10 @@ export async function panelController(contenedor) {
     // sin nombre de persona (empleados que no tienen CLIENTE) se saluda sin
     // nombre: antes caia al Logeo, que es el identificador de la cuenta
     const nombre = perfil.ok ? (perfil.data.nombre || "") : ""
-    contenedor.querySelector("#panel-bienvenida").textContent = nombre ? `Bienvenido, ${nombre}` : "Bienvenido"
+    const bienvenida = contenedor.querySelector("#panel-bienvenida")
+    if (bienvenida) {
+        bienvenida.textContent = nombre ? `Bienvenido, ${nombre}` : "Bienvenido"
+    }
 
     const usuariosPorId = new Map(
         (usuarios.ok ? usuarios.data : []).map(u => [u.ID_Usuario, u])
@@ -146,9 +149,25 @@ export async function panelController(contenedor) {
     /* ---------- grafico de ventas por dia ---------- */
 
     async function cargarGraficoVentas() {
-        const canvas = document.getElementById("panel-grafico-ventas")
+        const canvas = contenedor.querySelector("#panel-grafico-ventas")
         if (!canvas) return
-        if (graficoVentas) graficoVentas.destroy()
+        // Destruir TODOS los charts de Chart.js para evitar
+        // "Canvas is already in use" al navegar entre vistas.
+        // Chart.js mantiene referencias internas por canvas element,
+        // y como innerHTML crea elementos DOM nuevos cada vez,
+        // getChart(canvas) no encuentra el chart previo.
+        if (window.Chart) {
+            for (const key of Object.keys(window.Chart.instances || {})) {
+                const inst = window.Chart.instances[key]
+                if (inst && typeof inst.destroy === "function") {
+                    inst.destroy()
+                }
+            }
+        }
+        if (graficoVentas) {
+            graficoVentas.destroy()
+            graficoVentas = null
+        }
 
         const hoy = new Date()
         const hace7 = new Date(hoy)
@@ -254,7 +273,10 @@ export async function panelController(contenedor) {
 
     return () => {
         if (intervaloRefresco) clearInterval(intervaloRefresco)
-        if (graficoVentas) graficoVentas.destroy()
+        if (graficoVentas) {
+            graficoVentas.destroy()
+            graficoVentas = null
+        }
         document.body.classList.remove("sin-scroll")
     }
 }
