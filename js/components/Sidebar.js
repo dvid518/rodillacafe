@@ -66,11 +66,10 @@ const MENU_CLIENTE = [
 ]
 
 export class Sidebar {
-    constructor({ seccion = null, rol = "CLIENTE", onLogout = null, onNavigate = null } = {}) {
+    constructor({ seccion = null, rol = "CLIENTE", onLogout = null } = {}) {
         this.seccion = seccion
         this.rol = rol
         this.onLogout = onLogout
-        this.onNavigate = onNavigate
     }
 
     _menu() {
@@ -89,24 +88,13 @@ export class Sidebar {
     _crearEnlace(item) {
         const a = document.createElement("a")
         a.className = "sidebar__link"
-        // Ruta real (sin hash) para que el Router la maneje con pushState.
-        // El <base href="/"> de dashboard.html resuelve rutas absolutas bien.
-        a.href = item.seccion
+        a.href = `#${item.seccion}`
 
         const activo = item.seccion === this.seccion
         if (activo) {
             a.classList.add("sidebar__link--active")
             // el enlace activo se anuncia, no solo se pinta
             a.setAttribute("aria-current", "page")
-        }
-
-        // Navega con el router en lugar de dejar que el navegador siga el enlace
-        // (que recargaría la página y perdería el estado SPA).
-        if (this.onNavigate) {
-            a.addEventListener("click", (ev) => {
-                ev.preventDefault()
-                this.onNavigate(item.seccion)
-            })
         }
 
         const ic = icon(item.icono, { size: 18 })
@@ -127,8 +115,7 @@ export class Sidebar {
         const marca = document.createElement("div")
         marca.className = "sidebar__brand"
         const enlaceMarca = document.createElement("a")
-        // El logo lleva al inicio del panel, no a la landing pública.
-        enlaceMarca.href = "/dashboard"
+        enlaceMarca.href = "/"
         enlaceMarca.className = "sidebar__logo"
         enlaceMarca.textContent = "Rodilla"
         const sub = document.createElement("span")
@@ -171,7 +158,7 @@ export class Sidebar {
         const aside = document.querySelector(".sidebar")
         if (!aside) return
         aside.querySelectorAll(".sidebar__link").forEach(a => {
-            const esActiva = a.getAttribute("href") === seccion
+            const esActiva = a.getAttribute("href") === `#${seccion}`
             a.classList.toggle("sidebar__link--active", esActiva)
             if (esActiva) a.setAttribute("aria-current", "page")
             else a.removeAttribute("aria-current")

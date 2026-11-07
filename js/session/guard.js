@@ -2,34 +2,125 @@ import { authService } from "../services/authService.js"
 import { comprobarBackend, limpiarSesion, configInvalida } from "../lib/supabaseClient.js"
 
 /* ==========================================================================
-   LIMITE DE SESION — 10 minutos, no configurable
+   LIMITE DE INACTIVIDAD — 10 minutos, no configurable
    --------------------------------------------------------------------------
-   La sesion expira un tiempo fijo despues de iniciarse. Al superar el
-   limite se borra la sesion y se envia al login. No es un ajuste de usuario.
+   La sesion se cierra tras 10 minutos SIN actividad del usuario. Cada
+   interaccion (puntero, teclado, scroll, tactil) renueva la marca. No es un
+   ajuste de usuario: el limite es fijo.
    ========================================================================== */
-export const LIMITE_SESION_MIN = 10
-const LIMITE_SESION_MS = LIMITE_SESION_MIN * 60 * 1000
-const CLAVE_INICIO = "rodilla:sesion_inicio"
+export const LIMITE_INACTIVIDAD_MIN = 10
+const LIMITE_INACTIVIDAD_MS = LIMITE_INACTIVIDAD_MIN * 60 * 1000
+const CLAVE_ULTIMA_ACTIVIDAD = "rodilla:sesion_actividad"
+const CLAVE_INICIO_ANTERIOR = "rodilla:sesion_inicio"
+const INTERVALO_REVISION_MS = 10 * 1000
+const MIN_ENTRE_REGISTROS_MS = 1000
+const EVENTOS_ACTIVIDAD = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"]
 
-function inicioSesionGuardado() {
-    const raw = localStorage.getItem(CLAVE_INICIO)
-    return raw ? Number(raw) : null
+function ultimaActividadGuardada() {
+    const raw = localStorage.getItem(CLAVE_ULTIMA_ACTIVIDAD)
+    if (!raw) return null
+    const marca = Number(raw)
+    return Number.isFinite(marca) ? marca : null
 }
 
-/** true si ya pasaron los 10 minutos desde que se inicio sesion (o nunca se inicio). */
+/** Guarda el instante de la ultima actividad. Se llama al entrar y en cada interaccion. */
+export function registrarActividad() {
+    localStorage.setItem(CLAVE_ULTIMA_ACTIVIDAD, String(Date.now()))
+}
+
+/** Borra la marca de actividad. Se llama al cerrar sesion o al expirar. */
+export function limpiarActividad() {
+    localStorage.removeItem(CLAVE_ULTIMA_ACTIVIDAD)
+    localStorage.removeItem(CLAVE_INICIO_ANTERIOR)
+    detenerVigilanciaInactividad()
+}
+
+/** true si ya pasaron los 10 minutos sin actividad (o nunca se registro actividad). */
 export function sesionExpirada() {
-    const inicio = inicioSesionGuardado()
-    return inicio === null || Date.now() - inicio > LIMITE_SESION_MS
+    const ultima = ultimaActividadGuardada()
+    return ultima === null || Date.now() - ultima > LIMITE_INACTIVIDAD_MS
 }
 
-/** Marca el momento en que el usuario inicio sesion. Se llama al hacer login. */
-export function marcarInicioSesion() {
-    localStorage.setItem(CLAVE_INICIO, String(Date.now()))
+let vigilanciaIniciada = false
+let temporizadorRevision = null
+let ultimoRegistro = 0
+
+/** Evita escribir en localStorage en cada pixel que se mueve el raton. */
+function alHaberActividad() {
+    const ahora = Date.now()
+    if (ahora - ultimoRegistro < MIN_ENTRE_REGISTROS_MS) return
+    ultimoRegistro = ahora
+
+    /* Si ya se supero el limite, la interaccion no debe revivir la sesion:
+       se cierra en ese mismo momento. */
+    if (sesionExpirada()) {
+        solicitarCierrePorInactividad()
+        return
+    }
+    registrarActividad()
 }
 
-/** Borra la marca de inicio de sesion. Se llama al cerrar sesion. */
-export function limpiarInicioSesion() {
-    localStorage.removeItem(CLAVE_INICIO)
+function solicitarCierrePorInactividad() {
+    cerrarSesionPorInactividad().catch(error => {
+        console.error("[sesion] no se pudo cerrar por inactividad:", error)
+    })
+}
+
+function esPaginaDashboard() {
+    return /dashboard\.html$/i.test(window.location.pathname)
+}
+
+async function cerrarSesionPorInactividad() {
+    detenerVigilanciaInactividad()
+    await limpiarSesion()
+    limpiarActividad()
+
+    /* En el dashboard se manda al login conservando el destino. En una pagina
+       publica (la landing) basta con recargar: la sesion queda cerrada y el
+       visitante sigue pudiendo navegar sin autenticarse. */
+    if (!esPaginaDashboard()) {
+        window.location.reload()
+        return
+    }
+
+    const params = new URLSearchParams()
+    params.set("expirada", "1")
+    params.set("redirect", destinoActual())
+    window.location.href = `/auth.html?${params.toString()}`
+}
+
+/**
+ * Empieza a vigilar la inactividad mientras la pagina este abierta. Es
+ * idempotente: guardSesion() y roleGuard() pueden llamarla sin duplicar
+ * listeners ni temporizadores.
+ */
+export function iniciarVigilanciaInactividad() {
+    if (vigilanciaIniciada || esPaginaPublica()) return
+    vigilanciaIniciada = true
+
+    for (const evento of EVENTOS_ACTIVIDAD) {
+        window.addEventListener(evento, alHaberActividad, { passive: true })
+    }
+    document.addEventListener("scroll", alHaberActividad, { capture: true, passive: true })
+
+    temporizadorRevision = window.setInterval(() => {
+        if (sesionExpirada()) solicitarCierrePorInactividad()
+    }, INTERVALO_REVISION_MS)
+}
+
+export function detenerVigilanciaInactividad() {
+    if (!vigilanciaIniciada) return
+    vigilanciaIniciada = false
+
+    for (const evento of EVENTOS_ACTIVIDAD) {
+        window.removeEventListener(evento, alHaberActividad, { passive: true })
+    }
+    document.removeEventListener("scroll", alHaberActividad, { capture: true })
+
+    if (temporizadorRevision !== null) {
+        clearInterval(temporizadorRevision)
+        temporizadorRevision = null
+    }
 }
 
 function esPaginaPublica() {
@@ -131,16 +222,15 @@ export async function guardSesion() {
         window.location.href = "/index.html"
         return null
     }
-    // Limite de sesion: 10 minutos desde el inicio. Superado el limite se
+    // Limite de inactividad: 10 minutos sin actividad. Superado el limite se
     // borra la sesion y se envia al login con aviso.
     if (sesionExpirada()) {
-        await limpiarSesion()
-        limpiarInicioSesion()
-        const params = new URLSearchParams()
-        params.set("expirada", "1")
-        params.set("redirect", destinoActual())
-        window.location.href = `/auth.html?${params.toString()}`
+        await cerrarSesionPorInactividad()
         return null
     }
+    // Esta carga tambien cuenta como actividad y arranca la vigilancia para
+    // que la sesion se cierre sola si el usuario deja de interactuar.
+    registrarActividad()
+    iniciarVigilanciaInactividad()
     return sesion.data
 }

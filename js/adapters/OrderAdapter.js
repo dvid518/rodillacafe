@@ -26,6 +26,11 @@ const PERFIL_SELECT = `
     USUARIO (
         ID_Usuario,
         Logeo
+    ),
+    CLIENTE (
+        ID_Cliente,
+        PERSONA ( Nombre, Ap_Paterno ),
+        EMPRESA ( Razon_Social )
     )
 `
 

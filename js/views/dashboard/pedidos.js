@@ -2,22 +2,23 @@ import { guardRol } from "../../session/roleGuard.js"
 import { orderService } from "../../services/orderService.js"
 import { userService } from "../../services/userService.js"
 import { productService } from "../../services/productService.js"
+import { clientService } from "../../services/clientService.js"
 import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
-import { formatearFecha, escaparHTML } from "../../utils/format.js"
+import { formatearFecha, formatearPrecio, escaparHTML } from "../../utils/format.js"
+import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 import {
     ESTADO_PEDIDO, badge, filaVacia, filaError, opcionesEstado, monto,
     abrirModal, cerrarModal, cerrarConEscape, poblarClientes,
     mapaUsuarios, confirmarBorrado,
 } from "./crud-comun.js"
 
-/* Sin la columna del Numero_Pedido: el identificador alfanumerico se sigue
-   generando y guardando (PEDIDO.Numero_Pedido es NOT NULL y lo usan los
-   procedimientos de caja), pero no se muestra ni en la tabla ni en los
-   modales. La fila se identifica por cliente + fecha, y las acciones viajan
+/* La fila lleva la columna del ID_Pedido: es lo que la identifica de forma
+   univoca (el Numero_Pedido alfanumerico se sigue generando y guardando,
+   PEDIDO.Numero_Pedido es NOT NULL, pero no se muestra). Las acciones viajan
    por data-id, que es el ID_Pedido. */
-const CELDAS = 7
+const CELDAS = 8
 
 export async function pedidosController(contenedor) {
     const roles = await guardRol(["ADMINISTRADOR", "CAJERO", "MOZO"])
@@ -33,15 +34,18 @@ export async function pedidosController(contenedor) {
     const titulo = modal.querySelector("#pedidos-modal-titulo")
     const selCliente = modal.querySelector("#pedidos-input-cliente")
     const inBuscarCliente = modal.querySelector("#pedidos-buscar-cliente")
+    const btnNuevoCliente = modal.querySelector("#pedidos-nuevo-cliente")
+    const inBuscarProducto = modal.querySelector("#pedidos-buscar-producto")
     const selTipo = modal.querySelector("#pedidos-input-tipo")
     const selEstado = modal.querySelector("#pedidos-input-estado")
     const campoEstado = modal.querySelector("#pedidos-campo-estado")
     const inComensales = modal.querySelector("#pedidos-input-comensales")
     const inObservacion = modal.querySelector("#pedidos-input-observacion")
-    const fieldsetItems = modal.querySelector("#pedidos-items-fieldset")
-    const listaItems = modal.querySelector("#pedidos-items")
+    let panelProductos = modal.querySelector("#pedidos-productos")
+    const panelVacio = modal.querySelector("#pedidos-productos-vacio")
     const elTotal = modal.querySelector("#pedidos-total")
     const btnGuardar = modal.querySelector("#pedidos-modal-guardar")
+    const fieldsetItems = modal.querySelector("#pedidos-items-fieldset")
 
     let pedidos = []
     let productos = []
@@ -50,6 +54,8 @@ export async function pedidosController(contenedor) {
     let usuariosPorId = new Map()
     let editandoId = null
     let idUsuarioActual = null
+    /* Ítems seleccionados: mapa ID_Producto -> { ID_Producto, Cantidad, Precio, nombre } */
+    const items = new Map()
 
     /* ---------- carga ---------- */
 
@@ -75,22 +81,25 @@ export async function pedidosController(contenedor) {
     /* Sin lista de clientes no se puede dar de alta un pedido: el desplegable
        vendria vacio. RLS solo deja leer CLIENTE a un admin, asi que esto le
        pasa al cajero, no es un caso raro. */
-    const puedeCrear = esAdmin && clientes.length > 0 && tipos.length > 0
+    /* Se puede abrir el alta aunque la lista de clientes esté vacía: dentro
+       del modal hay un botón "Nuevo cliente" para crear el primero. */
+    const puedeCrear = esAdmin && tipos.length > 0
 
     if (!esAdmin) {
         contenedor.querySelectorAll(".js-solo-admin").forEach(el => el.remove())
     }
     if (esAdmin && clientes.length === 0) {
         aviso.hidden = false
-        aviso.textContent = "No hay clientes visibles para tu cuenta: no puedes registrar pedidos manualmente."
+        aviso.textContent = "No hay clientes visibles para tu cuenta: usa «Nuevo cliente» dentro del alta de pedido."
     }
 
     poblarClientes(selCliente, clientes)
-    const optsCliente = [...selCliente.options]
     if (inBuscarCliente) {
         inBuscarCliente.addEventListener("input", () => {
             const q = inBuscarCliente.value.toLowerCase()
-            for (const opt of optsCliente) {
+            // Se leen las opciones en vivo: tras crear un cliente la lista
+            // cambia y una copia antigua dejaría fuera al nuevo.
+            for (const opt of selCliente.options) {
                 if (opt.value === "") {
                     opt.hidden = false
                     continue
@@ -105,16 +114,120 @@ export async function pedidosController(contenedor) {
         o.textContent = t.N_TipoAtencion
         return o
     }))
-    selEstado.innerHTML = opcionesEstado(ESTADO_PEDIDO)
+    if (selEstado) selEstado.innerHTML = opcionesEstado(ESTADO_PEDIDO)
+
+    /* ---------- productos disponibles (catálogo) ---------- */
+
+    function productoImagenHtml(p) {
+        const imagen = p?.Imagen
+        const nombre = escaparHTML(p?.N_Producto || "Producto")
+        if (imagen) {
+            return `<img src="${escaparHTML(imagen)}" alt="${nombre}" loading="lazy">`
+        }
+        return `<re-icon icon="package" weight="filled" size="34" decorative style="color:var(--text-muted);"></re-icon>`
+    }
+
+    /* Si el navegador conserva un HTML viejo sin #pedidos-productos, el
+       controlador no debe romperse: se crea el contenedor sobre la marcha. */
+    function obtenerPanelProductos() {
+        if (panelProductos) return panelProductos
+        const contenido = modal.querySelector(".modal-form__contenido") || modal
+        panelProductos = document.createElement("div")
+        panelProductos.id = "pedidos-productos"
+        panelProductos.className = "venta-panel__productos"
+        contenido.appendChild(panelProductos)
+        return panelProductos
+    }
+
+    function pintarProductos() {
+        const q = (inBuscarProducto?.value || "").toLowerCase()
+        const filtrados = productos.filter(p =>
+            String(p.N_Producto || "").toLowerCase().includes(q)
+        )
+
+        if (panelVacio) panelVacio.hidden = filtrados.length > 0
+        obtenerPanelProductos().replaceChildren(
+            ...filtrados.map(p => {
+                const item = items.get(p.ID_Producto)
+                const cantidad = item ? item.Cantidad : 0
+                const seleccionado = cantidad > 0
+                const stock = p.Stock_Actual != null ? Number(p.Stock_Actual) : null
+                const sinStock = stock != null && stock <= 0
+                const precio = Number(p.Precio || 0)
+                const subtotal = cantidad * precio
+
+                const card = document.createElement("article")
+                card.className = `venta-producto-card${seleccionado ? " seleccionado" : ""}${sinStock ? " sin-stock" : ""}`
+                card.dataset.id = p.ID_Producto
+
+                card.innerHTML = `
+                    <div class="venta-producto-card__imagen">${productoImagenHtml(p)}</div>
+                    <div class="venta-producto-card__nombre">${escaparHTML(p.N_Producto || "Producto")}</div>
+                    <div class="venta-producto-card__acciones">
+                        <button class="btn-producto-cant" type="button" data-accion="restar" data-id="${p.ID_Producto}" ${sinStock || cantidad === 0 ? "disabled" : ""}>−</button>
+                        <input class="venta-producto-card__cantidad-input" type="number" min="0" value="${cantidad}" data-id="${p.ID_Producto}" ${sinStock ? "disabled" : ""}>
+                        <button class="btn-producto-cant btn-producto-cant--agregar" type="button" data-accion="agregar" data-id="${p.ID_Producto}" ${sinStock ? "disabled" : ""}>+</button>
+                    </div>
+                    <div class="venta-producto-card__meta">
+                        <span class="venta-producto-card__precio">S/ ${formatearPrecio(precio)}</span>
+                    </div>
+                    <div class="venta-producto-card__subtotal">${cantidad > 0 ? "S/ " + formatearPrecio(subtotal) : ""}</div>
+                `
+
+                return card
+            })
+        )
+        pintarTotal()
+    }
+
+    function cambiarCantidad(idProducto, delta) {
+        const p = productos.find(x => x.ID_Producto === idProducto)
+        if (!p) return
+        const stock = p.Stock_Actual != null ? Number(p.Stock_Actual) : null
+        const item = items.get(idProducto)
+        const actual = item ? item.Cantidad : 0
+        let nueva = actual + delta
+
+        if (nueva < 0) nueva = 0
+        if (stock != null && nueva > stock) {
+            notifyWarning(`Stock disponible: ${stock}`)
+            nueva = stock
+        }
+
+        if (nueva === 0) {
+            items.delete(idProducto)
+        } else {
+            items.set(idProducto, {
+                ID_Producto: Number(p.ID_Producto),
+                Cantidad: nueva,
+                Precio: Number(p.Precio || 0),
+                nombre: p.N_Producto,
+                Imagen: p.Imagen
+            })
+        }
+
+        pintarProductos()
+    }
 
     /* ---------- tabla ---------- */
 
-    function nombreDe(pedido) {
-        const porUsuario = usuariosPorId.get(pedido.ID_Usuario)
-        if (porUsuario) return porUsuario
-        // sin permiso para leer USUARIO: se muestra el id, no un "-"
-        if (pedido.ID_Cliente) return `Cliente #${pedido.ID_Cliente}`
-        return "—"
+    /* Un pedido tiene dos dueños distintos: ID_Cliente es PARA QUIÉN es (el
+       consumidor que se factura) e ID_Usuario es QUIÉN LO REGISTRÓ (el propio
+       cliente desde la web, o el mozo/cajero en el alta manual). La columna
+       "Cliente" muestra el CLIENTE; quién lo tomó se ve en el detalle. */
+    function nombreClienteDe(pedido) {
+        const cliente = unwrapEmbed(pedido.CLIENTE)
+        const persona = unwrapEmbed(cliente?.PERSONA)
+        const nombre = [persona?.Nombre, persona?.Ap_Paterno].filter(Boolean).join(" ").trim()
+        if (nombre) return nombre
+        const empresa = unwrapEmbed(cliente?.EMPRESA)
+        if (empresa?.Razon_Social) return empresa.Razon_Social
+        // RLS: cajero/mozo pueden no ver CLIENTE; el id es un dato real
+        return pedido.ID_Cliente ? `Cliente #${pedido.ID_Cliente}` : "—"
+    }
+
+    function registradoPor(pedido) {
+        return usuariosPorId.get(pedido.ID_Usuario) || `Usuario #${pedido.ID_Usuario ?? "?"}`
     }
 
     function iconoBoton(nombre, accion, id, etiqueta, clase = "") {
@@ -136,8 +249,9 @@ export async function pedidosController(contenedor) {
 
         const lista = [...pedidos].sort((a, b) => (b.F_Pedido || "").localeCompare(a.F_Pedido || ""))
         tbody.innerHTML = lista.map(p => `
-            <tr>
-                <td>${escaparHTML(nombreDe(p))}</td>
+            <tr data-id="${p.ID_Pedido}">
+                <td>#${p.ID_Pedido}</td>
+                <td>${escaparHTML(nombreClienteDe(p))}</td>
                 <td>${escaparHTML(formatearFecha(p.F_Pedido, { dateStyle: "short", timeStyle: "short" }))}</td>
                 <td>${escaparHTML(monto(p.Total))}</td>
                 <td>${badge(ESTADO_PEDIDO, p.Situacion)}</td>
@@ -157,16 +271,18 @@ export async function pedidosController(contenedor) {
         const cuerpo = contenedor.querySelector("#pedidos-detalle-contenido")
         cuerpo.innerHTML = `
             <dl class="detalle__datos">
-                <div><dt>Cliente</dt><dd>${escaparHTML(nombreDe(pedido))}</dd></div>
+                <div><dt>ID</dt><dd>#${pedido.ID_Pedido}</dd></div>
+                <div><dt>Cliente</dt><dd>${escaparHTML(nombreClienteDe(pedido))}</dd></div>
                 <div><dt>Fecha</dt><dd>${escaparHTML(formatearFecha(pedido.F_Pedido, { dateStyle: "medium", timeStyle: "short" }))}</dd></div>
                 <div><dt>Comensales</dt><dd>${pedido.N_Comensales ?? "—"}</dd></div>
                 <div><dt>Estado</dt><dd>${badge(ESTADO_PEDIDO, pedido.Situacion)}</dd></div>
+                <div><dt>Registró</dt><dd>${escaparHTML(registradoPor(pedido))}</dd></div>
             </dl>
             ${pedido.Observacion ? `<p class="detalle__obs"><strong>Observación:</strong> ${escaparHTML(pedido.Observacion)}</p>` : ""}
             <h3 class="detalle__titulo">Productos</h3>
             ${lineas.length ? lineas.map(d => `
                 <div class="producto-item">
-                    <span>${escaparHTML(d.PRODUCTO?.[0]?.N_Producto || `Producto ${d.ID_Producto}`)}</span>
+                    <span>${escaparHTML(unwrapEmbed(d.PRODUCTO)?.N_Producto || `Producto ${d.ID_Producto}`)}</span>
                     <span>${d.Cantidad} × ${escaparHTML(monto(d.Precio))}</span>
                     <strong>${escaparHTML(monto(Number(d.Cantidad) * Number(d.Precio)))}</strong>
                 </div>
@@ -175,46 +291,107 @@ export async function pedidosController(contenedor) {
         abrirModal(detalleModal)
     }
 
-    /* ---------- lineas del formulario ---------- */
-
-    function totalItems() {
-        let suma = 0
-        for (const fila of listaItems.querySelectorAll(".pedido-item")) {
-            const sel = fila.querySelector(".item-producto")
-            const cant = Number(fila.querySelector(".item-cantidad").value) || 0
-            const precio = Number(sel.selectedOptions[0]?.dataset.precio || 0)
-            suma += cant * precio
-        }
-        return suma
-    }
-
     function pintarTotal() {
-        elTotal.textContent = monto(totalItems())
+        let subTotal = 0
+        for (const it of items.values()) {
+            subTotal += it.Cantidad * it.Precio
+        }
+        if (elTotal) elTotal.textContent = monto(subTotal)
     }
 
-    function agregarItem() {
-        const fila = document.createElement("div")
-        fila.className = "pedido-item"
-        const opciones = ['<option value="">Producto…</option>'].concat(
-            [...productos]
-                .sort((a, b) => a.N_Producto.localeCompare(b.N_Producto))
-                .map(p => `<option value="${p.ID_Producto}" data-precio="${Number(p.Precio)}">${escaparHTML(p.N_Producto)} — ${escaparHTML(monto(p.Precio))}</option>`)
-        ).join("")
+    /* ---------- alta rápida de cliente ---------- */
 
-        fila.innerHTML = `
-            <select class="select item-producto">${opciones}</select>
-            <input class="input item-cantidad" type="number" min="1" step="1" value="1" aria-label="Cantidad">
-            <span class="pedido-item__subtotal">${escaparHTML(monto(0))}</span>
-            <button class="btn-icono btn-icono--peligro item-quitar" type="button" title="Quitar línea" aria-label="Quitar línea">${icono("x", { size: 16 })}</button>
+    async function crearClienteRapido() {
+        const Modal = (await import("../../components/Modal.js")).Modal
+
+        const formHtml = `
+            <div style="display:flex; flex-direction:column; gap: var(--space-sm);">
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">Nombre *</label>
+                    <input class="input" type="text" id="npcli-nombre" placeholder="Nombres" required>
+                </div>
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">Apellido paterno *</label>
+                    <input class="input" type="text" id="npcli-apellido" placeholder="Apellido paterno" required>
+                </div>
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">N° Documento (DNI)</label>
+                    <input class="input" type="text" id="npcli-dni" placeholder="Ej. 12345678" maxlength="8">
+                </div>
+                <div class="modal-form__campo">
+                    <label style="display:block; font-size:0.85rem; color:var(--text-muted); margin-bottom:var(--space-xs);">Celular</label>
+                    <input class="input" type="text" id="npcli-celular" placeholder="Ej. 999 888 777">
+                </div>
+                <p class="modal-nota" style="font-size:0.85rem; color:var(--text-muted); margin-top:var(--space-xs);">
+                    Los campos marcados con * son obligatorios.
+                </p>
+            </div>
         `
-        fila.querySelector(".item-producto").addEventListener("change", pintarTotal)
-        fila.querySelector(".item-cantidad").addEventListener("input", pintarTotal)
-        fila.querySelector(".item-quitar").addEventListener("click", () => {
-            fila.remove()
-            pintarTotal()
+
+        const modalCliente = new Modal({
+            title: "Nuevo cliente",
+            body: formHtml,
+            actions: [
+                { label: "Cancelar", className: "btn btn--ghost" },
+                {
+                    label: "Crear cliente",
+                    className: "btn btn--primary",
+                    onClick: async (m, boton) => {
+                        boton.disabled = true
+                        const nombre = document.getElementById("npcli-nombre")?.value?.trim() || ""
+                        const apellido = document.getElementById("npcli-apellido")?.value?.trim() || ""
+                        const dni = document.getElementById("npcli-dni")?.value?.trim() || null
+                        const celular = document.getElementById("npcli-celular")?.value?.trim() || null
+
+                        if (!nombre) {
+                            boton.disabled = false
+                            return notifyWarning("Ingresa el nombre")
+                        }
+                        if (!apellido) {
+                            boton.disabled = false
+                            return notifyWarning("Ingresa el apellido paterno")
+                        }
+
+                        const resultado = await clientService.crearClienteNatural({
+                            nombre,
+                            apPaterno: apellido,
+                            nDocumento: dni,
+                            celular,
+                            usucre: idUsuarioActual || "WEB"
+                        })
+
+                        boton.disabled = false
+
+                        if (!resultado.ok) {
+                            console.error("Error al crear cliente:", resultado.error)
+                            return notifyError(resultado.error?.message || "No se pudo crear el cliente")
+                        }
+
+                        const nuevoCliente = resultado.data
+                        notifySuccess("Cliente creado")
+
+                        // Recargar la lista y dejar seleccionado el cliente nuevo
+                        const r = await userService.listarClientes()
+                        if (r.ok) {
+                            clientes = r.data
+                            poblarClientes(selCliente, clientes)
+                            if (inBuscarCliente) inBuscarCliente.value = ""
+                            for (const opt of selCliente.options) opt.hidden = false
+                            const nuevoOpt = [...selCliente.options].find(
+                                o => Number(o.value) === Number(nuevoCliente.ID_Cliente)
+                            )
+                            if (nuevoOpt) selCliente.value = nuevoOpt.value
+                            if (aviso) aviso.hidden = true
+                        } else {
+                            console.error("Error al recargar clientes:", r.error)
+                        }
+
+                        m.close()
+                    }
+                }
+            ]
         })
-        listaItems.appendChild(fila)
-        pintarTotal()
+        modalCliente.open()
     }
 
     /* ---------- modal ---------- */
@@ -223,17 +400,24 @@ export async function pedidosController(contenedor) {
         editandoId = null
         titulo.textContent = "Nuevo pedido"
         selCliente.value = ""
-        inBuscarCliente.value = ""
+        if (inBuscarCliente) inBuscarCliente.value = ""
         for (const opt of selCliente.options) opt.hidden = false
         selCliente.disabled = false
+        if (btnNuevoCliente) btnNuevoCliente.hidden = false
         selTipo.value = tipos[0]?.ID_TipoAtencion ?? ""
         selTipo.disabled = false
         inComensales.value = 1
         inObservacion.value = ""
-        campoEstado.hidden = true
-        fieldsetItems.hidden = false
-        listaItems.replaceChildren()
-        agregarItem()
+        if (campoEstado) campoEstado.hidden = true
+        if (fieldsetItems) fieldsetItems.hidden = false
+        items.clear()
+        obtenerPanelProductos().replaceChildren()
+        if (panelVacio) {
+            panelVacio.hidden = false
+            panelVacio.textContent = "Selecciona productos para agregar al pedido."
+        }
+        if (elTotal) elTotal.textContent = monto(0)
+        pintarProductos()
         abrirModal(modal, selCliente)
     }
 
@@ -245,23 +429,25 @@ export async function pedidosController(contenedor) {
         selCliente.value = pedido.ID_Cliente ?? ""
         // el cliente y el tipo no se cambian despues: dar de alta otro pedido
         selCliente.disabled = true
+        if (btnNuevoCliente) btnNuevoCliente.hidden = true
         selTipo.value = pedido.ID_TipoAtencion ?? ""
         selTipo.disabled = true
-        selEstado.value = pedido.Situacion || "P"
-        campoEstado.hidden = false
+        if (selEstado) selEstado.value = pedido.Situacion || "P"
+        if (campoEstado) campoEstado.hidden = false
         inComensales.value = pedido.N_Comensales ?? 1
         inObservacion.value = pedido.Observacion || ""
         // las lineas no se editan: hacerlo exigiria borrar y recrear el
         // detalle. Se cambian desde el pedido del cliente.
-        fieldsetItems.hidden = true
-        abrirModal(modal, selEstado)
+        if (fieldsetItems) fieldsetItems.hidden = true
+        abrirModal(modal, selEstado || inComensales)
     }
 
     async function guardar() {
         btnGuardar.disabled = true
         try {
             if (editandoId) {
-                const situacion = selEstado.value
+                const pedidoActual = pedidos.find(p => String(p.ID_Pedido) === String(editandoId))
+                const situacion = selEstado?.value || pedidoActual?.Situacion || "P"
                 const resultado = await orderService.actualizarPedido(editandoId, {
                     Situacion: situacion,
                     Observacion: inObservacion.value.trim(),
@@ -276,20 +462,14 @@ export async function pedidosController(contenedor) {
                 const idCliente = Number(selCliente.value)
                 if (!idCliente) return notifyWarning("Selecciona un cliente")
 
-                const items = [...listaItems.querySelectorAll(".pedido-item")]
-                    .map(fila => {
-                        const sel = fila.querySelector(".item-producto")
-                        const cant = Number(fila.querySelector(".item-cantidad").value)
-                        return {
-                            ID_Producto: Number(sel.value),
-                            Cantidad: cant,
-                            Precio: Number(sel.selectedOptions[0]?.dataset.precio || 0),
-                        }
-                    })
-                    .filter(it => it.ID_Producto)
+                const productosVenta = [...items.values()].map(it => ({
+                    ID_Producto: it.ID_Producto,
+                    Cantidad: it.Cantidad,
+                    Precio: it.Precio
+                }))
 
-                if (!items.length) return notifyWarning("Añade al menos un producto")
-                if (items.some(it => !it.Cantidad || it.Cantidad < 1)) {
+                if (!productosVenta.length) return notifyWarning("Añade al menos un producto")
+                if (productosVenta.some(it => !it.Cantidad || it.Cantidad < 1)) {
                     return notifyWarning("Todas las cantidades deben ser al menos 1")
                 }
 
@@ -300,7 +480,7 @@ export async function pedidosController(contenedor) {
                     N_Comensales: Number(inComensales.value) || 1,
                     Observacion: inObservacion.value.trim(),
                     USUCRE: idUsuarioActual,
-                    items,
+                    items: productosVenta,
                 })
                 if (!resultado.ok) {
                     console.error("Error al crear pedido:", resultado.error)
@@ -314,6 +494,49 @@ export async function pedidosController(contenedor) {
 
         cerrarModal(modal)
         await recargar()
+    }
+
+    /* Guarda el pedido y, en lugar de cerrar, navega a Ventas con ese pedido
+       preseleccionado para facturarlo inmediatamente. */
+    async function guardarYProcesarVenta() {
+        if (editandoId) {
+            return notifyWarning("No se puede procesar una venta desde una edición de pedido")
+        }
+        const idCliente = Number(selCliente.value)
+        if (!idCliente) return notifyWarning("Selecciona un cliente")
+
+        const productosVenta = [...items.values()].map(it => ({
+            ID_Producto: it.ID_Producto,
+            Cantidad: it.Cantidad,
+            Precio: it.Precio
+        }))
+
+        if (!productosVenta.length) return notifyWarning("Añade al menos un producto")
+        if (productosVenta.some(it => !it.Cantidad || it.Cantidad < 1)) {
+            return notifyWarning("Todas las cantidades deben ser al menos 1")
+        }
+
+        btnGuardar.disabled = true
+        try {
+            const resultado = await orderService.crearPedidoManual({
+                ID_Cliente: idCliente,
+                ID_Usuario: miIdUsuario,
+                ID_TipoAtencion: Number(selTipo.value),
+                N_Comensales: Number(inComensales.value) || 1,
+                Observacion: inObservacion.value.trim(),
+                USUCRE: idUsuarioActual,
+                items: productosVenta,
+            })
+            if (!resultado.ok) {
+                console.error("Error al crear pedido:", resultado.error)
+                return notifyError(resultado.error?.message || "No se pudo crear el pedido")
+            }
+            notifySuccess("Pedido creado")
+            sessionStorage.setItem("rodilla:pedido_para_venta", String(resultado.data.ID_Pedido))
+            window.location.hash = "#/dashboard/ventas"
+        } finally {
+            btnGuardar.disabled = false
+        }
     }
 
     async function eliminar(id) {
@@ -362,11 +585,77 @@ export async function pedidosController(contenedor) {
     const btnNuevo = contenedor.querySelector("#pedidos-nuevo")
     if (btnNuevo && puedeCrear) btnNuevo.addEventListener("click", abrirNuevo)
 
+    if (btnNuevoCliente) btnNuevoCliente.addEventListener("click", crearClienteRapido)
+
     modal.querySelector("#pedidos-modal-cancelar").addEventListener("click", () => cerrarModal(modal))
-    modal.querySelector("#pedidos-add-item").addEventListener("click", agregarItem)
     btnGuardar.addEventListener("click", guardar)
+    const btnGuardarVenta = modal.querySelector("#pedidos-modal-guardar-venta")
+    if (btnGuardarVenta) {
+        btnGuardarVenta.addEventListener("click", guardarYProcesarVenta)
+    }
     modal.addEventListener("click", e => { if (e.target === modal) cerrarModal(modal) })
-    modal.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.tagName === "INPUT") guardar() })
+    modal.addEventListener("keydown", e => {
+        if (e.key !== "Enter" || e.target.tagName !== "INPUT") return
+        // No guardar al escribir en el buscador o en el contador de productos
+        if (e.target.type === "search" || e.target.closest(".venta-producto-card")) return
+        guardar()
+    })
+
+    /* Productos: eventos delegados al modal, así funcionan aunque el panel
+       se haya creado como fallback o el HTML haya cambiado. */
+    modal.addEventListener("click", e => {
+        const btn = e.target.closest(".btn-producto-cant")
+        if (!btn) return
+        const id = Number(btn.dataset.id)
+        const accion = btn.dataset.accion
+        if (accion === "agregar") cambiarCantidad(id, 1)
+        else if (accion === "restar") cambiarCantidad(id, -1)
+    })
+
+    modal.addEventListener("input", e => {
+        const input = e.target.closest(".venta-producto-card__cantidad-input")
+        if (!input) return
+        const id = Number(input.dataset.id)
+        const valor = Number(input.value) || 0
+        const p = productos.find(x => x.ID_Producto === id)
+        if (!p) return
+        const stock = p.Stock_Actual != null ? Number(p.Stock_Actual) : null
+        let nueva = valor
+        if (nueva < 0) nueva = 0
+        if (stock != null && nueva > stock) {
+            notifyWarning(`Stock disponible: ${stock}`)
+            nueva = stock
+            input.value = nueva
+        }
+        if (nueva === 0) {
+            items.delete(id)
+        } else {
+            items.set(id, { ID_Producto: id, Cantidad: nueva, Precio: Number(p.Precio || 0), nombre: p.N_Producto, Imagen: p.Imagen })
+        }
+
+        // No se repinta todo el panel en cada tecla: se perdería el foco del
+        // input. Se actualiza la tarjeta y el total; el repintado completo
+        // ocurre en "change".
+        const card = input.closest(".venta-producto-card")
+        if (card) {
+            card.classList.toggle("seleccionado", nueva > 0)
+            const subtotalEl = card.querySelector(".venta-producto-card__subtotal")
+            if (subtotalEl) {
+                subtotalEl.textContent = nueva > 0
+                    ? `S/ ${formatearPrecio(nueva * Number(p.Precio || 0))}`
+                    : ""
+            }
+        }
+        pintarTotal()
+    })
+
+    modal.addEventListener("change", e => {
+        if (e.target.closest(".venta-producto-card__cantidad-input")) pintarProductos()
+    })
+
+    if (inBuscarProducto) {
+        inBuscarProducto.addEventListener("input", pintarProductos)
+    }
 
     const cerrarDetalle = contenedor.querySelector("#pedidos-detalle-cerrar")
     cerrarDetalle.addEventListener("click", () => cerrarModal(detalleModal))

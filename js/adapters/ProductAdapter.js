@@ -20,7 +20,7 @@ async function listar() {
 async function listarAdmin() {
     const { data, error } = await supabase
         .from("PRODUCTO")
-        .select("ID_Producto, ID_CategoriaProducto, ID_UnidadMedida, N_Producto, Detalle, Precio, Costo, Stock_Actual, Stock_Minimo, Imagen, ESTADO")
+        .select("ID_Producto, ID_CategoriaProducto, ID_UnidadMedida, N_Producto, Detalle, Precio, Costo, Stock_Actual, Stock_Minimo, Imagen, ESTADO, CATEGORIA_PRODUCTO ( N_CategoriaProducto ), UNIDAD_MEDIDA ( N_UnidadMedida )")
         .eq("ESTADO", "1")
         .order("N_Producto")
     if (error) return { ok: false, error }

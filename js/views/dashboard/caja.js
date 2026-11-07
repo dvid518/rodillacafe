@@ -28,7 +28,6 @@ export async function cajaController(contenedor) {
     const tbodyHistorial = contenedor.querySelector("#caja-historial-tbody")
 
     const botonesAperturar = [...contenedor.querySelectorAll("[data-caja-aperturar]")]
-    const btnNuevoMovimiento = contenedor.querySelector("#caja-nuevo-movimiento")
     const btnCerrar = contenedor.querySelector("#caja-cerrar")
 
     const modalApertura = contenedor.querySelector("#caja-modal-apertura")
@@ -53,6 +52,7 @@ export async function cajaController(contenedor) {
     const inDocumento = modalMovimiento.querySelector("#caja-input-documento")
     const btnMovimientoGuardar = modalMovimiento.querySelector("#caja-movimiento-guardar")
     const btnMovimientoCancelar = modalMovimiento.querySelector("#caja-movimiento-cancelar")
+
 
     /* ---------- carga inicial ---------- */
 
@@ -440,22 +440,19 @@ export async function cajaController(contenedor) {
     })
     btnCierreGuardar.addEventListener("click", cerrar)
 
-    btnNuevoMovimiento.addEventListener("click", abrirMovimiento)
     btnMovimientoCancelar.addEventListener("click", () => {
         modalMovimiento.hidden = true
         document.body.classList.remove("sin-scroll")
     })
-    btnMovimientoGuardar.addEventListener("click", registrarMovimiento)
+    document.getElementById("caja-movimiento-guardar")?.addEventListener("click", registrarMovimiento)
 
     modalApertura.addEventListener("click", e => { if (e.target === modalApertura) { modalApertura.hidden = true; document.body.classList.remove("sin-scroll") } })
     modalCierre.addEventListener("click", e => { if (e.target === modalCierre) { modalCierre.hidden = true; document.body.classList.remove("sin-scroll") } })
-    modalMovimiento.addEventListener("click", e => { if (e.target === modalMovimiento) { modalMovimiento.hidden = true; document.body.classList.remove("sin-scroll") } })
 
     const onEscape = e => {
         if (e.key === "Escape") {
             if (!modalApertura.hidden) { modalApertura.hidden = true; document.body.classList.remove("sin-scroll") }
             if (!modalCierre.hidden) { modalCierre.hidden = true; document.body.classList.remove("sin-scroll") }
-            if (!modalMovimiento.hidden) { modalMovimiento.hidden = true; document.body.classList.remove("sin-scroll") }
         }
     }
     document.addEventListener("keydown", onEscape)

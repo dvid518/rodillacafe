@@ -3,6 +3,7 @@ import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
 import { escaparHTML, formatearPrecio } from "../../utils/format.js"
+import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
 export async function inventarioController(contenedor) {
     const [sesion] = await Promise.all([
@@ -13,9 +14,11 @@ export async function inventarioController(contenedor) {
 
     let productos = []
     let soloBajoStock = false
+    let categoriaSeleccionada = null
 
     const tbodyEl = contenedor.querySelector("#inventario-tbody")
     const filtroBajo = contenedor.querySelector("#inventario-filtro-bajo")
+    const contenedorCategorias = contenedor.querySelector(".categorias-filtro")
 
     const modalEl = contenedor.querySelector("#inventario-modal")
     const divProducto = modalEl.querySelector("#inventario-modal-producto")
@@ -39,7 +42,52 @@ export async function inventarioController(contenedor) {
         }
 
         productos = resultado.data
+        renderizarContadoresCategorias()
         pintarTabla()
+    }
+
+    function renderizarContadoresCategorias() {
+        if (!contenedorCategorias) return
+
+        const categorias = ["ADMINISTRADOR", "CAJERO", "MOZO", "CLIENTE"].map(rol => ({
+            id: rol.toLowerCase(),
+            nombre: rol.charAt(0).toUpperCase() + rol.slice(1).toLowerCase()
+        }))
+
+        // Contar productos por categoría
+        const conteos = {}
+        productos.forEach(p => {
+            const cat = unwrapEmbed(p.CATEGORIA_PRODUCTO)?.N_CategoriaProducto || "Sin categoría"
+            conteos[cat] = (conteos[cat] || 0) + 1
+        })
+
+        const html = categorias.map(cat => {
+            const count = conteos[cat.nombre] || 0
+            const estaSeleccionada = categoriaSeleccionada === cat.id
+            return `
+                <button class="categoria-filtro ${estaSeleccionada ? 'activo' : ''}" data-categoria="${cat.id}">
+                    ${cat.nombre} (${count})
+                </button>
+            `
+        }).join("")
+
+        contenedorCategorias.innerHTML = html
+
+        // Agregar eventos a los botones
+        contenedorCategorias.querySelectorAll(".categoria-filtro").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const categoriaId = btn.dataset.categoria
+                if (categoriaSeleccionada === categoriaId) {
+                    categoriaSeleccionada = null
+                    btn.classList.remove("activo")
+                } else {
+                    categoriaSeleccionada = categoriaId
+                    contenedorCategorias.querySelectorAll(".categoria-filtro").forEach(b => b.classList.remove("activo"))
+                    btn.classList.add("activo")
+                }
+                pintarTabla()
+            })
+        })
     }
 
     /* ---------- tabla ---------- */
@@ -53,17 +101,26 @@ export async function inventarioController(contenedor) {
     }
 
     function pintarTabla() {
-        if (!productos.length) {
-            tbodyEl.innerHTML = '<tr class="fila-vacia"><td colspan="6">Sin productos con stock controlado.</td></tr>'
+        const productosFiltrados = categoriaSeleccionada
+            ? productos.filter(p => {
+                  const cat = unwrapEmbed(p.CATEGORIA_PRODUCTO)?.N_CategoriaProducto || "Sin categoría"
+                  return cat === categoriaSeleccionada
+              })
+            : productos
+
+        if (!productosFiltrados.length) {
+            tbodyEl.innerHTML = '<tr class="fila-vacia"><td colspan="6">No se encontraron productos con estos filtros.</td></tr>'
             return
         }
 
-        tbodyEl.innerHTML = productos.map(p => {
+        tbodyEl.innerHTML = productosFiltrados.map(p => {
             const est = estadoDe(p.Stock_Actual, p.Stock_Minimo)
-            const categoria = p.CATEGORIA_PRODUCTO?.[0]?.N_CategoriaProducto || "-"
+            const cat = unwrapEmbed(p.CATEGORIA_PRODUCTO)
+            const categoria = cat?.N_CategoriaProducto || "Sin categoría"
+            const imagen = p.Imagen ? `<img src="${escaparHTML(p.Imagen)}" alt="${escaparHTML(p.N_Producto)}" style="width:40px;height:40px;object-fit:cover;border-radius:var(--radius-sm);">` : '<div class="placeholder-img"><re-icon icon="package" weight="filled" size="24" decorative style="color:var(--text-muted);"></re-icon></div>'
             return `
                 <tr data-id="${p.ID_Producto}">
-                    <td>${escaparHTML(p.N_Producto || "-")}</td>
+                    <td>${imagen} ${escaparHTML(p.N_Producto || "-")}</td>
                     <td>${escaparHTML(categoria)}</td>
                     <td>${Number(p.Stock_Actual || 0)}</td>
                     <td>${Number(p.Stock_Minimo || 0)}</td>

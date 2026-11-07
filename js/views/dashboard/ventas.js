@@ -8,10 +8,15 @@ import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
 import { escaparHTML, formatearPrecio, formatearFecha } from "../../utils/format.js"
-import { poblarClientes } from "./crud-comun.js"
+import { poblarClientes, nombreUsuario } from "./crud-comun.js"
 import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
-const ESTADO_VENTA = { P: "Pendiente", C: "Completada", X: "Anulada" }
+/* Situacion de VENTA: E = Emitida, X = Anulada (CK_VENTA_SITUACION).
+   Se incluyen A/P/C por compatibilidad con datos heredados. */
+const ESTADO_VENTA = { E: "Emitida", X: "Anulada", A: "Anulada", P: "Pendiente", C: "Completada" }
+
+/* TipoDocumento de VENTA: 01 = Factura, 03 = Boleta */
+const TIPO_DOCUMENTO = { "01": "Factura", "03": "Boleta" }
 
 /* Cliente genérico para boletas simples (sin DNI). ID_Cliente es NOT NULL en VENTA. */
 const ID_CLIENTE_CONSUMIDOR_FINAL = 67
@@ -29,7 +34,12 @@ export async function ventasController(contenedor) {
     let ventas = ventasR.ok ? ventasR.data : []
     let clientes = clientesR.ok ? clientesR.data : []
     let usuarios = usuariosR.ok ? usuariosR.data : []
+    const usuariosPorId = new Map((usuarios || []).map(u => [u.ID_Usuario, u]))
+    const usuarioPorLogeo = new Map((usuarios || []).map(u => [u.Logeo, u]))
     let metodosPago = []
+    /* ID del metodo de pago que es efectivo, para habilitar el campo de
+       efectivo recibido solo cuando corresponda. */
+    let idMetodoEfectivo = null
     let editandoId = null
 
     /* Apertura abierta en memoria (para mostrarla en el modal) */
@@ -38,15 +48,22 @@ export async function ventasController(contenedor) {
     const tbodyEl = contenedor.querySelector("#ventas-tbody")
     const modalEl = contenedor.querySelector("#ventas-modal")
     const selCliente = modalEl.querySelector("#ventas-input-cliente")
-    const selCajero = modalEl.querySelector("#ventas-input-cajero")
+    const lblCajero = modalEl.querySelector("#venta-cajero-nombre")
     const selPedido = modalEl.querySelector("#ventas-input-pedido")
+    const inBuscarPedido = modalEl.querySelector("#ventas-buscar-pedido")
     const avisoPedido = modalEl.querySelector("#venta-aviso-pedido")
     const selPago = modalEl.querySelector("#ventas-input-pago")
     const inBuscarCliente = modalEl.querySelector("#ventas-buscar-cliente")
     const listaPedido = modalEl.querySelector("#venta-lista-pedido")
     const avisoSinPedido = modalEl.querySelector("#venta-aviso-sin-pedido")
     const elTotal = modalEl.querySelector("#ventas-total")
+    const elSubtotal = modalEl.querySelector("#ventas-subtotal")
+    const elIgv = modalEl.querySelector("#ventas-igv")
+    const elContador = modalEl.querySelector("#venta-contador-productos")
+    const resumenEl = modalEl.querySelector("#venta-resumen")
     const inPagado = modalEl.querySelector("#ventas-input-pagado")
+    const divEfectivoEstado = modalEl.querySelector("#venta-efectivo-estado")
+    const divEfectivoVuelto = modalEl.querySelector("#venta-efectivo-vuelto")
     const btnGuardar = modalEl.querySelector("#ventas-modal-guardar")
     const btnCancelar = modalEl.querySelector("#ventas-modal-cancelar")
     const btnNuevo = contenedor.querySelector("#ventas-nuevo")
@@ -65,8 +82,20 @@ export async function ventasController(contenedor) {
     const clienteDocEl = modalEl.querySelector("#venta-cliente-doc")
     const clienteIdInput = modalEl.querySelector("#venta-cliente-id")
 
+    /* Aviso HTML debajo del campo de documento para cliente no registrado */
+    const avisoAgregarCliente = modalEl.querySelector("#venta-aviso-agregar-cliente")
+    const avisoAgregarTitulo = modalEl.querySelector("#venta-aviso-agregar-titulo")
+    const avisoAgregarMensaje = modalEl.querySelector("#venta-aviso-agregar-mensaje")
+    const btnAgregarCliente = modalEl.querySelector("#venta-btn-agregar-cliente")
+
+    /* Datos del cliente externo (DNI/RUC) pendiente de agregarse a BD */
+    let clienteExternoPendiente = null
+
     /* Pedido seleccionado (con DETALLE_PEDIDO embebido) */
     let pedidoSeleccionado = null
+
+    /* Items del detalle de venta abierto (para descargar PDF) */
+    let itemsDetalleActual = []
 
     /* Cliente resuelto por DNI/RUC (se rellena al buscar) */
     let clientePorDocumento = null
@@ -76,6 +105,8 @@ export async function ventasController(contenedor) {
     const detId = detModalEl.querySelector("#det-venta-id")
     const detFecha = detModalEl.querySelector("#det-venta-fecha")
     const detCliente = detModalEl.querySelector("#det-venta-cliente")
+    const detDocumento = detModalEl.querySelector("#det-venta-documento")
+    const detMetodo = detModalEl.querySelector("#det-venta-metodo")
     const detTotal = detModalEl.querySelector("#det-venta-total")
     const detItems = detModalEl.querySelector("#det-venta-items")
     const detSubtotal = detModalEl.querySelector("#det-subtotal")
@@ -93,7 +124,7 @@ export async function ventasController(contenedor) {
         if (rApertura.ok && rApertura.data) {
             aperturaAbierta = rApertura.data
             const a = aperturaAbierta
-            const caja = a.CAJA?.[0]?.N_Caja || "Caja"
+            const caja = unwrapEmbed(a.CAJA)?.N_Caja || "Caja"
             cajaEstado.innerHTML = `
                 <span class="venta-caja__estado--activo">${icono("circle-check", { size: 14 })} Turno ${a.Numero_Turno} — ${escaparHTML(caja)}</span>
             `
@@ -114,14 +145,17 @@ export async function ventasController(contenedor) {
         }
         if (rPagos.ok) {
             metodosPago = rPagos.data || []
+            idMetodoEfectivo = null
             selPago.replaceChildren(
                 ...metodosPago.map(m => {
                     const o = document.createElement("option")
                     o.value = m.ID_MetodoPago
                     o.textContent = escaparHTML(m.N_MetodoPago || "Pago")
+                    if (String(m.Es_Efectivo) === "1") idMetodoEfectivo = m.ID_MetodoPago
                     return o
                 })
             )
+            actualizarCampoEfectivo(selPago.value)
         }
     }
 
@@ -129,12 +163,80 @@ export async function ventasController(contenedor) {
         return formatearFecha(iso, { dateStyle: "short", timeStyle: "short" }).replace(/, /g, " ")
     }
 
+    /* ---------- efectivo recibido y vuelto ---------- */
+
+    /** Habilita el campo de efectivo recibido solo si el metodo de pago es efectivo. */
+    function actualizarCampoEfectivo(idMetodoPago) {
+        const esEfectivo = Number(idMetodoPago) === Number(idMetodoEfectivo)
+        const campo = modalEl.querySelector("#venta-efectivo-campo")
+        if (campo) campo.hidden = !esEfectivo
+        if (inPagado) {
+            inPagado.disabled = !esEfectivo
+            if (!esEfectivo) {
+                inPagado.value = ""
+                if (divEfectivoEstado) divEfectivoEstado.textContent = ""
+                if (divEfectivoVuelto) divEfectivoVuelto.textContent = ""
+            }
+        }
+        if (divEfectivoEstado) divEfectivoEstado.hidden = !esEfectivo
+        if (divEfectivoVuelto) divEfectivoVuelto.hidden = !esEfectivo
+    }
+
+    /** Calcula y muestra si el efectivo recibido cubre el total y el vuelto. */
+    function calcularVuelto() {
+        if (!inPagado || !divEfectivoEstado || !divEfectivoVuelto) return
+        const esEfectivo = Number(selPago.value) === Number(idMetodoEfectivo)
+        if (!esEfectivo || !inPagado.value) {
+            divEfectivoEstado.textContent = ""
+            divEfectivoVuelto.textContent = ""
+            return
+        }
+        const pagado = Number(inPagado.value) || 0
+        const total = Number(elTotal?.textContent?.replace(/[S\/,\s]/g, "") || 0) || 0
+        const suficiente = pagado >= total
+        const vuelto = suficiente ? pagado - total : 0
+
+        if (suficiente) {
+            divEfectivoEstado.textContent = `Efectivo recibido cubre el total`
+            divEfectivoEstado.style.color = "var(--state-success)"
+            divEfectivoVuelto.textContent = `Vuelto: S/ ${formatearPrecio(vuelto)}`
+            divEfectivoVuelto.style.color = "var(--state-success)"
+        } else {
+            const faltante = total - pagado
+            divEfectivoEstado.textContent = `Insuficiente: faltan S/ ${formatearPrecio(faltante)}`
+            divEfectivoEstado.style.color = "var(--state-danger)"
+            divEfectivoVuelto.textContent = `Vuelto: S/ 0.00`
+            divEfectivoVuelto.style.color = "var(--state-danger)"
+        }
+    }
+
     /* ---------- tabla de ventas ---------- */
 
     function nombreClienteDe(venta) {
-        const p = venta.CLIENTE?.[0]?.PERSONA?.[0]
-        if (!p) return `Cliente #${venta.ID_Cliente ?? "—"}`
-        return [p.Nombre, p.Ap_Paterno].filter(Boolean).join(" ").trim() || `Cliente #${venta.ID_Cliente}`
+        const cliente = unwrapEmbed(venta.CLIENTE)
+        const idCliente = venta.ID_Cliente ?? cliente?.ID_Cliente
+
+        if (Number(idCliente) === ID_CLIENTE_CONSUMIDOR_FINAL) return "Consumidor Final"
+
+        const persona = unwrapEmbed(cliente?.PERSONA)
+        const nombre = [persona?.Nombre, persona?.Ap_Paterno].filter(Boolean).join(" ").trim()
+        if (nombre) return nombre
+
+        const empresa = unwrapEmbed(cliente?.EMPRESA)
+        if (empresa?.Razon_Social) return empresa.Razon_Social
+
+        return idCliente != null ? `Cliente #${idCliente}` : "Consumidor Final"
+    }
+
+    function metodoPagoDe(venta) {
+        const pago = unwrapEmbed(venta.PAGO_VENTA)
+        return unwrapEmbed(pago?.METODO_PAGO)?.N_MetodoPago || "-"
+    }
+
+    function tipoDocumentoDe(venta) {
+        const tipo = String(venta.TipoDocumento || "").trim()
+        if (!tipo) return "-"
+        return TIPO_DOCUMENTO[tipo.padStart(2, "0")] || tipo
     }
 
     function pintarTabla() {
@@ -144,10 +246,14 @@ export async function ventasController(contenedor) {
         }
 
         tbodyEl.innerHTML = ventas.map(v => {
-            const cajero = v.USUARIO?.[0]?.Logeo || "—"
-            const caja = v.APERTURA_CAJA?.[0]
-            const cajaTexto = caja
-                ? `Turno ${caja.Numero_Turno} / ${escaparHTML(caja.CAJA?.[0]?.N_Caja || "")}`
+            const usuarioVenta = unwrapEmbed(v.USUARIO)
+            const cajero = usuarioVenta
+                ? nombreUsuario(usuarioVenta)
+                : "—"
+            const apertura = unwrapEmbed(v.APERTURA_CAJA)
+            const cajaNombre = unwrapEmbed(apertura?.CAJA)?.N_Caja || ""
+            const cajaTexto = apertura
+                ? `Turno ${escaparHTML(String(apertura.Numero_Turno ?? "—"))}${cajaNombre ? ` / ${escaparHTML(cajaNombre)}` : ""}`
                 : "—"
             return `
                 <tr data-id="${v.ID_Venta}">
@@ -171,15 +277,28 @@ export async function ventasController(contenedor) {
 
     /* ---------- detalle del pedido a facturar (solo lectura) ---------- */
 
+    function actualizarResumen(subTotal = 0, igv = 0, total = 0) {
+        if (elSubtotal) elSubtotal.textContent = `S/ ${formatearPrecio(subTotal)}`
+        if (elIgv) elIgv.textContent = `S/ ${formatearPrecio(igv)}`
+        if (elTotal) elTotal.textContent = `S/ ${formatearPrecio(total)}`
+    }
+
     function renderizarDetallePedido(pedido) {
         listaPedido.replaceChildren()
         const lineas = (pedido && pedido.DETALLE_PEDIDO) || []
+        const totalUnidades = lineas.reduce((sum, d) => sum + Number(d.Cantidad || 0), 0)
+
+        if (elContador) {
+            elContador.textContent = String(totalUnidades)
+            elContador.title = `${totalUnidades} ${totalUnidades === 1 ? "producto" : "productos"}`
+        }
+        if (resumenEl) resumenEl.hidden = !lineas.length
 
         if (!lineas.length) {
             avisoSinPedido.hidden = false
             avisoSinPedido.textContent = "El pedido seleccionado no tiene productos."
-            elTotal.textContent = "S/ 0.00"
-            return
+            actualizarResumen()
+            return { subTotal: 0, igv: 0, total: 0 }
         }
 
         avisoSinPedido.hidden = true
@@ -188,15 +307,15 @@ export async function ventasController(contenedor) {
         for (const d of lineas) {
             const cantidad = Number(d.Cantidad || 0)
             const precio = Number(d.Precio || 0)
-            const subtotal = cantidad * precio
+            const subtotal = d.Sub_Total != null ? Number(d.Sub_Total) : cantidad * precio
             subTotal += subtotal
-            const producto = d.PRODUCTO?.[0] || {}
+            const producto = unwrapEmbed(d.PRODUCTO) || {}
             const nombre = escaparHTML(producto.N_Producto || `Producto ${d.ID_Producto}`)
 
             const fila = document.createElement("div")
             fila.className = "venta-lista-pedido__fila"
             fila.innerHTML = `
-                <span class="venta-lista-pedido__cantidad">${cantidad}</span>
+                <span class="venta-lista-pedido__cantidad">×${cantidad}</span>
                 <span class="venta-lista-pedido__nombre">${nombre}</span>
                 <span class="venta-lista-pedido__precio">S/ ${formatearPrecio(precio)}</span>
                 <span class="venta-lista-pedido__subtotal">S/ ${formatearPrecio(subtotal)}</span>
@@ -206,7 +325,8 @@ export async function ventasController(contenedor) {
 
         const igv = Number((subTotal * 0.18).toFixed(2))
         const total = Number((subTotal + igv).toFixed(2))
-        elTotal.textContent = `S/ ${formatearPrecio(total)}`
+        actualizarResumen(subTotal, igv, total)
+        return { subTotal, igv, total }
     }
 
     function seleccionarPedido(idPedido) {
@@ -215,16 +335,39 @@ export async function ventasController(contenedor) {
             listaPedido.replaceChildren()
             avisoSinPedido.hidden = false
             avisoSinPedido.textContent = "Selecciona un pedido para ver sus productos."
-            elTotal.textContent = "S/ 0.00"
+            if (elContador) {
+                elContador.textContent = "0"
+                elContador.title = "0 productos"
+            }
+            if (resumenEl) resumenEl.hidden = true
+            actualizarResumen()
             return
         }
         const pedidoObj = pedidosPorId.get(Number(idPedido))
         pedidoSeleccionado = pedidoObj || null
         renderizarDetallePedido(pedidoSeleccionado)
+
+        /* Selecciona por defecto el cliente que ya trae el pedido.
+           Se puede cambiar libremente después desde el select de clientes. */
+        if (pedidoSeleccionado && pedidoSeleccionado.ID_Cliente && selCliente) {
+            const idCliente = String(pedidoSeleccionado.ID_Cliente)
+            const opt = [...selCliente.options].find(o => String(o.value) === idCliente)
+            if (opt) {
+                selCliente.value = idCliente
+            }
+        }
+
+        // Si es boleta con DNI o factura y hay un pedido seleccionado, buscar el cliente automáticamente
+        const activoTipoDoc = [...radiosTipoDoc].find(r => r.checked)
+        if ((activoTipoDoc.value === "dni" || activoTipoDoc.value === "ruc") && pedidoSeleccionado) {
+            buscarYMostrarClientePorPedido(pedidoSeleccionado)
+        }
     }
 
     /* Mapa ID_Pedido -> objeto pedido (con DETALLE_PEDIDO embebido) */
     const pedidosPorId = new Map()
+    /* Lista completa de pedidos pendientes; el select se repinta filtrado */
+    let pedidosPendientes = []
 
     /* ---------- modal ---------- */
 
@@ -238,16 +381,40 @@ export async function ventasController(contenedor) {
         if (tipoDocBoleta) tipoDocBoleta.checked = true
         selPago.value = ""
         inPagado.value = ""
+        actualizarCampoEfectivo(selPago.value)
+        if (inBuscarPedido) inBuscarPedido.value = ""
         selPedido.value = ""
         pedidoSeleccionado = null
         listaPedido.replaceChildren()
         avisoSinPedido.hidden = false
         avisoSinPedido.textContent = "Selecciona un pedido para ver sus productos."
-        elTotal.textContent = "S/ 0.00"
-        const resumenEl = modalEl.querySelector("#venta-resumen")
+        if (elContador) {
+            elContador.textContent = "0"
+            elContador.title = "0 productos"
+        }
         if (resumenEl) resumenEl.hidden = true
+        actualizarResumen()
+
+        // Nombre del cajero que procesa la venta (usuario de la sesion)
+        const cajeroActual = usuarioPorLogeo.get(usucre) || usuariosPorId.get(Number(sesion?.data?.ID_Usuario))
+        if (lblCajero) {
+            lblCajero.textContent = cajeroActual
+                ? `Cajero: ${nombreUsuario(cajeroActual)}`
+                : `Cajero: ${usucre}`
+        }
 
         await cargarPedidosPendientes()
+
+        // Si venimos de "Guardar y procesar venta" desde Pedidos, preseleccionar ese pedido
+        const idPedidoPreseleccionado = sessionStorage.getItem("rodilla:pedido_para_venta")
+        if (idPedidoPreseleccionado) {
+            sessionStorage.removeItem("rodilla:pedido_para_venta")
+            if (inBuscarPedido) inBuscarPedido.value = ""
+            // pintarOpcionesPedidos (dentro de cargarPedidosPendientes) ya restaura el
+            // valor si el pedido sigue en la lista filtrada; ahora aseguramos el detalle.
+            selPedido.value = idPedidoPreseleccionado
+            seleccionarPedido(idPedidoPreseleccionado)
+        }
 
         cambiarTipoDocumento()
 
@@ -256,12 +423,30 @@ export async function ventasController(contenedor) {
         selPedido.focus()
     }
 
-    async function cargarPedidosPendientes() {
-        const r = await ventaService.listarPedidosPendientes()
-        selPedido.replaceChildren()
-        pedidosPorId.clear()
+    /* Texto de una opción del select: ID, fecha, cliente y total. */
+    function textoPedido(p) {
+        const clienteObj = unwrapEmbed(p.CLIENTE)
+        const personaObj = unwrapEmbed(clienteObj?.PERSONA)
+        const nomCliente = personaObj
+            ? `${personaObj.Nombre || ""} ${personaObj.Ap_Paterno || ""}`.trim()
+            : (clienteObj?.ID_Cliente
+                ? `Cliente #${clienteObj.ID_Cliente}`
+                : `Cliente #${p.ID_Cliente}`)
+        const fecha = formatearFecha(p.F_Pedido, { dateStyle: "short", timeStyle: "short" })
+        const total = `S/ ${formatearPrecio(p.Total || 0)}`
+        return `#${p.ID_Pedido} · ${fecha} · ${nomCliente} · ${total}`
+    }
 
-        if (!r.ok || !r.data.length) {
+    /* Repinta el select aplicando el filtro del buscador. Se reconstruye en
+       vez de usar option.hidden: así el filtrado funciona igual en todos los
+       navegadores y el texto se puede buscar por ID, fecha, cliente o total. */
+    function pintarOpcionesPedidos() {
+        const q = (inBuscarPedido?.value || "").trim().toLowerCase()
+        const seleccionado = selPedido.value
+
+        selPedido.replaceChildren()
+
+        if (!pedidosPendientes.length) {
             const o = document.createElement("option")
             o.value = ""
             o.disabled = true
@@ -270,7 +455,6 @@ export async function ventasController(contenedor) {
             selPedido.disabled = true
             if (avisoPedido) avisoPedido.hidden = false
             btnGuardar.disabled = true
-            console.warn("No hay pedidos pendientes para facturar:", r.ok ? null : r.error)
             return
         }
 
@@ -278,31 +462,43 @@ export async function ventasController(contenedor) {
         if (avisoPedido) avisoPedido.hidden = true
         btnGuardar.disabled = false
 
+        const filtrados = q
+            ? pedidosPendientes.filter(p => textoPedido(p).toLowerCase().includes(q))
+            : pedidosPendientes
+
         const optVacio = document.createElement("option")
         optVacio.value = ""
-        optVacio.textContent = "Selecciona un pedido"
+        optVacio.textContent = filtrados.length ? "Selecciona un pedido" : "Sin resultados"
         selPedido.appendChild(optVacio)
 
-        for (const p of r.data) {
-            const mesa = unwrapEmbed(p.MESA)?.Numero || null
-            const clienteObj = unwrapEmbed(p.CLIENTE)
-            const personaObj = clienteObj ? unwrapEmbed(clienteObj.PERSONA) : null
-
-            const nomCliente = personaObj
-                ? `${personaObj.Nombre} ${personaObj.Ap_Paterno || ""}`.trim()
-                : null
-
-            const partes = [`#${p.ID_Pedido}`]
-            if (mesa) partes.push(`Mesa ${mesa}`)
-            if (nomCliente) partes.push(`- ${nomCliente}`)
-            else partes.push(`- Cliente #${p.ID_Cliente}`)
-
+        for (const p of filtrados) {
             const o = document.createElement("option")
             o.value = p.ID_Pedido
-            o.textContent = partes.join(" ")
+            o.textContent = textoPedido(p)
             selPedido.appendChild(o)
-            pedidosPorId.set(Number(p.ID_Pedido), p)
         }
+
+        // Si el pedido seleccionado sigue visible, se conserva; si el filtro
+        // lo oculta, se limpia también el detalle para no facturar a ciegas.
+        if (seleccionado && filtrados.some(p => String(p.ID_Pedido) === String(seleccionado))) {
+            selPedido.value = seleccionado
+        } else {
+            selPedido.value = ""
+            if (seleccionado) seleccionarPedido("")
+        }
+    }
+
+    async function cargarPedidosPendientes() {
+        const r = await ventaService.listarPedidosPendientes()
+        pedidosPendientes = r.ok ? (r.data || []) : []
+        pedidosPorId.clear()
+        for (const p of pedidosPendientes) pedidosPorId.set(Number(p.ID_Pedido), p)
+
+        if (!r.ok) {
+            console.warn("No se pudieron cargar los pedidos pendientes:", r.error)
+        }
+
+        pintarOpcionesPedidos()
     }
 
     /* ---------- tipo de documento y búsqueda por DNI/RUC ---------- */
@@ -321,6 +517,8 @@ export async function ventasController(contenedor) {
         clienteDocEl.textContent = ""
         inDocumento.value = ""
         if (avisoDocumento) avisoDocumento.textContent = ""
+        if (avisoAgregarCliente) avisoAgregarCliente.hidden = true
+        clienteExternoPendiente = null
 
         // Aviso informativo de Consumidor Final (solo boleta simple)
         const avisoCF = document.getElementById("venta-aviso-consumidor-final")
@@ -330,7 +528,60 @@ export async function ventasController(contenedor) {
         if (esSimple) {
             selCliente.value = ""
         }
+
+        // Si se selecciona boleta con DNI o factura y hay un pedido seleccionado,
+        // buscar automáticamente el cliente del pedido
+        if ((activo.value === "dni" || activo.value === "ruc") && pedidoSeleccionado) {
+            buscarYMostrarClientePorPedido(pedidoSeleccionado)
+        }
     }
+
+    async function buscarYMostrarClientePorPedido(pedido) {
+        if (!pedido) return
+
+        const clienteObj = unwrapEmbed(pedido.CLIENTE)
+        if (!clienteObj) return
+
+        const idCliente = clienteObj.ID_Cliente
+        const cliente = clientes.find(c => c.ID_Cliente === idCliente)
+
+        if (!cliente) {
+            notifyWarning("El cliente no existe en la base de datos")
+            return
+        }
+
+        // Determinar el documento y tipo según sea persona o empresa
+        const persona = cliente.PERSONA?.[0]
+        const empresa = cliente.EMPRESA?.[0]
+
+        let documento = ""
+        let tipoDoc = ""
+
+        if (persona) {
+            documento = persona.N_Documento || ""
+            tipoDoc = "dni"
+        } else if (empresa) {
+            documento = empresa.RUC || ""
+            tipoDoc = "ruc"
+        }
+
+        if (!documento) {
+            notifyWarning("El cliente no tiene documento asociado")
+            return
+        }
+
+        // Llenar datos del cliente encontrado
+        clientePorDocumento = cliente
+        clienteIdInput.value = idCliente
+        clienteNombreEl.textContent = esRUC
+            ? (cliente.EMPRESA?.[0]?.Razon_Social || "")
+            : `${cliente.PERSONA?.[0]?.Nombre || ""} ${cliente.PERSONA?.[0]?.Ap_Paterno || ""}`.trim()
+        clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${documento}`
+        if (avisoDocumento) {
+            avisoDocumento.textContent = "Cliente encontrado en la base de datos"
+            avisoDocumento.style.color = "var(--state-success)"
+        }
+        if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
 
     async function buscarDocumento() {
         const doc = String(inDocumento.value || "").trim()
@@ -371,21 +622,23 @@ export async function ventasController(contenedor) {
 
             if (data.yaExiste) {
                 // Ya está en BD: necesitamos resolver el ID_Cliente
-                // Para DNI: buscar en CLIENTE por persona. Para RUC: buscar por empresa.
-                // Intentamos resolver vía userService.buscarUsuarioPorDNI o listarClientes
-                // Aquí usamos un enfoque directo: buscar cliente por documento
                 const clientes = await clientService.listarClientes()
                 let clienteEncontrado = null
                 if (clientes.ok) {
                     clienteEncontrado = (clientes.data || []).find(c => {
-                        const p = c.PERSONA?.[0]
-                        const e = c.EMPRESA?.[0]
-                        if (esRUC && e) return e.RUC === doc
-                        if (esDNI && p) return p.N_Documento === doc
+                        const persona = unwrapEmbed(c.PERSONA)
+                        const empresa = unwrapEmbed(c.EMPRESA)
+                        if (esRUC && empresa) return empresa.RUC === doc
+                        if (esDNI && persona) return persona.N_Documento === doc
                         return false
                     })
                 }
                 if (!clienteEncontrado) {
+                    if (avisoDocumento) {
+                        avisoDocumento.textContent = "El documento existe en la base de datos pero no tiene cliente asociado"
+                        avisoDocumento.style.color = "var(--state-danger)"
+                        avisoDocumento.hidden = false
+                    }
                     notifyError("El documento existe en la base de datos pero no tiene cliente asociado")
                     return
                 }
@@ -398,67 +651,35 @@ export async function ventasController(contenedor) {
                 if (avisoDocumento) {
                     avisoDocumento.textContent = "Cliente encontrado en la base de datos"
                     avisoDocumento.style.color = "var(--state-success)"
+                    avisoDocumento.hidden = false
                 }
                 if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
                 notifySuccess("Cliente encontrado")
+                avisoAgregarCliente?.classList.add("hidden")
             } else {
-                // No existe en BD: ofrecer crear desde Factiliza
+                // No existe en BD: mostrar aviso HTML debajo del documento
                 const nombre = esRUC
                     ? data.razonSocial || data.nombreComercial || ""
                     : `${data.nombres || ""} ${data.apellidoPaterno || ""} ${data.apellidoMaterno || ""}`.trim()
 
-                const crear = confirm(
-                    `El documento ${doc} no está en la base de datos.\n\n${nombre}\n¿Desea agregarlo como cliente?`
-                )
-                if (!crear) {
-                    if (avisoDocumento) {
-                        avisoDocumento.textContent = "Documento no registrado"
-                        avisoDocumento.style.color = "var(--text-muted)"
-                    }
-                    return
+                clienteExternoPendiente = {
+                    esRUC,
+                    doc,
+                    nombre,
+                    data
                 }
 
-                const datosCliente = {
-                    nombre: esRUC ? "" : (data.nombres || ""),
-                    apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
-                    apMaterno: esRUC ? "" : (data.apellidoMaterno || ""),
-                    nDocumento: esRUC ? null : doc,
-                    email: esRUC ? (data.email || "") : (data.email || ""),
-                    celular: esRUC ? (data.telefono || "") : "",
-                    usucre: usucre
+                if (avisoAgregarTitulo) avisoAgregarTitulo.textContent = "Cliente no registrado en la base de datos"
+                if (avisoAgregarMensaje) {
+                    avisoAgregarMensaje.innerHTML = `
+                        Se encontró: <strong>${escaparHTML(nombre)}</strong> (${esRUC ? "RUC" : "DNI"}: ${doc}).<br>
+                        Al continuar, el cliente se agregará a la base de datos automáticamente.
+                    `
                 }
-
-                const rCrear = await clientService.crearClienteNatural({
-                    ...datosCliente,
-                    nDocumento: esRUC ? null : doc,
-                    nombre: esRUC ? data.razonSocial || data.nombreComercial || "" : (data.nombres || ""),
-                    apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
-                    apMaterno: esRUC ? "" : (data.apellidoMaterno || "")
-                })
-
-                if (!rCrear.ok) {
-                    notifyError(rCrear.error?.message || "No se pudo crear el cliente")
-                    return
-                }
-
-                const nuevo = rCrear.data
-                clientePorDocumento = {
-                    ID_Cliente: nuevo.ID_Cliente,
-                    Tipo_Cliente: esRUC ? "J" : "N",
-                    PERSONA: esRUC ? null : [{ Nombre: data.nombres || "", Ap_Paterno: data.apellidoPaterno || "", Ap_Materno: data.apellidoMaterno || "", N_Documento: doc }],
-                    EMPRESA: esRUC ? [{ RUC: doc, Razon_Social: data.razonSocial || "", Nombre_Comercial: data.nombreComercial || "" }] : null
-                }
-                clienteIdInput.value = nuevo.ID_Cliente
-                clienteNombreEl.textContent = esRUC
-                    ? (data.razonSocial || data.nombreComercial || "")
-                    : `${data.nombres || ""} ${data.apellidoPaterno || ""}`.trim()
-                clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${doc}`
-                if (avisoDocumento) {
-                    avisoDocumento.textContent = "Cliente creado y listo para facturar"
-                    avisoDocumento.style.color = "var(--state-success)"
-                }
-                if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
-                notifySuccess("Cliente creado correctamente")
+                if (avisoAgregarCliente) avisoAgregarCliente.hidden = false
+                if (avisoDocumento) avisoDocumento.hidden = true
+                if (campoClienteEncontrado) campoClienteEncontrado.hidden = true
+                return
             }
         } catch (err) {
             console.error("Error buscando documento:", err)
@@ -510,8 +731,13 @@ export async function ventasController(contenedor) {
             Precio: Number(d.Precio || 0)
         }))
 
-        const totals = renderizarDetallePedido(pedidoSeleccionado) // recalcula el total mostrado
-        const tPagado = Number(inPagado.value) || totals.total
+        const totals = renderizarDetallePedido(pedidoSeleccionado) || { total: 0 } // recalcula el total mostrado
+        const esEfectivo = Number(idPago) === Number(idMetodoEfectivo)
+        const tPagado = esEfectivo ? (Number(inPagado.value) || 0) : (totals.total || 0)
+
+        if (esEfectivo && tPagado < totals.total) {
+            return notifyWarning(`El efectivo recibido (S/ ${formatearPrecio(tPagado)}) es insuficiente para el total (S/ ${formatearPrecio(totals.total)}).`)
+        }
 
         const datos = {
             ID_Cliente: idCliente,
@@ -538,6 +764,10 @@ export async function ventasController(contenedor) {
         cerrarModal()
         await recargar()
         await cargarCaja()
+        // Abrir el detalle de la venta recién creada para poder descargar el PDF
+        if (resultado.data?.ID_Venta) {
+            verDetalle(resultado.data.ID_Venta)
+        }
     }
 
     async function anularVenta(id) {
@@ -583,11 +813,7 @@ export async function ventasController(contenedor) {
         const venta = ventas.find(v => v.ID_Venta === idVenta)
         if (!venta) return
 
-        const cliente = venta.CLIENTE?.[0]
-        const persona = cliente?.PERSONA?.[0]
-        const nombreCliente = persona
-            ? `${persona.Nombre} ${persona.Ap_Paterno || ""}`.trim()
-            : (cliente ? `Cliente #${cliente.ID_Cliente}` : "-")
+        const nombreCliente = nombreClienteDe(venta)
 
         const fecha = fechaLegible(venta.F_Venta)
         const total = Number(venta.Total || 0)
@@ -596,7 +822,9 @@ export async function ventasController(contenedor) {
 
         detId.textContent = `#${venta.ID_Venta}`
         detFecha.textContent = fecha
-        detCliente.textContent = escaparHTML(nombreCliente)
+        detCliente.textContent = nombreCliente
+        if (detDocumento) detDocumento.textContent = tipoDocumentoDe(venta)
+        if (detMetodo) detMetodo.textContent = metodoPagoDe(venta)
         detTotal.textContent = `S/ ${total.toFixed(2)}`
         detSubtotal.textContent = `S/ ${subTotal.toFixed(2)}`
         detIgv.textContent = `S/ ${igv.toFixed(2)}`
@@ -606,7 +834,7 @@ export async function ventasController(contenedor) {
             detItems.innerHTML = '<tr><td colspan="4" class="vacio">Sin productos en el detalle.</td></tr>'
         } else {
             detItems.innerHTML = itemsDet.map(it => {
-                const nombre = it.PRODUCTO?.[0]?.N_Producto || `Producto ${it.ID_Producto}`
+                const nombre = unwrapEmbed(it.PRODUCTO)?.N_Producto || `Producto ${it.ID_Producto}`
                 const cantidad = Number(it.Cantidad || 0)
                 const precio = Number(it.Precio || 0)
                 const subtotal = Number(it.Sub_Total || cantidad * precio)
@@ -620,6 +848,8 @@ export async function ventasController(contenedor) {
                 `
             }).join("")
         }
+
+        itemsDetalleActual = itemsDet
 
         detModalEl.hidden = false
         document.body.classList.add("sin-scroll")
@@ -712,6 +942,10 @@ export async function ventasController(contenedor) {
                         if (r.ok) {
                             clientes = r.data
                             poblarClientes(selCliente, clientes)
+                            for (const opt of selCliente.options) {
+                                if (opt.value === "") continue
+                                opt.textContent = `#${opt.value} - ${opt.textContent}`
+                            }
                             const nuevoOpt = [...selCliente.options].find(
                                 o => Number(o.value) === nuevoCliente.ID_Cliente
                             )
@@ -731,7 +965,7 @@ export async function ventasController(contenedor) {
     await cargarCaja()
     pintarTabla()
 
-    /* Select de clientes */
+    /* Select de clientes: poblarClientes ya formatea como "ID - Nombre" */
     poblarClientes(selCliente, clientes)
     const optsCliente = [...selCliente.options]
     if (inBuscarCliente) {
@@ -747,28 +981,14 @@ export async function ventasController(contenedor) {
         })
     }
 
-    /* Select de cajeros: solo ADMINISTRADOR / CAJERO */
-    if (selCajero) {
-        const cajeros = (usuarios || []).filter(u =>
-            (u.USUARIO_ROL || []).some(r => {
-                const rol = r.ROL?.[0]?.N_Rol
-                return rol === "ADMINISTRADOR" || rol === "CAJERO"
-            })
-        )
-        selCajero.replaceChildren(
-            ...cajeros.map(u => {
-                const o = document.createElement("option")
-                o.value = u.ID_Usuario
-                o.textContent = escaparHTML(u.Logeo || `Usuario #${u.ID_Usuario}`)
-                return o
-            })
-        )
-    }
-
     /* Pedido a Facturar: contexto de mesa/turno para facturación */
     selPedido.addEventListener("change", e => {
         seleccionarPedido(e.target.value)
     })
+
+    if (inBuscarPedido) {
+        inBuscarPedido.addEventListener("input", pintarOpcionesPedidos)
+    }
 
     tbodyEl.addEventListener("click", e => {
         const btn = e.target.closest("[data-accion]")
@@ -790,7 +1010,73 @@ export async function ventasController(contenedor) {
     /* Tipo de documento: mostrar/ocultar campo DNI/RUC */
     radiosTipoDoc.forEach(r => r.addEventListener("change", cambiarTipoDocumento))
 
+    /* Metodo de pago: habilitar efectivo recibido solo si es efectivo */
+    selPago.addEventListener("change", e => {
+        actualizarCampoEfectivo(e.target.value)
+        calcularVuelto()
+    })
+
+    inPagado.addEventListener("input", calcularVuelto)
+
     btnBuscarDocumento.addEventListener("click", buscarDocumento)
+
+    btnAgregarCliente?.addEventListener("click", async () => {
+        if (!clienteExternoPendiente) return
+        const { esRUC, doc, nombre, data } = clienteExternoPendiente
+
+        btnAgregarCliente.disabled = true
+        btnAgregarCliente.textContent = "Agregando..."
+
+        const datosCliente = {
+            nombre: esRUC ? "" : (data.nombres || ""),
+            apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
+            apMaterno: esRUC ? "" : (data.apellidoMaterno || ""),
+            nDocumento: esRUC ? null : doc,
+            email: esRUC ? (data.email || "") : (data.email || ""),
+            celular: esRUC ? (data.telefono || "") : "",
+            usucre: usucre
+        }
+
+        const rCrear = await clientService.crearClienteNatural({
+            ...datosCliente,
+            nDocumento: esRUC ? null : doc,
+            nombre: esRUC ? data.razonSocial || data.nombreComercial || "" : (data.nombres || ""),
+            apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
+            apMaterno: esRUC ? "" : (data.apellidoMaterno || "")
+        })
+
+        btnAgregarCliente.disabled = false
+        btnAgregarCliente.textContent = "Agregar cliente a la base de datos"
+
+        if (!rCrear.ok) {
+            if (avisoAgregarMensaje) avisoAgregarMensaje.textContent = rCrear.error?.message || "No se pudo crear el cliente"
+            if (avisoAgregarMensaje) avisoAgregarMensaje.style.color = "var(--state-danger)"
+            notifyError(rCrear.error?.message || "No se pudo crear el cliente")
+            return
+        }
+
+        const nuevo = rCrear.data
+        clientePorDocumento = {
+            ID_Cliente: nuevo.ID_Cliente,
+            Tipo_Cliente: esRUC ? "J" : "N",
+            PERSONA: esRUC ? null : [{ Nombre: data.nombres || "", Ap_Paterno: data.apellidoPaterno || "", Ap_Materno: data.apellidoMaterno || "", N_Documento: doc }],
+            EMPRESA: esRUC ? [{ RUC: doc, Razon_Social: data.razonSocial || "", Nombre_Comercial: data.nombreComercial || "" }] : null
+        }
+        clienteIdInput.value = nuevo.ID_Cliente
+        clienteNombreEl.textContent = esRUC
+            ? (data.razonSocial || data.nombreComercial || "")
+            : `${data.nombres || ""} ${data.apellidoPaterno || ""}`.trim()
+        clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${doc}`
+        if (avisoDocumento) {
+            avisoDocumento.textContent = "Cliente creado y listo para facturar"
+            avisoDocumento.style.color = "var(--state-success)"
+            avisoDocumento.hidden = false
+        }
+        if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
+        if (avisoAgregarCliente) avisoAgregarCliente.hidden = true
+        clienteExternoPendiente = null
+        notifySuccess("Cliente creado correctamente")
+    })
 
     modalEl.addEventListener("click", e => { if (e.target === modalEl) cerrarModal() })
     modalEl.addEventListener("keydown", e => {
@@ -813,6 +1099,68 @@ export async function ventasController(contenedor) {
         document.body.classList.remove("sin-scroll")
     })
     detModalEl.addEventListener("click", e => { if (e.target === detModalEl) { detModalEl.hidden = true; document.body.classList.remove("sin-scroll") } })
+
+    /* Descargar PDF del detalle de venta */
+    const btnDetPDF = detModalEl.querySelector("#ventas-detalle-descargar-pdf")
+    if (btnDetPDF) {
+        btnDetPDF.addEventListener("click", async () => {
+            try {
+                const { jsPDF } = window.jspdf || {}
+                if (!jsPDF) {
+                    return notifyError("No se pudo cargar la librería de PDF")
+                }
+
+                const ventaId = detId.textContent.replace("#", "").trim()
+                const fecha = detFecha.textContent
+                const cliente = detCliente.textContent
+                const documento = detDocumento?.textContent || "-"
+                const metodo = detMetodo?.textContent || "-"
+                const total = detTotal.textContent
+                const subTotal = detSubtotal.textContent
+                const igv = detIgv.textContent
+
+                const doc = new jsPDF()
+
+                doc.setFontSize(16)
+                doc.text("Comprobante de Venta", 20, 20)
+                doc.setFontSize(11)
+                doc.text(`Venta #${ventaId}`, 20, 35)
+                doc.text(`Fecha: ${fecha}`, 20, 45)
+                doc.text(`Cliente: ${cliente}`, 20, 55)
+                doc.text(`Documento: ${documento}`, 20, 65)
+                doc.text(`Método de pago: ${metodo}`, 20, 75)
+
+                doc.text("Productos:", 20, 90)
+
+                doc.autoTable({
+                    startY: 98,
+                    head: [["Producto", "Cantidad", "Precio", "Subtotal"]],
+                    body: itemsDetalleActual.map(it => [
+                        unwrapEmbed(it.PRODUCTO)?.N_Producto || `Producto ${it.ID_Producto}`,
+                        String(it.Cantidad || 0),
+                        `S/ ${Number(it.Precio || 0).toFixed(2)}`,
+                        `S/ ${Number(it.Sub_Total || 0).toFixed(2)}`,
+                    ]),
+                })
+
+                const finalY = (doc.lastAutoTable?.finalY || 130) + 15
+                doc.text(`Subtotal: ${subTotal}`, 20, finalY)
+                doc.text(`IGV (18%): ${igv}`, 20, finalY + 10)
+                doc.text(`Total: ${total}`, 20, finalY + 20)
+
+                doc.save(`venta_${ventaId}.pdf`)
+            } catch (err) {
+                console.error("Error generando PDF:", err)
+                notifyError("No se pudo generar el PDF: " + (err.message || err))
+            }
+        })
+    }
+
+    /* Si venimos de "Guardar y procesar venta" desde Pedidos,
+       abrir el modal de nueva venta con el pedido precargado. */
+    if (sessionStorage.getItem("rodilla:pedido_para_venta")) {
+        await abrirNuevo()
+    }
 
     return () => {
         document.removeEventListener("keydown", onEscape)

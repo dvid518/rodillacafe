@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Rodilla — Panel</title>
-    <base href="/">
     <style>
         body { margin: 0; font-family: system-ui, sans-serif; background: #360e06; color: #ffe8c9; display: flex; align-items: center; justify-content: center; height: 100vh; }
         .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,232,201,0.3); border-top-color: #ffe8c9; border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -20,7 +19,8 @@
             if (path.length > 1 && path.endsWith("/")) {
                 path = path.slice(0, -1);
             }
-            history.replaceState(null, "", path);
+            // Conserva el hash (#/dashboard/...) para que el router sepa la vista.
+            history.replaceState(null, "", path + window.location.hash);
             fetch("/dashboard.html")
                 .then(function (r) { return r.text(); })
                 .then(function (html) {

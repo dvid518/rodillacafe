@@ -74,7 +74,7 @@
                 <!-- Izquierda: productos del pedido a facturar (solo lectura) -->
                 <aside class="venta-panel venta-panel--productos">
                     <div class="venta-panel__header">
-                        <h3>Productos del Pedido</h3>
+                        <h3>Productos del Pedido <span class="venta-contador" id="venta-contador-productos">0</span></h3>
                     </div>
                     <div class="venta-lista-pedido" id="venta-lista-pedido">
                         <!-- Se llena con las líneas de DETALLE_PEDIDO al seleccionar un pedido -->
@@ -89,7 +89,10 @@
                     <!-- Pedido a Facturar primero: al seleccionarlo se cargan sus productos (solo lectura) -->
                     <div class="venta-campo">
                         <label class="venta-label">Pedido a Facturar</label>
-                        <select class="select input--sm" id="ventas-input-pedido"></select>
+                        <div class="venta-pedido-wrap">
+                            <input class="input input--sm" type="search" id="ventas-buscar-pedido" placeholder="Buscar por ID, fecha, cliente o total...">
+                            <select class="select input--sm" id="ventas-input-pedido"></select>
+                        </div>
                         <p id="venta-aviso-pedido" hidden class="venta-aviso">
                             Selecciona un pedido en estado Pendiente o Atendido para facturarlo.
                         </p>
@@ -104,9 +107,9 @@
                         </div>
                     </div>
 
-                    <div class="venta-campo">
+                    <div class="venta-campo" style="display:flex; align-items:center; gap:10px;">
                         <label class="venta-label">Cajero</label>
-                        <select class="select input--sm" id="ventas-input-cajero"></select>
+                        <span id="venta-cajero-nombre" style="font-weight:600; color:var(--text);">—</span>
                     </div>
 
                     <div class="venta-caja">
@@ -116,10 +119,35 @@
                         </div>
                     </div>
 
+                    <!-- Resumen del pedido: se muestra antes de elegir el pago -->
+                    <div class="venta-resumen" id="venta-resumen" hidden>
+                        <h3>Resumen del pedido</h3>
+                        <div class="venta-resumen__fila">
+                            <span>Subtotal</span>
+                            <span id="ventas-subtotal">S/ 0.00</span>
+                        </div>
+                        <div class="venta-resumen__fila">
+                            <span>IGV (18%)</span>
+                            <span id="ventas-igv">S/ 0.00</span>
+                        </div>
+                        <div class="venta-resumen__fila venta-resumen__fila--total">
+                            <span>Total</span>
+                            <span id="ventas-total">S/ 0.00</span>
+                        </div>
+                    </div>
+
                     <div class="venta-campo">
                         <label class="venta-label">Método de pago</label>
                         <select class="select input--sm" id="ventas-input-pago"></select>
                     </div>
+
+                    <!-- Efectivo recibido: visible solo si el método de pago es Efectivo -->
+                    <div class="venta-efectivo" id="venta-efectivo-campo" hidden>
+                        <label class="venta-label">Efectivo recibido</label>
+                        <input class="input input--sm" type="number" id="ventas-input-pagado" step="0.01" min="0" placeholder="0.00" disabled>
+                    </div>
+                    <div id="venta-efectivo-estado" class="venta-efectivo__estado" hidden style="font-size:0.85rem; margin-top:4px;"></div>
+                    <div id="venta-efectivo-vuelto" class="venta-efectivo__vuelto" hidden style="font-size:0.85rem; font-weight:600; margin-top:2px;"></div>
 
                     <div class="venta-campo venta-campo--tipo-doc">
                         <label class="venta-label">Tipo documento</label>
@@ -147,6 +175,12 @@
                             <button class="btn btn--primary btn--sm" type="button" id="ventas-buscar-documento">Buscar</button>
                         </div>
                         <p id="venta-aviso-documento" class="venta-aviso" hidden></p>
+                        <!-- Aviso HTML cuando el cliente no está en BD: se muestra debajo del documento -->
+                        <div id="venta-aviso-agregar-cliente" class="venta-aviso venta-aviso--agregar" hidden style="margin-top: var(--space-xs); padding: var(--space-sm); background: var(--surface-strong); border-radius: var(--radius-md); border-left: 3px solid var(--state-warning); font-size: 0.85rem;">
+                            <p style="margin: 0 0 var(--space-xs) 0; font-weight: 600;" id="venta-aviso-agregar-titulo">Cliente no registrado</p>
+                            <p style="margin: 0 0 var(--space-xs) 0;" id="venta-aviso-agregar-mensaje"></p>
+                            <button class="btn btn--primary btn--sm" type="button" id="venta-btn-agregar-cliente">Agregar cliente a la base de datos</button>
+                        </div>
                     </div>
 
                     <!-- Datos del cliente encontrado tras buscar DNI/RUC -->
@@ -157,16 +191,6 @@
                             <div id="venta-cliente-doc" style="font-size:0.8rem;"></div>
                         </div>
                         <input type="hidden" id="venta-cliente-id">
-                    </div>
-
-                    <div class="venta-total">
-                        <span class="venta-total__etiqueta">Total</span>
-                        <span class="venta-total__valor" id="ventas-total">S/ 0.00</span>
-                    </div>
-
-                    <div class="venta-efectivo">
-                        <label class="venta-label">Efectivo recibido</label>
-                        <input class="input input--sm" type="number" id="ventas-input-pagado" step="0.01" min="0" placeholder="0.00">
                     </div>
 
                     <div class="venta-modal__acciones">
@@ -186,6 +210,8 @@
                 <span><strong>Venta:</strong> <span id="det-venta-id">-</span></span>
                 <span><strong>Fecha:</strong> <span id="det-venta-fecha">-</span></span>
                 <span><strong>Cliente:</strong> <span id="det-venta-cliente">-</span></span>
+                <span><strong>Documento:</strong> <span id="det-venta-documento">-</span></span>
+                <span><strong>Pago:</strong> <span id="det-venta-metodo">-</span></span>
                 <span><strong>Total:</strong> <span id="det-venta-total">S/ 0.00</span></span>
             </div>
 
@@ -209,6 +235,10 @@
 
             <div class="modal-form__acciones">
                 <button class="btn btn--ghost" type="button" id="ventas-detalle-cerrar">Cerrar</button>
+                <button class="btn btn--primary" type="button" id="ventas-detalle-descargar-pdf">
+                    <re-icon icon="file-text" weight="filled" size="16" decorative style="vertical-align:middle; margin-right:6px;"></re-icon>
+                    Descargar PDF
+                </button>
             </div>
         </div>
     </div>

@@ -19,6 +19,7 @@
         <table class="tabla">
             <thead>
                 <tr>
+                    <th>ID</th>
                     <th>Cliente</th>
                     <th>Fecha</th>
                     <th>Total</th>
@@ -31,14 +32,6 @@
 <tbody id="pedidos-tbody" aria-busy="true">
                 <tr class="esqueleto-fila" aria-hidden="true">
                     <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
-                    <td><span class="skeleton skeleton--texto"></span></td>
-                    <td><span class="skeleton skeleton--texto"></span></td>
-                    <td><span class="skeleton skeleton--texto"></span></td>
-                    <td><span class="skeleton skeleton--icono"></span></td>
-                    <td><span class="skeleton skeleton--icono"></span></td>
-                    <td><span class="skeleton skeleton--icono"></span></td>
-                </tr>
-                <tr class="esqueleto-fila" aria-hidden="true">
                     <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
@@ -49,14 +42,6 @@
                 </tr>
                 <tr class="esqueleto-fila" aria-hidden="true">
                     <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
-                    <td><span class="skeleton skeleton--texto"></span></td>
-                    <td><span class="skeleton skeleton--texto"></span></td>
-                    <td><span class="skeleton skeleton--texto"></span></td>
-                    <td><span class="skeleton skeleton--icono"></span></td>
-                    <td><span class="skeleton skeleton--icono"></span></td>
-                    <td><span class="skeleton skeleton--icono"></span></td>
-                </tr>
-                <tr class="esqueleto-fila" aria-hidden="true">
                     <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
@@ -66,6 +51,27 @@
                     <td><span class="skeleton skeleton--icono"></span></td>
                 </tr>
                 <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--texto"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                    <td><span class="skeleton skeleton--icono"></span></td>
+                </tr>
+                <tr class="esqueleto-fila" aria-hidden="true">
+                    <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
                     <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
                     <td><span class="skeleton skeleton--texto"></span></td>
@@ -80,49 +86,60 @@
 
     <!-- Todos los modales arrancan con hidden: .modal-form es fixed/inset 0 -->
     <div class="modal-form" id="pedidos-modal" hidden>
-        <div class="modal-form__contenido glass" role="dialog" aria-modal="true" aria-labelledby="pedidos-modal-titulo">
+        <div class="modal-form__contenido glass venta-modal" role="dialog" aria-modal="true" aria-labelledby="pedidos-modal-titulo">
             <h2 id="pedidos-modal-titulo">Nuevo pedido</h2>
 
-            <label class="modal-form__campo" for="pedidos-buscar-cliente">
-                Buscar cliente
-                <input class="input" type="search" id="pedidos-buscar-cliente" placeholder="Escribe para buscar cliente...">
-            </label>
+            <div class="venta-modal__cuerpo">
+                <!-- Izquierda: productos -->
+                <aside class="venta-panel venta-panel--productos">
+                    <div class="venta-panel__header">
+                        <h3>Productos</h3>
+                        <div class="venta-panel__buscar">
+                            <re-icon icon="search" weight="filled" size="18" decorative></re-icon>
+                            <input class="input input--sm" type="search" id="pedidos-buscar-producto" placeholder="Buscar producto...">
+                        </div>
+                    </div>
+                    <div class="venta-panel__productos" id="pedidos-productos"></div>
+                    <div class="venta-panel__vacio" id="pedidos-productos-vacio" hidden>No se encontraron productos.</div>
+                </aside>
 
-            <label class="modal-form__campo" for="pedidos-input-cliente">
-                Cliente
-                <select class="select" id="pedidos-input-cliente" required></select>
-            </label>
+                <!-- Derecha: datos de la venta -->
+                <aside class="venta-panel venta-panel--venta">
+                    <div class="venta-campo">
+                        <label class="venta-label">Cliente</label>
+                        <div class="venta-cliente-wrap">
+                            <input class="input input--sm" type="search" id="pedidos-buscar-cliente" placeholder="Buscar cliente...">
+                            <select class="select input--sm" id="pedidos-input-cliente"></select>
+                            <button class="btn btn--ghost btn--sm" type="button" id="pedidos-nuevo-cliente" title="Nuevo cliente"><re-icon icon="plus" weight="filled" size="16" decorative></re-icon></button>
+                        </div>
+                    </div>
 
-            <label class="modal-form__campo" for="pedidos-input-tipo">
-                Tipo de atención
-                <select class="select" id="pedidos-input-tipo" required></select>
-            </label>
+                    <div class="venta-campo">
+                        <label class="venta-label">Tipo de atención</label>
+                        <select class="select input--sm" id="pedidos-input-tipo" required></select>
+                    </div>
 
-            <label class="modal-form__campo" for="pedidos-input-estado" id="pedidos-campo-estado" hidden>
-                Estado
-                <select class="select" id="pedidos-input-estado"></select>
-            </label>
+                    <div class="venta-campo">
+                        <label class="venta-label">Comensales</label>
+                        <input class="input input--sm" type="number" id="pedidos-input-comensales" value="1" min="1" step="1">
+                    </div>
 
-            <label class="modal-form__campo" for="pedidos-input-comensales">
-                Comensales
-                <input class="input" type="number" id="pedidos-input-comensales" value="1" min="1" step="1">
-            </label>
+                    <div class="venta-campo">
+                        <label class="venta-label">Observación</label>
+                        <textarea class="input input--sm" id="pedidos-input-observacion" maxlength="200"></textarea>
+                    </div>
 
-            <label class="modal-form__campo" for="pedidos-input-observacion">
-                Observación
-                <textarea class="textarea textarea--corta" id="pedidos-input-observacion" maxlength="200"></textarea>
-            </label>
+                    <div class="venta-total">
+                        <span class="venta-total__etiqueta">Total</span>
+                        <span class="venta-total__valor" id="pedidos-total">S/ 0.00</span>
+                    </div>
 
-            <fieldset class="modal-form__fieldset" id="pedidos-items-fieldset">
-                <legend>Productos</legend>
-                <div class="lista-items" id="pedidos-items"></div>
-                <p class="lista-items__total">Total: <strong id="pedidos-total">S/ 0.00</strong></p>
-                <button class="btn btn--ghost btn--sm" type="button" id="pedidos-add-item">+ Añadir producto</button>
-            </fieldset>
-
-            <div class="modal-form__acciones">
-                <button class="btn btn--ghost" type="button" id="pedidos-modal-cancelar">Cancelar</button>
-                <button class="btn btn--primary" type="button" id="pedidos-modal-guardar">Guardar</button>
+                    <div class="venta-modal__acciones">
+                        <button class="btn btn--ghost" type="button" id="pedidos-modal-cancelar">Cancelar</button>
+                        <button class="btn btn--primary" type="button" id="pedidos-modal-guardar">Guardar pedido</button>
+                        <button class="btn btn--primary" type="button" id="pedidos-modal-guardar-venta">Guardar y procesar venta</button>
+                    </div>
+                </aside>
             </div>
         </div>
     </div>

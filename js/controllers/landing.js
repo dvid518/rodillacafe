@@ -3,6 +3,8 @@ import { iniciarAnalytics } from "../lib/analytics.js"
 import { Navbar } from "../components/Navbar.js"
 import { Footer } from "../components/Footer.js"
 import { authService } from "../services/authService.js"
+import { limpiarSesion } from "../lib/supabaseClient.js"
+import { sesionExpirada, limpiarActividad, iniciarVigilanciaInactividad } from "../session/guard.js"
 import { homeController } from "../views/landing/home.js"
 import { menuController } from "../views/landing/menu.js"
 import { reservasController } from "../views/landing/reservas.js"
@@ -65,8 +67,18 @@ async function iniciar() {
     router.start()
 
     try {
-        const sesion = await authService.obtenerSesion()
+        let sesion = await authService.obtenerSesion()
+
+        /* Una sesion caducada no debe seguir pintandose como activa: se cierra
+           y la landing queda como visita publica. */
+        if (sesion.ok && sesion.data && sesionExpirada()) {
+            await limpiarSesion()
+            limpiarActividad()
+            sesion = { ok: true, data: null }
+        }
+
         const user = sesion.ok && sesion.data ? sesion.data.user : null
+        if (user) iniciarVigilanciaInactividad()
         ultimoUsuario = user
         pintarNavbar(user)
     } catch (error) {

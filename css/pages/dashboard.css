@@ -1068,10 +1068,22 @@ body.dashboard {
 /* Contenedor del modal: más ancho y rectangular para ventas.
    Hereda el fondo translúcido (vidrio) de .glass para que no se transparente
    ni se vea sólido como antes. */
-#ventas-modal .modal-form__contenido {
+#ventas-modal .modal-form__contenido,
+#pedidos-modal .modal-form__contenido {
     width: min(1200px, 95vw);
     max-height: 90vh;
     overflow-y: auto;
+}
+
+/* Alias de tokens: el bloque de ventas se escribió con nombres que no existen
+   en style.css (--bg-card, --text-primary, ...). Sin esto, los paneles y las
+   tarjetas quedaban sin fondo ni borde, y el contador con texto ilegible. */
+.venta-modal {
+    --bg-card: var(--surface);
+    --bg-elevated: var(--surface-strong);
+    --border-color: var(--border);
+    --text-primary: var(--text);
+    --text-secondary: var(--text-subtle);
 }
 
 /* Contenedor del modal: dos paneles lado a lado */
@@ -1145,7 +1157,113 @@ body.dashboard {
     padding: var(--space-md);
 }
 
-/* Tarjeta de producto (solo lectura, flujo de facturación) */
+/* Tarjeta de producto con contador (+ / cantidad / -) */
+.venta-producto-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.venta-producto-card.seleccionado {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+.venta-producto-card.sin-stock {
+    opacity: 0.55;
+}
+
+.venta-producto-card__imagen {
+    aspect-ratio: 4 / 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+}
+
+.venta-producto-card__imagen img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.venta-producto-card__nombre {
+    min-height: 2.4em;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-primary);
+}
+
+.venta-producto-card__acciones {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.btn-producto-cant {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.btn-producto-cant:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btn-producto-cant--agregar {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.venta-producto-card__cantidad-input {
+    width: 52px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.venta-producto-card__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.venta-producto-card__precio {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.venta-producto-card__subtotal {
+    min-height: 1.2em;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: right;
+}
+
 /* Lista de productos del pedido (tabla simple, solo lectura) */
 .venta-lista-pedido {
     display: flex;
@@ -1238,6 +1356,12 @@ body.dashboard {
     align-items: flex-start;
 }
 
+.venta-modal .venta-pedido-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
 .venta-modal .venta-cliente-wrap .input--sm,
 .venta-modal .venta-cliente-wrap select.input--sm {
     flex: 1;
@@ -1310,17 +1434,53 @@ body.dashboard {
     gap: var(--space-sm);
 }
 
-/* Resumen inferior (opcional, se puede mostrar cuando hay items) */
+/* Resumen del pedido (subtotal, IGV y total antes del pago) */
 .venta-modal .venta-resumen {
-    margin-top: var(--space-md);
-    padding-top: var(--space-md);
-    border-top: 1px solid var(--border);
+    margin-top: var(--space-xs);
+    padding: var(--space-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
 }
 
 .venta-modal .venta-resumen h3 {
     margin: 0 0 var(--space-sm) 0;
     font-size: 0.95rem;
     color: var(--text);
+}
+
+.venta-modal .venta-resumen__fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.venta-modal .venta-resumen__fila--total {
+    margin-top: var(--space-xs);
+    padding-top: var(--space-xs);
+    border-top: 1px solid var(--border-color);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Contador de productos del pedido */
+.venta-contador {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
 }
 
 .venta-modal .venta-resumen__items {
@@ -1453,6 +1613,47 @@ select.input--sm {
         min-width: auto;
         width: 100%;
     }
+}
+
+/* ---------- Botones de categoría para inventario ---------- */
+
+.categorias-filtro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+}
+
+.categorias-filtro .categoria-filtro {
+    padding: var(--space-xs) var(--space-sm);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface-strong);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.categorias-filtro .categoria-filtro:hover {
+    border-color: var(--accent);
+    color: var(--text);
+}
+
+.categorias-filtro .categoria-filtro.activo {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+}
+
+.placeholder-img {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* ---------- reportes: acciones y gráfico ---------- */

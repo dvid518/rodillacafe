@@ -1,6 +1,6 @@
 import { authService } from "../../services/authService.js"
 import { comprobarBackend } from "../../lib/supabaseClient.js"
-import { marcarInicioSesion } from "../../session/guard.js"
+import { registrarActividad, LIMITE_INACTIVIDAD_MIN } from "../../session/guard.js"
 import { Loading } from "../../components/Loading.js"
 
 const ROLES_EMPLEADO = ["ADMINISTRADOR", "CAJERO", "MOZO"]
@@ -71,11 +71,11 @@ export async function loginController(contenedor) {
         inputEmail.focus()
     }
 
-    /* Si el envio de la sesion expiro por el limite de 10 minutos, se avisa
-       al visitante antes de que intente entrar de nuevo. */
+    /* Si la sesion se cerro por inactividad, se avisa al visitante antes de
+       que intente entrar de nuevo. */
     const paramsEntrada = new URLSearchParams(window.location.search)
     if (paramsEntrada.get("expirada") === "1") {
-        mostrarError("Tu sesion ha expirado por limite de tiempo (10 min). Inicia sesion de nuevo.")
+        mostrarError(`Tu sesión se cerró por ${LIMITE_INACTIVIDAD_MIN} minutos sin actividad. Inicia sesión de nuevo.`)
     }
 
     const onSubmit = async e => {
@@ -116,9 +116,9 @@ export async function loginController(contenedor) {
         const lista = roles.ok && Array.isArray(roles.data) ? roles.data : []
         const esEmpleado = lista.some(r => ROLES_EMPLEADO.includes(r))
 
-        /* Se inicio sesion correctamente: se marca el momento para contar
-           el limite de 10 minutos (no configurable) desde aqui. */
-        marcarInicioSesion()
+        /* Se inicio sesion correctamente: se marca la ultima actividad para
+           contar los 10 minutos de inactividad (no configurables) desde aqui. */
+        registrarActividad()
 
         const redirect = leerRedirect()
         window.location.href = redirect || (esEmpleado ? "/dashboard.html#/dashboard" : "/index.html")

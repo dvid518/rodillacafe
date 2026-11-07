@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <base href="/">
     <title>Rodilla — Cargando</title>
     <style>
         body { margin: 0; font-family: system-ui, sans-serif; background: #360e06; color: #ffe8c9; display: flex; align-items: center; justify-content: center; height: 100vh; }
@@ -14,49 +13,27 @@
 <body>
     <div class="spinner"></div>
     <script>
-        // SPA fallback para desarrollo local: cuando el servidor devuelve 404
-        // en una ruta limpia (ej. /dashboard/ventas), este 404.html se carga.
-        // Reescribe la URL sin recargar y carga el shell HTML apropiado.
+        // Fallback para hosts estaticos que sirven 404.html en una ruta limpia
+        // (ej. /dashboard/ventas). Con el router hash, la ruta vive en el
+        // fragmento: se redirige al shell correcto con el hash ya puesto.
         (function () {
             var path = window.location.pathname;
-
-            // Normaliza barra final
             if (path.length > 1 && path.endsWith("/")) {
                 path = path.slice(0, -1);
             }
 
-            // Determina el shell segun el prefijo de ruta
-            var shell = "index.html";
-            if (path.startsWith("/dashboard")) shell = "dashboard.html";
-            else if (path.startsWith("/auth")) shell = "auth.html";
+            var hash = window.location.hash;
+            var destino;
 
-            // Sincroniza la URL del navegador sin recargar
-            history.replaceState(null, "", path);
+            if (path.startsWith("/dashboard")) {
+                destino = "/dashboard.html" + (hash || "#" + path);
+            } else if (path.startsWith("/auth")) {
+                destino = "/auth.html" + (hash || "#/login");
+            } else {
+                destino = "/index.html" + (hash || "#" + (path === "" || path === "/" ? "/" : path));
+            }
 
-            // Carga el shell HTML correspondiente y re-ejecuta su controlador
-            fetch(shell)
-                .then(function (r) { return r.text(); })
-                .then(function (html) {
-                    document.documentElement.innerHTML = html;
-                    // Re-ejecuta los scripts del shell (el navegador no lo hace
-                    // automaticamente al reemplazar innerHTML del documentElement)
-                    var scripts = document.querySelectorAll("script");
-                    scripts.forEach(function (oldScript) {
-                        var newScript = document.createElement("script");
-                        // Conserva el tipo (especialmente "module") para que los
-                        // modulos ES6 se ejecuten como modulos y no como scripts normales.
-                        newScript.type = oldScript.type;
-                        newScript.src = oldScript.src;
-                        newScript.async = oldScript.async;
-                        newScript.defer = oldScript.defer;
-                        newScript.text = oldScript.text;
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
-                    });
-                })
-                .catch(function (err) {
-                    console.error("Error cargando el shell:", err);
-                    document.body.innerHTML = "<p style='color:#ffe8c9'>Error al cargar la aplicacion. Recarga la pagina.</p>";
-                });
+            window.location.replace(destino);
         })();
     </script>
 </body>

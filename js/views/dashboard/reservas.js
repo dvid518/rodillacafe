@@ -39,6 +39,11 @@ export async function reservasController(contenedor) {
     const modal = contenedor.querySelector("#reservas-modal")
     const aviso = contenedor.querySelector("#reservas-aviso")
 
+    if (!tbody || !modal) {
+        console.error("[reservas] El contenedor no tiene los elementos requeridos (#reservas-tbody, #reservas-modal)")
+        return
+    }
+
     const titulo = modal.querySelector("#reservas-modal-titulo")
     const selCliente = modal.querySelector("#reservas-input-cliente")
     const inFecha = modal.querySelector("#reservas-input-fecha")

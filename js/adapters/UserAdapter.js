@@ -367,7 +367,8 @@ async function listarClientes() {
         .select(`
             ID_Cliente,
             Tipo_Cliente,
-            PERSONA ( Nombre, Ap_Paterno, EMAIL )
+            PERSONA ( ID_Persona, Nombre, Ap_Paterno, N_Documento ),
+            EMPRESA ( ID_Empresa, RUC, Razon_Social )
         `)
         .order("ID_Cliente")
     if (error) return { ok: false, error }

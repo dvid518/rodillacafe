@@ -1,5 +1,6 @@
 import { Modal } from "../../components/Modal.js"
 import { escaparHTML, formatearPrecio } from "../../utils/format.js"
+import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
 /* ==========================================================================
    COMÚN A LOS CRUD DEL PANEL
@@ -111,10 +112,15 @@ export function opcionesEstado(mapa, seleccionado) {
 /* ---------- clientes ---------- */
 
 export function nombreCliente(cliente) {
-    const p = cliente?.PERSONA?.[0]
-    if (!p) return `Cliente ${cliente?.ID_Cliente ?? "?"}`
-    const nombre = [p.Nombre, p.Ap_Paterno].filter(Boolean).join(" ").trim()
-    return nombre || `Cliente ${cliente.ID_Cliente}`
+    const clienteObj = unwrapEmbed(cliente)
+    const persona = unwrapEmbed(clienteObj?.PERSONA)
+    const nombre = [persona?.Nombre, persona?.Ap_Paterno].filter(Boolean).join(" ").trim()
+    if (nombre) return nombre
+
+    const empresa = unwrapEmbed(clienteObj?.EMPRESA)
+    if (empresa?.Razon_Social) return empresa.Razon_Social
+
+    return clienteObj?.ID_Cliente != null ? `Cliente #${clienteObj.ID_Cliente}` : "Cliente"
 }
 
 /**
@@ -135,7 +141,9 @@ export function poblarClientes(select, clientes, { placeholder = "Seleccionar cl
     for (const c of lista) {
         const opt = document.createElement("option")
         opt.value = c.ID_Cliente
-        opt.textContent = nombreCliente(c)
+        // Mostrar: ID - Nombre (ej. "1 - Juan Pérez")
+        const nombre = nombreCliente(c)
+        opt.textContent = `${c.ID_Cliente} - ${nombre}`
         select.appendChild(opt)
     }
     return lista.length
@@ -158,11 +166,14 @@ export function mapaUsuarios(usuarios) {
     return new Map(lista.map(u => [u.ID_Usuario, nombreUsuario(u)]))
 }
 
-/** Nombre de la persona detras de una cuenta, sea cliente o empleado. */
+/** Nombre de la persona detras de una cuenta, sea cliente o empleado.
+   Nunca muestra "Usuario #": usa el nombre completo, y como ultimo recurso
+   el Logeo o el email de la cuenta. */
 export function nombreUsuario(usuario) {
     const persona = usuario?.CLIENTE?.[0]?.PERSONA?.[0] || usuario?.EMPLEADO?.[0]?.PERSONA?.[0]
-    if (!persona?.Nombre) return `Usuario #${usuario?.ID_Usuario ?? "?"}`
-    return [persona.Nombre, persona.Ap_Paterno].filter(Boolean).join(" ").trim() || `Usuario #${usuario.ID_Usuario}`
+    const nombre = [persona?.Nombre, persona?.Ap_Paterno].filter(Boolean).join(" ").trim()
+    if (nombre) return nombre
+    return usuario?.Logeo || usuario?.email || `Usuario ${usuario?.ID_Usuario ?? "?"}`
 }
 
 export function rolesDe(usuario) {

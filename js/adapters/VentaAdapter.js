@@ -2,6 +2,9 @@ import { supabase } from "../lib/supabaseClient.js"
 
 const PERFIL_SELECT = `
     ID_Venta,
+    ID_Pedido,
+    ID_Cliente,
+    ID_Usuario,
     F_Venta,
     TipoDocumento,
     Sub_Total,
@@ -13,12 +16,18 @@ const PERFIL_SELECT = `
     Situacion,
     CLIENTE (
         ID_Cliente,
-        PERSONA ( Nombre, Ap_Paterno, N_Documento )
+        Tipo_Cliente,
+        PERSONA ( Nombre, Ap_Paterno, N_Documento ),
+        EMPRESA ( Razon_Social )
     ),
     USUARIO ( ID_Usuario, Logeo ),
     APERTURA_CAJA (
         Numero_Turno,
         CAJA ( N_Caja )
+    ),
+    PAGO_VENTA (
+        ID_MetodoPago,
+        METODO_PAGO ( N_MetodoPago )
     )
 `
 
@@ -32,32 +41,52 @@ async function listar() {
 }
 
 async function listarPedidosPendientes() {
-    const { data, error } = await supabase
-        .from("PEDIDO")
-        .select(`
-            ID_Pedido,
-            Numero_Pedido,
-            ID_Mesa,
-            MESA ( Numero ),
-            ID_Cliente,
-            Situacion,
-            F_Pedido,
-            Total,
-            CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) ),
-            DETALLE_PEDIDO (
-                ID_DetallePedido,
-                ID_Producto,
-                Cantidad,
-                Precio,
-                Sub_Total,
-                Nota,
-                PRODUCTO ( N_Producto, Imagen )
-            )
-        `)
-        .in("Situacion", ["P", "A"])
-        .order("F_Pedido", { ascending: false })
-    if (error) return { ok: false, error }
-    return { ok: true, data: data || [] }
+    /* Solo pedidos que aún no fueron facturados.
+       El procedimiento usp_FacturarPedido pone Situacion='F', pero como
+       doble seguridad también excluimos los que ya tienen una VENTA asociada
+       (VENTA.ID_Pedido no nulo), por si hay datos inconsistentes. */
+    const [rPedidos, rVentas] = await Promise.all([
+        supabase
+            .from("PEDIDO")
+            .select(`
+                ID_Pedido,
+                Numero_Pedido,
+                ID_Mesa,
+                MESA ( Numero ),
+                ID_Cliente,
+                Situacion,
+                F_Pedido,
+                Total,
+                CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) ),
+                DETALLE_PEDIDO (
+                    ID_DetallePedido,
+                    ID_Producto,
+                    Cantidad,
+                    Precio,
+                    Sub_Total,
+                    Nota,
+                    PRODUCTO ( N_Producto, Imagen )
+                )
+            `)
+            .in("Situacion", ["P", "A"])
+            .order("F_Pedido", { ascending: false }),
+        supabase
+            .from("VENTA")
+            .select("ID_Pedido")
+            .not("ID_Pedido", "is", null),
+    ])
+
+    if (rPedidos.error) return { ok: false, error: rPedidos.error }
+
+    const pedidosFacturados = new Set(
+        (rVentas.data || []).map(v => v.ID_Pedido).filter(Boolean)
+    )
+
+    const pendientes = (rPedidos.data || []).filter(
+        p => !pedidosFacturados.has(p.ID_Pedido)
+    )
+
+    return { ok: true, data: pendientes }
 }
 
 async function crear(datos) {
