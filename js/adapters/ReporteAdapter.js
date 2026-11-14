@@ -1,12 +1,13 @@
 import { supabase } from "../lib/supabaseClient.js"
 
 async function ventasPorDia(fechaInicio, fechaFin, estado = "E") {
-    const { data, error } = await supabase
+    let q = supabase
         .from("VENTA")
         .select("F_Venta, Total, Situacion")
-        .eq("Situacion", estado)
         .gte("F_Venta", fechaInicio)
         .lte("F_Venta", fechaFin)
+    if (estado && estado !== "todos") q = q.eq("Situacion", estado)
+    const { data, error } = await q
     if (error) return { ok: false, error }
 
     // Agrupar en JS por día
@@ -26,16 +27,17 @@ async function ventasPorDia(fechaInicio, fechaFin, estado = "E") {
 }
 
 async function productosMasVendidos(fechaInicio, fechaFin, limite = 10, estado = "E") {
-    const { data, error } = await supabase
+    let q = supabase
         .from("DETALLE_VENTA")
         .select(`
             Cantidad, Sub_Total,
             PRODUCTO ( N_Producto ),
             VENTA!inner ( Situacion, F_Venta )
         `)
-        .eq("VENTA.Situacion", estado)
         .gte("VENTA.F_Venta", fechaInicio)
         .lte("VENTA.F_Venta", fechaFin)
+    if (estado && estado !== "todos") q = q.eq("VENTA.Situacion", estado)
+    const { data, error } = await q
     if (error) return { ok: false, error }
 
     const agrupado = {}
@@ -54,16 +56,17 @@ async function productosMasVendidos(fechaInicio, fechaFin, limite = 10, estado =
 }
 
 async function ventasPorMetodoPago(fechaInicio, fechaFin, estado = "E") {
-    const { data, error } = await supabase
+    let q = supabase
         .from("PAGO_VENTA")
         .select(`
             Monto,
             METODO_PAGO ( N_MetodoPago ),
             VENTA!inner ( Situacion, F_Venta )
         `)
-        .eq("VENTA.Situacion", estado)
         .gte("VENTA.F_Venta", fechaInicio)
         .lte("VENTA.F_Venta", fechaFin)
+    if (estado && estado !== "todos") q = q.eq("VENTA.Situacion", estado)
+    const { data, error } = await q
     if (error) return { ok: false, error }
 
     const agrupado = {}
@@ -81,12 +84,13 @@ async function ventasPorMetodoPago(fechaInicio, fechaFin, estado = "E") {
 }
 
 async function kpis(fechaInicio, fechaFin, estado = "E") {
-    const { data, error } = await supabase
+    let q = supabase
         .from("VENTA")
         .select("Total")
-        .eq("Situacion", estado)
         .gte("F_Venta", fechaInicio)
         .lte("F_Venta", fechaFin)
+    if (estado && estado !== "todos") q = q.eq("Situacion", estado)
+    const { data, error } = await q
     if (error) return { ok: false, error }
 
     const total = (data || []).reduce((s, v) => s + Number(v.Total || 0), 0)

@@ -3,8 +3,10 @@ import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
 import { escaparHTML } from "../../utils/format.js"
+import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
 const TIPO_CLIENTE = { N: "Natural", J: "Jurídico" }
+const ID_CLIENTE_CONSUMIDOR_FINAL = 67
 
 export async function clientesController(contenedor) {
     const [clientesR, sesion] = await Promise.all([
@@ -65,22 +67,29 @@ export async function clientesController(contenedor) {
 
     function pintarTabla() {
         if (!clientes.length) {
-            tbodyEl.innerHTML = '<tr class="fila-vacia"><td colspan="9">No hay clientes. Crea el primero.</td></tr>'
+            tbodyEl.innerHTML = '<tr class="fila-vacia"><td colspan="8">No hay clientes. Crea el primero.</td></tr>'
             return
         }
 
         tbodyEl.innerHTML = clientes.map(c => {
-            const p = c.PERSONA?.[0]
-            const e = c.EMPRESA?.[0]
-            const tipo = c.Tipo_Cliente === "N"
-                ? `${escaparHTML((p && p.Nombre) ? `${p.Nombre} ${p.Ap_Paterno || ""}`.trim() : "Persona")}`
-                : `${escaparHTML((e && e.Razon_Social) ? e.Razon_Social : "Empresa")}`
+            const p = unwrapEmbed(c.PERSONA)
+            const e = unwrapEmbed(c.EMPRESA)
+
+            let nombre
+            if (Number(c.ID_Cliente) === ID_CLIENTE_CONSUMIDOR_FINAL) {
+                nombre = "Consumidor Final"
+            } else if (c.Tipo_Cliente === "N") {
+                nombre = p ? [p.Nombre, p.Ap_Paterno].filter(Boolean).join(" ").trim() || "Persona" : "Persona"
+            } else {
+                nombre = e ? e.Razon_Social : "Empresa"
+            }
+
             const doc = c.Tipo_Cliente === "N"
-                ? (p ? escaparHTML(p.N_Documento || "-") : "-")
+                ? (p ? escaparHTML(p.N_Documento || "Sin documento") : "-")
                 : (e ? escaparHTML(e.RUC || "-") : "-")
             const email = c.Tipo_Cliente === "N"
                 ? (p ? escaparHTML(p.EMAIL || "-") : "-")
-                : (e ? "-" : "-")
+                : "-"
             const telefono = c.Tipo_Cliente === "N"
                 ? (p ? escaparHTML(p.Celular || "-") : "-")
                 : "-"
@@ -89,11 +98,10 @@ export async function clientesController(contenedor) {
                 <tr data-id="${c.ID_Cliente}">
                     <td>${c.ID_Cliente}</td>
                     <td>${TIPO_CLIENTE[c.Tipo_Cliente] || c.Tipo_Cliente}</td>
-                    <td><strong>${tipo}</strong></td>
+                    <td><strong>${escaparHTML(nombre)}</strong></td>
                     <td>${doc}</td>
                     <td>${email}</td>
                     <td>${telefono}</td>
-                    <td>${Number(c.Puntos || 0)}</td>
                     <td>
                         <button class="btn-icono" type="button" data-accion="editar" data-id="${c.ID_Cliente}" title="Editar" aria-label="Editar cliente ${c.ID_Cliente}">${icono("pencil", { size: 16 })}</button>
                     </td>
@@ -135,8 +143,8 @@ export async function clientesController(contenedor) {
         titulo.textContent = `Editar cliente ${cliente.ID_Cliente}`
         selTipo.value = cliente.Tipo_Cliente || "N"
         selTipo.disabled = true
-        selPersona.value = cliente.PERSONA?.[0]?.ID_Persona || ""
-        selEmpresa.value = cliente.EMPRESA?.[0]?.ID_Empresa || ""
+        selPersona.value = unwrapEmbed(cliente.PERSONA)?.ID_Persona || ""
+        selEmpresa.value = unwrapEmbed(cliente.EMPRESA)?.ID_Empresa || ""
         inPuntos.value = cliente.Puntos || 0
         inObservacion.value = cliente.Observacion || ""
         alternarCampos()
