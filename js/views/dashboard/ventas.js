@@ -3,6 +3,9 @@ import { clientService } from "../../services/clientService.js"
 import { dniService } from "../../services/dniService.js"
 import { rucService } from "../../services/rucService.js"
 import { cajaService } from "../../services/cajaService.js"
+import { supabase } from "../../lib/supabaseClient.js"
+import { VentaAdapter } from "../../adapters/VentaAdapter.js"
+
 import { userService } from "../../services/userService.js"
 import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
@@ -11,8 +14,6 @@ import { escaparHTML, formatearPrecio, formatearFecha } from "../../utils/format
 import { poblarClientes, nombreUsuario } from "./crud-comun.js"
 import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
-/* Situacion de VENTA: E = Emitida, X = Anulada (CK_VENTA_SITUACION).
-   Se incluyen A/P/C por compatibilidad con datos heredados. */
 const ESTADO_VENTA = { E: "Emitida", X: "Anulada", A: "Anulada", P: "Pendiente", C: "Completada" }
 
 /* TipoDocumento de VENTA: 01 = Factura, 03 = Boleta */
@@ -22,18 +23,24 @@ const TIPO_DOCUMENTO = { "01": "Factura", "03": "Boleta" }
 const ID_CLIENTE_CONSUMIDOR_FINAL = 67
 
 export async function ventasController(contenedor) {
-    const [ventasR, clientesR, usuariosR, sesion] = await Promise.all([
-        ventaService.listarVentas(),
-        clientService.listarClientes(),
-        userService.listarUsuarios(),
-        authService.obtenerSesion()
-    ])
 
-    const usucre = sesion.ok ? (sesion.data?.Logeo || sesion.data?.email || "WEB") : "WEB"
-
+    let ventasR = { ok: false }
     let ventas = ventasR.ok ? ventasR.data : []
-    let clientes = clientesR.ok ? clientesR.data : []
-    let usuarios = usuariosR.ok ? usuariosR.data : []
+    let cargandoVentas = true
+
+    const tbodyEl = contenedor.querySelector("#ventas-tbody")
+    try {
+        pintarTabla()
+    } catch (error) {
+        console.error("Error pintando la tabla de ventas:", error)
+    }
+
+    let clientesR = { ok: false }
+    let usuariosR = { ok: false }
+    let sesion = { ok: false }
+    let usucre = "WEB"
+    let clientes = []
+    let usuarios = []
     const usuariosPorId = new Map((usuarios || []).map(u => [u.ID_Usuario, u]))
     const usuarioPorLogeo = new Map((usuarios || []).map(u => [u.Logeo, u]))
     let metodosPago = []
@@ -45,10 +52,8 @@ export async function ventasController(contenedor) {
     /* Apertura abierta en memoria (para mostrarla en el modal) */
     let aperturaAbierta = null
 
-    const tbodyEl = contenedor.querySelector("#ventas-tbody")
     const modalEl = contenedor.querySelector("#ventas-modal")
     const selCliente = modalEl.querySelector("#ventas-input-cliente")
-    const lblCajero = modalEl.querySelector("#venta-cajero-nombre")
     const selPedido = modalEl.querySelector("#ventas-input-pedido")
     const inBuscarPedido = modalEl.querySelector("#ventas-buscar-pedido")
     const avisoPedido = modalEl.querySelector("#venta-aviso-pedido")
@@ -67,6 +72,25 @@ export async function ventasController(contenedor) {
     const btnGuardar = modalEl.querySelector("#ventas-modal-guardar")
     const btnCancelar = modalEl.querySelector("#ventas-modal-cancelar")
     const btnNuevo = contenedor.querySelector("#ventas-nuevo")
+
+    // Los controles de cierre/guardado quedan conectados antes de cargar datos.
+    btnCancelar?.addEventListener("click", cerrarModal)
+    btnGuardar?.addEventListener("click", guardar)
+    modalEl.addEventListener("click", e => { if (e.target === modalEl) cerrarModal() })
+    const onEscape = e => {
+        if (e.key !== "Escape") return
+        if (!modalEl.hidden) cerrarModal()
+        if (!detModalEl?.hidden) {
+            detModalEl.hidden = true
+            document.body.classList.remove("sin-scroll")
+        }
+    }
+    window.addEventListener("keydown", onEscape)
+
+    btnNuevo?.addEventListener("click", async (e) => {
+
+        await abrirNuevo()
+    })
     const btnNuevoCliente = modalEl.querySelector("#ventas-nuevo-cliente")
     const cajaEstado = modalEl.querySelector("#ventas-caja-estado")
     const titulo = modalEl.querySelector("#ventas-modal-titulo")
@@ -240,16 +264,29 @@ export async function ventasController(contenedor) {
     }
 
     function pintarTabla() {
+        if (cargandoVentas) {
+            tbodyEl.innerHTML = Array(3).fill(`<tr>
+                <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                <td><span class="skeleton skeleton--texto skeleton--corto"></span></td>
+                <td><span class="skeleton skeleton--icono"></span></td>
+                <td><span class="skeleton skeleton--icono"></span></td>
+            </tr>`).join("")
+            return
+        }
+        if (!ventasR.ok) {
+            tbodyEl.innerHTML = `<tr class="fila-vacia"><td colspan="8">Error al cargar ventas: ${escaparHTML(ventasR.error?.message || ventasR.error?.details || "error desconocido")}</td></tr>`
+            return
+        }
         if (!ventas.length) {
-            tbodyEl.innerHTML = '<tr class="fila-vacia"><td colspan="9">No hay ventas. Registra la primera.</td></tr>'
+            tbodyEl.innerHTML = '<tr class="fila-vacia"><td colspan="8">No hay ventas. Registra la primera.</td></tr>'
             return
         }
 
         tbodyEl.innerHTML = ventas.map(v => {
-            const usuarioVenta = unwrapEmbed(v.USUARIO)
-            const cajero = usuarioVenta
-                ? nombreUsuario(usuarioVenta)
-                : "—"
             const apertura = unwrapEmbed(v.APERTURA_CAJA)
             const cajaNombre = unwrapEmbed(apertura?.CAJA)?.N_Caja || ""
             const cajaTexto = apertura
@@ -260,7 +297,6 @@ export async function ventasController(contenedor) {
                     <td>#${v.ID_Venta}</td>
                     <td>${escaparHTML(fechaLegible(v.F_Venta))}</td>
                     <td>${escaparHTML(nombreClienteDe(v))}</td>
-                    <td>${escaparHTML(cajero)}</td>
                     <td>${cajaTexto}</td>
                     <td>S/ ${formatearPrecio(v.Total || 0)}</td>
                     <td>${escaparHTML(ESTADO_VENTA[v.Situacion] || v.Situacion || "-")}</td>
@@ -285,7 +321,7 @@ export async function ventasController(contenedor) {
 
     function renderizarDetallePedido(pedido) {
         listaPedido.replaceChildren()
-        const lineas = (pedido && pedido.DETALLE_PEDIDO) || []
+        const lineas = Array.isArray(pedido?.DETALLE_PEDIDO) ? pedido.DETALLE_PEDIDO : []
         const totalUnidades = lineas.reduce((sum, d) => sum + Number(d.Cantidad || 0), 0)
 
         if (elContador) {
@@ -329,7 +365,7 @@ export async function ventasController(contenedor) {
         return { subTotal, igv, total }
     }
 
-    function seleccionarPedido(idPedido) {
+    async function seleccionarPedido(idPedido) {
         if (!idPedido) {
             pedidoSeleccionado = null
             listaPedido.replaceChildren()
@@ -343,28 +379,98 @@ export async function ventasController(contenedor) {
             actualizarResumen()
             return
         }
-        const pedidoObj = pedidosPorId.get(Number(idPedido))
-        pedidoSeleccionado = pedidoObj || null
-        renderizarDetallePedido(pedidoSeleccionado)
+
+        listaPedido.replaceChildren()
+        avisoSinPedido.hidden = false
+        avisoSinPedido.textContent = "Cargando productos del pedido…"
+        /* Pedido y detalle se consultan directamente, sin depender de mapas en memoria. */
+        const { data: pedido, error } = await supabase
+            .from("PEDIDO")
+            .select(`
+                ID_Pedido,
+                ID_Cliente,
+                Total,
+                Situacion,
+                CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) ),
+                DETALLE_PEDIDO (
+                    ID_DetallePedido,
+                    ID_Producto,
+                    Cantidad,
+                    Precio,
+                    Sub_Total,
+                    PRODUCTO ( N_Producto )
+                )
+            `)
+            .eq("ID_Pedido", Number(idPedido))
+            .single()
+
+        if (error || !pedido) {
+            console.error("Error cargando detalle del pedido:", error)
+            notifyError("No se pudo cargar el detalle del pedido: " + (error?.message || "error desconocido"))
+            listaPedido.replaceChildren()
+            avisoSinPedido.hidden = false
+            avisoSinPedido.textContent = "No se pudo cargar el detalle del pedido."
+            if (elContador) {
+                elContador.textContent = "0"
+                elContador.title = "0 productos"
+            }
+            if (resumenEl) resumenEl.hidden = true
+            actualizarResumen()
+            return
+        }
+
+        pedidoSeleccionado = pedido
+
+        /* Si el embed DETALLE_PEDIDO no trajo datos (posible RLS sobre la tabla
+           intermedia), hacer una consulta separada a DETALLE_PEDIDO por ID_Pedido. */
+        const { data: detallesRaw, error: errDetalles } = await supabase
+            .from("DETALLE_PEDIDO")
+            .select(`
+                    ID_DetallePedido,
+                    ID_Producto,
+                    Cantidad,
+                    Precio,
+                    Sub_Total,
+                    PRODUCTO ( N_Producto )
+            `)
+            .eq("ID_Pedido", Number(idPedido))
+        if (errDetalles) {
+            pedidoSeleccionado = null
+            avisoSinPedido.hidden = false
+            avisoSinPedido.textContent = `No se pudieron cargar los productos: ${errDetalles.message || "error de permisos/RLS"}`
+            notifyError(avisoSinPedido.textContent)
+            return
+        }
+        /* DETALLE_PEDIDO es uno-a-muchos: NO usar unwrapEmbed (que solo devuelve
+           el primer elemento). Asignar el array completo de detalles. */
+        const detalles = Array.isArray(detallesRaw) ? detallesRaw : (detallesRaw ? [detallesRaw] : [])
+        pedido.DETALLE_PEDIDO = detalles
+
+        renderizarDetallePedido(pedido)
 
         /* Selecciona por defecto el cliente que ya trae el pedido.
            Se puede cambiar libremente después desde el select de clientes. */
-        if (pedidoSeleccionado && pedidoSeleccionado.ID_Cliente && selCliente) {
-            const idCliente = String(pedidoSeleccionado.ID_Cliente)
-            const opt = [...selCliente.options].find(o => String(o.value) === idCliente)
-            if (opt) {
-                selCliente.value = idCliente
+        if (pedido.ID_Cliente && selCliente) {
+            const idClienteStr = String(pedido.ID_Cliente);
+            const opcionExiste = [...selCliente.options].some(o => String(o.value) === idClienteStr);
+            if (opcionExiste) {
+                selCliente.value = idClienteStr;
+                selCliente.dispatchEvent(new Event('change'));
+            } else {
+                console.warn("Cliente del pedido no está en la lista:", pedido.ID_Cliente);
             }
         }
 
         // Si es boleta con DNI o factura y hay un pedido seleccionado, buscar el cliente automáticamente
         const activoTipoDoc = [...radiosTipoDoc].find(r => r.checked)
-        if ((activoTipoDoc.value === "dni" || activoTipoDoc.value === "ruc") && pedidoSeleccionado) {
-            buscarYMostrarClientePorPedido(pedidoSeleccionado)
+        if ((activoTipoDoc.value === "dni" || activoTipoDoc.value === "ruc") && pedido) {
+            buscarYMostrarClientePorPedido(pedido)
         }
     }
 
-    /* Mapa ID_Pedido -> objeto pedido (con DETALLE_PEDIDO embebido) */
+    /* Mapa ID_Pedido -> objeto pedido (con DETALLE_PEDIDO embebido).
+       Se mantiene solo para pintar el select de pedidos; seleccionarPedido ya
+       no depende de él. */
     const pedidosPorId = new Map()
     /* Lista completa de pedidos pendientes; el select se repinta filtrado */
     let pedidosPendientes = []
@@ -372,6 +478,7 @@ export async function ventasController(contenedor) {
     /* ---------- modal ---------- */
 
     async function abrirNuevo() {
+
         editandoId = null
         titulo.textContent = "Nueva venta"
         selCliente.value = ""
@@ -395,15 +502,34 @@ export async function ventasController(contenedor) {
         if (resumenEl) resumenEl.hidden = true
         actualizarResumen()
 
-        // Nombre del cajero que procesa la venta (usuario de la sesion)
-        const cajeroActual = usuarioPorLogeo.get(usucre) || usuariosPorId.get(Number(sesion?.data?.ID_Usuario))
-        if (lblCajero) {
-            lblCajero.textContent = cajeroActual
-                ? `Cajero: ${nombreUsuario(cajeroActual)}`
-                : `Cajero: ${usucre}`
+        try {
+            await cargarPedidosPendientes()
+        } catch (error) {
+            console.warn("No se pudieron cargar los pedidos pendientes:", error)
+            if (avisoPedido) {
+                avisoPedido.hidden = false
+                avisoPedido.textContent = `No se pudieron cargar pedidos: ${error.message || "error de permisos/RLS"}`
+            }
+            selPedido.disabled = true
         }
 
-        await cargarPedidosPendientes()
+        try {
+            const { data, error } = await supabase.from("CLIENTE").select("ID_Cliente, Tipo_Cliente, PERSONA ( Nombre, Ap_Paterno, N_Documento ), EMPRESA ( Razon_Social, RUC )").order("ID_Cliente")
+            if (error) throw error
+            clientes = data || []
+            poblarClientes(selCliente, clientes)
+        } catch (error) {
+            console.error("Error cargando clientes para venta:", error)
+            selCliente.replaceChildren(new Option("No se pudieron cargar clientes", ""))
+            notifyError(`No se pudieron cargar los clientes${error.message ? `: ${error.message}` : " (verifica permisos/RLS)"}`)
+        }
+
+        // Cargar turno de caja cada vez que se abre el modal
+        try {
+            await cargarCaja()
+        } catch (error) {
+            console.warn("No se pudo cargar la caja al abrir el modal:", error)
+        }
 
         // Si venimos de "Guardar y procesar venta" desde Pedidos, preseleccionar ese pedido
         const idPedidoPreseleccionado = sessionStorage.getItem("rodilla:pedido_para_venta")
@@ -413,12 +539,21 @@ export async function ventasController(contenedor) {
             // pintarOpcionesPedidos (dentro de cargarPedidosPendientes) ya restaura el
             // valor si el pedido sigue en la lista filtrada; ahora aseguramos el detalle.
             selPedido.value = idPedidoPreseleccionado
-            seleccionarPedido(idPedidoPreseleccionado)
+            try { await seleccionarPedido(idPedidoPreseleccionado) }
+            catch (error) {
+                console.error("Error precargando pedido:", error)
+                avisoSinPedido.hidden = false
+                avisoSinPedido.textContent = `No se pudo cargar el pedido: ${error.message || "error desconocido"}`
+            }
+            // Asegurar que el select muestre el pedido preseleccionado visualmente
+            // (después de que cargarPedidosPendientes pobló las opciones)
+            selPedido.value = idPedidoPreseleccionado
         }
 
         cambiarTipoDocumento()
 
         modalEl.hidden = false
+
         document.body.classList.add("sin-scroll")
         selPedido.focus()
     }
@@ -489,14 +624,14 @@ export async function ventasController(contenedor) {
     }
 
     async function cargarPedidosPendientes() {
-        const r = await ventaService.listarPedidosPendientes()
-        pedidosPendientes = r.ok ? (r.data || []) : []
+        const { data, error } = await supabase.from("PEDIDO").select(`ID_Pedido, ID_Cliente, Situacion, F_Pedido, Total, CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) )`).in("Situacion", ["P", "A"]).order("F_Pedido", { ascending: false })
+        if (error) throw error
+        const { data: ventasFacturadas, error: errorVentas } = await supabase.from("VENTA").select("ID_Pedido").not("ID_Pedido", "is", null)
+        if (errorVentas) throw errorVentas
+        const facturados = new Set((ventasFacturadas || []).map(v => Number(v.ID_Pedido)))
+        pedidosPendientes = (data || []).filter(p => !facturados.has(Number(p.ID_Pedido)))
         pedidosPorId.clear()
         for (const p of pedidosPendientes) pedidosPorId.set(Number(p.ID_Pedido), p)
-
-        if (!r.ok) {
-            console.warn("No se pudieron cargar los pedidos pendientes:", r.error)
-        }
 
         pintarOpcionesPedidos()
     }
@@ -573,15 +708,16 @@ export async function ventasController(contenedor) {
         // Llenar datos del cliente encontrado
         clientePorDocumento = cliente
         clienteIdInput.value = idCliente
-        clienteNombreEl.textContent = esRUC
-            ? (cliente.EMPRESA?.[0]?.Razon_Social || "")
-            : `${cliente.PERSONA?.[0]?.Nombre || ""} ${cliente.PERSONA?.[0]?.Ap_Paterno || ""}`.trim()
+        clienteNombreEl.textContent = tipoDoc === "ruc"
+            ? (unwrapEmbed(cliente.EMPRESA)?.Razon_Social || "")
+            : `${unwrapEmbed(cliente.PERSONA)?.Nombre || ""} ${unwrapEmbed(cliente.PERSONA)?.Ap_Paterno || ""}`.trim()
         clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${documento}`
         if (avisoDocumento) {
             avisoDocumento.textContent = "Cliente encontrado en la base de datos"
             avisoDocumento.style.color = "var(--state-success)"
         }
         if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
+    }
 
     async function buscarDocumento() {
         const doc = String(inDocumento.value || "").trim()
@@ -644,10 +780,13 @@ export async function ventasController(contenedor) {
                 }
                 clientePorDocumento = clienteEncontrado
                 clienteIdInput.value = clienteEncontrado.ID_Cliente
-                clienteNombreEl.textContent = esRUC
-                    ? clienteEncontrado.EMPRESA?.[0]?.Razon_Social || "Empresa"
-                    : `${clienteEncontrado.PERSONA?.[0]?.Nombre || ""} ${clienteEncontrado.PERSONA?.[0]?.Ap_Paterno || ""}`.trim()
-                clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${doc}`
+                const persona = unwrapEmbed(clienteEncontrado.PERSONA)
+                const empresa = unwrapEmbed(clienteEncontrado.EMPRESA)
+                const nombre = esRUC
+                    ? (empresa?.Razon_Social || "Empresa")
+                    : `${persona?.Nombre || ""} ${persona?.Ap_Paterno || ""}`.trim()
+                clienteNombreEl.textContent = `${nombre} (${esRUC ? "RUC" : "DNI"}: ${doc})`
+                clienteDocEl.textContent = ""
                 if (avisoDocumento) {
                     avisoDocumento.textContent = "Cliente encontrado en la base de datos"
                     avisoDocumento.style.color = "var(--state-success)"
@@ -693,6 +832,21 @@ export async function ventasController(contenedor) {
     function cerrarModal() {
         modalEl.hidden = true
         editandoId = null
+        modalEl.querySelector("form")?.reset()
+        inBuscarPedido && (inBuscarPedido.value = "")
+        inBuscarCliente && (inBuscarCliente.value = "")
+        selPedido.value = ""
+        selCliente.value = ""
+        pedidoSeleccionado = null
+        clientePorDocumento = null
+        clienteExternoPendiente = null
+        listaPedido.replaceChildren()
+        avisoSinPedido.hidden = false
+        avisoSinPedido.textContent = "Selecciona un pedido para ver sus productos."
+        if (resumenEl) resumenEl.hidden = true
+        actualizarResumen()
+        inPagado.value = ""
+        if (btnGuardar) btnGuardar.disabled = false
         document.body.classList.remove("sin-scroll")
     }
 
@@ -743,8 +897,10 @@ export async function ventasController(contenedor) {
             ID_Cliente: idCliente,
             ID_AperturaCaja: idApertura,
             ID_Pedido: idPedido,
+            Total: Number(pedidoSeleccionado.Total || 0),
             TipoDocumento: tipoDoc,
             ID_MetodoPago: idPago,
+            Es_Efectivo: esEfectivo ? '1' : '0',
             T_Pagado: tPagado,
             Monto_Recibido: tPagado,
             USUCRE: usucre,
@@ -752,8 +908,16 @@ export async function ventasController(contenedor) {
         }
 
         btnGuardar.disabled = true
-        const resultado = await ventaService.crearVenta(datos)
-        btnGuardar.disabled = false
+        btnGuardar.textContent = "Registrando…"
+        let resultado
+        try {
+            resultado = await VentaAdapter.crear(datos)
+        } catch (error) {
+            resultado = { ok: false, error }
+        } finally {
+            btnGuardar.disabled = false
+            btnGuardar.textContent = "Registrar venta"
+        }
 
         if (!resultado.ok) {
             console.error("Error al crear venta:", resultado.error)
@@ -764,9 +928,10 @@ export async function ventasController(contenedor) {
         cerrarModal()
         await recargar()
         await cargarCaja()
-        // Abrir el detalle de la venta recién creada para poder descargar el PDF
+        // Abrir el detalle de la venta recién creada y generar el PDF automáticamente
         if (resultado.data?.ID_Venta) {
-            verDetalle(resultado.data.ID_Venta)
+            await verDetalle(resultado.data.ID_Venta)
+            await generarYAbrirPDF()
         }
     }
 
@@ -863,11 +1028,11 @@ export async function ventasController(contenedor) {
             console.error("Error al recargar ventas:", r.error)
             return notifyError("No se pudieron recargar las ventas")
         }
+        cargandoVentas = false
         pintarTabla()
     }
 
     /* ---------- crear cliente rápido desde la venta ---------- */
-
     async function crearClienteRapido() {
         const Modal = (await import("../../components/Modal.js")).Modal
 
@@ -962,28 +1127,74 @@ export async function ventasController(contenedor) {
 
     /* ---------- eventos ---------- */
 
-    await cargarCaja()
+    try {
+        const settled = await Promise.allSettled([
+            clientService.listarClientes(),
+            userService.listarUsuarios(),
+            authService.obtenerSesion()
+        ])
+        clientesR = settled[0].status === "fulfilled" ? settled[0].value : { ok: false }
+        usuariosR = settled[1].status === "fulfilled" ? settled[1].value : { ok: false }
+        sesion = settled[2].status === "fulfilled" ? settled[2].value : { ok: false }
+        usucre = sesion.ok ? (sesion.data?.Logeo || sesion.data?.email || "WEB") : "WEB"
+        clientes = clientesR.ok ? clientesR.data : []
+        usuarios = usuariosR.ok ? usuariosR.data : []
+    } catch (error) {
+        console.error("Error cargando datos auxiliares de ventas:", error)
+    }
+    try {
+        ventasR = await ventaService.listarVentas()
+        ventas = ventasR.ok ? (ventasR.data || []) : []
+    } catch (error) {
+        console.error("Error cargando ventas:", error)
+        ventasR = { ok: false, error }
+    }
+    try {
+        await cargarCaja()
+    } catch (error) {
+        console.warn("No se pudo cargar la caja/métodos de pago, pero se sigue renderizando:", error)
+    }
+    cargandoVentas = false
     pintarTabla()
 
     /* Select de clientes: poblarClientes ya formatea como "ID - Nombre" */
-    poblarClientes(selCliente, clientes)
+    const clientesCargados = poblarClientes(selCliente, clientes)
+    if (!clientesCargados && clientesR.ok === false) {
+        notifyWarning("No se pudieron cargar los clientes (posible error de permisos/RLS).")
+    } else if (!clientesCargados) {
+        notifyWarning("No hay clientes registrados en la base de datos.")
+    }
     const optsCliente = [...selCliente.options]
     if (inBuscarCliente) {
-        inBuscarCliente.addEventListener("input", () => {
-            const q = inBuscarCliente.value.toLowerCase()
+        inBuscarCliente.addEventListener("input", (e) => {
+            const filtro = e.target.value.toLowerCase().trim();
             for (const opt of optsCliente) {
-                if (opt.value === "") {
-                    opt.hidden = false
-                    continue
-                }
-                opt.hidden = !opt.textContent.toLowerCase().includes(q)
+                if (opt.value === "" || opt.value === "0") return;
+                const texto = opt.textContent.toLowerCase();
+                opt.hidden = !texto.includes(filtro);
+                opt.style.display = opt.hidden ? 'none' : 'block';
             }
         })
     }
 
     /* Pedido a Facturar: contexto de mesa/turno para facturación */
-    selPedido.addEventListener("change", e => {
-        seleccionarPedido(e.target.value)
+    selPedido.addEventListener("change", async (e) => {
+        const id = e.target.value
+        if (!id) {
+            seleccionarPedido("")
+            return
+        }
+        try {
+            await seleccionarPedido(id)
+        } catch (error) {
+            console.error("Error cargando detalle del pedido:", error)
+            pedidoSeleccionado = null
+            listaPedido.replaceChildren()
+            avisoSinPedido.hidden = false
+            avisoSinPedido.textContent = `No se pudo cargar el detalle: ${error.message || "error de permisos/RLS"}`
+            if (resumenEl) resumenEl.hidden = true
+            actualizarResumen()
+        }
     })
 
     if (inBuscarPedido) {
@@ -1001,11 +1212,6 @@ export async function ventasController(contenedor) {
             anularVenta(venta.ID_Venta)
         }
     })
-
-    btnNuevo.addEventListener("click", abrirNuevo)
-    btnCancelar.addEventListener("click", cerrarModal)
-    btnGuardar.addEventListener("click", guardar)
-    btnNuevoCliente.addEventListener("click", crearClienteRapido)
 
     /* Tipo de documento: mostrar/ocultar campo DNI/RUC */
     radiosTipoDoc.forEach(r => r.addEventListener("change", cambiarTipoDocumento))
@@ -1083,77 +1289,69 @@ export async function ventasController(contenedor) {
         if (e.key === "Enter" && e.target.tagName === "INPUT") guardar()
     })
 
-    const onEscape = e => {
-        if (e.key === "Escape") {
-            if (!modalEl.hidden) cerrarModal()
-            if (!detModalEl.hidden) {
-                detModalEl.hidden = true
-                document.body.classList.remove("sin-scroll")
-            }
-        }
-    }
-    document.addEventListener("keydown", onEscape)
-
     btnDetCerrar.addEventListener("click", () => {
         detModalEl.hidden = true
         document.body.classList.remove("sin-scroll")
     })
     detModalEl.addEventListener("click", e => { if (e.target === detModalEl) { detModalEl.hidden = true; document.body.classList.remove("sin-scroll") } })
 
+    /* Generar y abrir el PDF del detalle de venta en una nueva pestaña.
+       Lee los datos del DOM del modal de detalle (poblados por verDetalle)
+       y de itemsDetalleActual. No guarda en Storage, solo abre window.open(). */
+    async function generarYAbrirPDF() {
+        const { jsPDF } = window.jspdf || {}
+        if (!jsPDF) {
+            return notifyError("No se pudo cargar la librería de PDF")
+        }
+
+        const ventaId = detModalEl.querySelector("#det-venta-id").textContent.replace("#", "").trim()
+        const fecha = detModalEl.querySelector("#det-venta-fecha").textContent
+        const cliente = detModalEl.querySelector("#det-venta-cliente").textContent
+        const documento = detModalEl.querySelector("#det-venta-documento")?.textContent || "-"
+        const metodo = detModalEl.querySelector("#det-venta-metodo")?.textContent || "-"
+        const total = detModalEl.querySelector("#det-venta-total").textContent
+        const subTotal = detModalEl.querySelector("#det-subtotal").textContent
+        const igv = detModalEl.querySelector("#det-igv").textContent
+
+        const doc = new jsPDF()
+
+        doc.setFontSize(16)
+        doc.text("Comprobante de Venta", 20, 20)
+        doc.setFontSize(11)
+        doc.text(`Venta #${ventaId}`, 20, 35)
+        doc.text(`Fecha: ${fecha}`, 20, 45)
+        doc.text(`Cliente: ${cliente}`, 20, 55)
+        doc.text(`Documento: ${documento}`, 20, 65)
+        doc.text(`Método de pago: ${metodo}`, 20, 75)
+
+        doc.text("Productos:", 20, 90)
+
+        doc.autoTable({
+            startY: 98,
+            head: [["Producto", "Cantidad", "Precio", "Subtotal"]],
+            body: itemsDetalleActual.map(it => [
+                unwrapEmbed(it.PRODUCTO)?.N_Producto || `Producto ${it.ID_Producto}`,
+                String(it.Cantidad || 0),
+                `S/ ${Number(it.Precio || 0).toFixed(2)}`,
+                `S/ ${Number(it.Sub_Total || 0).toFixed(2)}`,
+            ]),
+        })
+
+        const finalY = (doc.lastAutoTable?.finalY || 130) + 15
+        doc.text(`Subtotal: ${subTotal}`, 20, finalY)
+        doc.text(`IGV (18%): ${igv}`, 20, finalY + 10)
+        doc.text(`Total: ${total}`, 20, finalY + 20)
+
+        // Abre el PDF en una pestaña nueva sin guardarlo en BD ni descargarlo
+        const pdfBlob = doc.output("blob")
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+        window.open(pdfUrl, "_blank")
+    }
+
     /* Descargar PDF del detalle de venta */
     const btnDetPDF = detModalEl.querySelector("#ventas-detalle-descargar-pdf")
     if (btnDetPDF) {
-        btnDetPDF.addEventListener("click", async () => {
-            try {
-                const { jsPDF } = window.jspdf || {}
-                if (!jsPDF) {
-                    return notifyError("No se pudo cargar la librería de PDF")
-                }
-
-                const ventaId = detId.textContent.replace("#", "").trim()
-                const fecha = detFecha.textContent
-                const cliente = detCliente.textContent
-                const documento = detDocumento?.textContent || "-"
-                const metodo = detMetodo?.textContent || "-"
-                const total = detTotal.textContent
-                const subTotal = detSubtotal.textContent
-                const igv = detIgv.textContent
-
-                const doc = new jsPDF()
-
-                doc.setFontSize(16)
-                doc.text("Comprobante de Venta", 20, 20)
-                doc.setFontSize(11)
-                doc.text(`Venta #${ventaId}`, 20, 35)
-                doc.text(`Fecha: ${fecha}`, 20, 45)
-                doc.text(`Cliente: ${cliente}`, 20, 55)
-                doc.text(`Documento: ${documento}`, 20, 65)
-                doc.text(`Método de pago: ${metodo}`, 20, 75)
-
-                doc.text("Productos:", 20, 90)
-
-                doc.autoTable({
-                    startY: 98,
-                    head: [["Producto", "Cantidad", "Precio", "Subtotal"]],
-                    body: itemsDetalleActual.map(it => [
-                        unwrapEmbed(it.PRODUCTO)?.N_Producto || `Producto ${it.ID_Producto}`,
-                        String(it.Cantidad || 0),
-                        `S/ ${Number(it.Precio || 0).toFixed(2)}`,
-                        `S/ ${Number(it.Sub_Total || 0).toFixed(2)}`,
-                    ]),
-                })
-
-                const finalY = (doc.lastAutoTable?.finalY || 130) + 15
-                doc.text(`Subtotal: ${subTotal}`, 20, finalY)
-                doc.text(`IGV (18%): ${igv}`, 20, finalY + 10)
-                doc.text(`Total: ${total}`, 20, finalY + 20)
-
-                doc.save(`venta_${ventaId}.pdf`)
-            } catch (err) {
-                console.error("Error generando PDF:", err)
-                notifyError("No se pudo generar el PDF: " + (err.message || err))
-            }
-        })
+        btnDetPDF.addEventListener("click", generarYAbrirPDF)
     }
 
     /* Si venimos de "Guardar y procesar venta" desde Pedidos,
@@ -1163,7 +1361,7 @@ export async function ventasController(contenedor) {
     }
 
     return () => {
-        document.removeEventListener("keydown", onEscape)
+        window.removeEventListener("keydown", onEscape)
         document.body.classList.remove("sin-scroll")
     }
 }
