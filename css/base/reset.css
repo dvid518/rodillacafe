@@ -40,6 +40,13 @@ img {
     max-width: 100%;
 }
 
+/* El [hidden] del navegador pierde contra cualquier display de autor
+   (.sidebar__link es flex, .btn es inline-flex...). Sin esto, `hidden` no
+   oculta nada y el botón de instalar PWA se veía siempre. */
+[hidden] {
+    display: none !important;
+}
+
 a {
     text-decoration: none;
     color: inherit;

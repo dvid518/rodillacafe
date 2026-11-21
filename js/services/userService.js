@@ -31,6 +31,26 @@ async function promoverAAdmin(email) {
     }
 }
 
+async function promoverACajero(email) {
+    try {
+        const resultado = await UserAdapter.promoverCajero(email)
+        if (!resultado.ok) return { ok: false, error: resultado.error }
+        return { ok: true, data: resultado.data }
+    } catch (error) {
+        return { ok: false, error: { message: error?.message || "Error al promover a cajero" } }
+    }
+}
+
+async function promoverAMozo(email) {
+    try {
+        const resultado = await UserAdapter.promoverMozo(email)
+        if (!resultado.ok) return { ok: false, error: resultado.error }
+        return { ok: true, data: resultado.data }
+    } catch (error) {
+        return { ok: false, error: { message: error?.message || "Error al promover a mozo" } }
+    }
+}
+
 async function listarClientes() {
     return UserAdapter.listarClientes()
 }
@@ -166,6 +186,8 @@ export const userService = {
     listarUsuarios,
     listarClientes,
     promoverAAdmin,
+    promoverACajero,
+    promoverAMozo,
     buscarUsuarioPorDNI,
     consultarDNIExterno,
     registrarUsuarioManual,

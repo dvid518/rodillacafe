@@ -521,6 +521,42 @@ body.dashboard {
     }
 }
 
+/* ---------- botones de rol del modal de promover ---------- */
+
+.usuarios-promover__roles {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+    margin-top: var(--space-xs);
+}
+
+.rol-btn {
+    flex: 1 1 auto;
+    min-width: 90px;
+    text-align: center;
+}
+
+.rol-btn.active {
+    background-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+}
+
+.rol-btn.active:hover {
+    background-color: var(--accent);
+}
+
+@media (max-width: 480px) {
+    .usuarios-promover__roles {
+        flex-direction: column;
+    }
+
+    .rol-btn {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
 /* ---------- avisos ---------- */
 
 .aviso-permiso {

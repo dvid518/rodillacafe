@@ -126,6 +126,21 @@
     color: var(--text);
 }
 
+/* El botón de instalación PWA es un <button>, no un <a>: hereda el estilo
+   del menú y se le quitan los valores por defecto del navegador. */
+button.sidebar__link {
+    width: 100%;
+    background: none;
+    border: 0;
+    font: inherit;
+    text-align: left;
+}
+
+.sidebar__grupo--app {
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border);
+}
+
 .sidebar__link--active {
     background-color: var(--accent);
     color: var(--accent-text);

@@ -4,7 +4,7 @@ import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js
 import { escaparHTML } from "../../utils/format.js"
 import {
     abrirModal, cerrarModal, cerrarConEscape, filaVacia, filaError,
-    rolesDe, nombreUsuario, confirmarBorrado,
+    rolesDe, nombreUsuario,
 } from "./crud-comun.js"
 
 /* La columna "Logeo" salio de la tabla y de los modales: es el identificador
@@ -33,7 +33,6 @@ export async function usuariosController(contenedor) {
     }
 
     const info = modal.querySelector("#usuarios-modal-info")
-    const selRol = modal.querySelector("#usuarios-input-rol")
     const btnGuardar = modal.querySelector("#usuarios-modal-guardar")
     const btnCancelar = modal.querySelector("#usuarios-modal-cancelar")
 
@@ -85,10 +84,25 @@ export async function usuariosController(contenedor) {
         aviso.textContent = "No se pudo leer la lista de usuarios."
     }
 
-    /* El unico rol asignable desde la aplicacion. Los demas se dejan fuera en
-       vez de mostrarlos y fallar: usp_PromoverAdmin fija ADMINISTRADOR y
-       revoca cualquier otro rol, asi que ofrecer CAJERO/MOZO seria mentir. */
-    selRol.innerHTML = '<option value="ADMINISTRADOR">Administrador</option>'
+    let rolSeleccionado = "ADMINISTRADOR"
+
+    const btnRolAdmin = modal.querySelector('[data-rol="ADMINISTRADOR"]')
+    const btnRolCajero = modal.querySelector('[data-rol="CAJERO"]')
+    const btnRolMozo = modal.querySelector('[data-rol="MOZO"]')
+
+    function marcarRol(rol) {
+        rolSeleccionado = rol
+        ;[btnRolAdmin, btnRolCajero, btnRolMozo].forEach((b) => {
+            const activo = b.dataset.rol === rol
+            b.classList.toggle("active", activo)
+        })
+    }
+
+    btnRolAdmin.addEventListener("click", () => marcarRol("ADMINISTRADOR"))
+    btnRolCajero.addEventListener("click", () => marcarRol("CAJERO"))
+    btnRolMozo.addEventListener("click", () => marcarRol("MOZO"))
+
+    marcarRol("ADMINISTRADOR")
 
     /* Cliente para los clientes, EMPLEADO para el personal: el personal no tiene
        CLIENTE, asi que sin el segundo embedding el admin seria invisible en su
@@ -153,23 +167,36 @@ export async function usuariosController(contenedor) {
         if (!usuario) return
         editando = usuario
         const nombre = nombreDe(usuario)
-        info.innerHTML = `Vas a promover a <strong>${escaparHTML(nombre)}</strong>.
-                          Su lista de roles passara a ser solo ADMINISTRADOR.`
-        selRol.value = "ADMINISTRADOR"
+        rolSeleccionado = "ADMINISTRADOR"
+        marcarRol("ADMINISTRADOR")
+        info.innerHTML = `Vas a promover a <strong>${escaparHTML(nombre)}</strong>
+                          como <strong>${escaparHTML(rolSeleccionado)}</strong>.
+                          Su lista de roles passara a ser solo ese rol.`
         abrirModal(modal, btnGuardar)
     }
 
     async function promover() {
         if (!editando) return
-        // el Logeo es el correo con el que la cuenta se creo: se usa para
-        // llamar a usp_PromoverAdmin y no se muestra
+
         const email = editando.Logeo
         if (!email) {
             return notifyWarning("Esta cuenta no tiene correo registrado, no se puede promover")
         }
 
         btnGuardar.disabled = true
-        const resultado = await userService.promoverAAdmin(email)
+
+        let resultado
+        if (rolSeleccionado === "ADMINISTRADOR") {
+            resultado = await userService.promoverAAdmin(email)
+        } else if (rolSeleccionado === "CAJERO") {
+            resultado = await userService.promoverACajero(email)
+        } else if (rolSeleccionado === "MOZO") {
+            resultado = await userService.promoverAMozo(email)
+        } else {
+            btnGuardar.disabled = false
+            return notifyError("Rol no valido")
+        }
+
         btnGuardar.disabled = false
 
         if (!resultado.ok) {
@@ -177,7 +204,7 @@ export async function usuariosController(contenedor) {
             return notifyError("No se pudo promover al usuario. Intente de nuevo mas tarde.")
         }
 
-        notifySuccess(`${nombreDe(editando)} ahora es administrador`)
+        notifySuccess(`${nombreDe(editando)} ahora es ${rolSeleccionado.toLowerCase()}`)
         cerrarModal(modal)
         editando = null
         await recargar()
@@ -401,26 +428,9 @@ export async function usuariosController(contenedor) {
     tbody.addEventListener("click", e => {
         const btn = e.target.closest('[data-accion="promover"]')
         if (!btn) return
-        // se pide confirmacion aparte: es una accion que no tiene vuelta atras
         const usuario = usuarios.find(u => u.ID_Usuario === Number(btn.dataset.id))
         if (!usuario) return
-        confirmarBorrado({
-            titulo: "Promover a administrador",
-            cuerpo: `<p>${escaparHTML(nombreDe(usuario))} pasara a ser ADMINISTRADOR
-                     y perdra sus roles actuales (${escaparHTML(rolesDe(usuario))}).</p>
-                     <p class="modal-nota">Tendria que volver a asignar el resto de roles desde la base de datos.</p>`,
-            textoBoton: "Promover",
-            onConfirm: async () => {
-                if (!usuario.Logeo) return notifyWarning("Esta cuenta no tiene correo registrado")
-                const resultado = await userService.promoverAAdmin(usuario.Logeo)
-                if (!resultado.ok) {
-                    console.error("Error al promover usuario:", resultado.error)
-                    return notifyError("No se pudo promover al usuario")
-                }
-                notifySuccess(`${nombreDe(usuario)} ahora es administrador`)
-                await recargar()
-            },
-        })
+        abrirPromover(usuario.ID_Usuario)
     })
 
     if (btnCancelar) btnCancelar.addEventListener("click", () => cerrarModal(modal))

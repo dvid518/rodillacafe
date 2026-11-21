@@ -3,6 +3,7 @@ import { orderService } from "../../services/orderService.js"
 import { userService } from "../../services/userService.js"
 import { productService } from "../../services/productService.js"
 import { clientService } from "../../services/clientService.js"
+import { cajaService } from "../../services/cajaService.js"
 import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
@@ -13,6 +14,7 @@ import {
     abrirModal, cerrarModal, cerrarConEscape, poblarClientes,
     mapaUsuarios, confirmarBorrado,
 } from "./crud-comun.js"
+import { solicitarAperturaCaja } from "./aperturaCaja.js"
 
 /* La fila lleva la columna del ID_Pedido: es lo que la identifica de forma
    univoca (el Numero_Pedido alfanumerico se sigue generando y guardando,
@@ -497,7 +499,8 @@ export async function pedidosController(contenedor) {
     }
 
     /* Guarda el pedido y, en lugar de cerrar, navega a Ventas con ese pedido
-       preseleccionado para facturarlo inmediatamente. */
+       preseleccionado para facturarlo inmediatamente. Requiere que exista una
+       caja abierta; si no, abre un turno antes de continuar. */
     async function guardarYProcesarVenta() {
         if (editandoId) {
             return notifyWarning("No se puede procesar una venta desde una edición de pedido")
@@ -514,6 +517,22 @@ export async function pedidosController(contenedor) {
         if (!productosVenta.length) return notifyWarning("Añade al menos un producto")
         if (productosVenta.some(it => !it.Cantidad || it.Cantidad < 1)) {
             return notifyWarning("Todas las cantidades deben ser al menos 1")
+        }
+
+        /* Solo CAJERO/ADMIN gestionan el turno antes de vender. MOZO puede
+           registrar el pedido sin caja: el cobro se valida al facturar. */
+        const puedeOperarCaja = esAdmin || roles.includes("CAJERO")
+        if (puedeOperarCaja) {
+            const rApertura = await cajaService.obtenerAperturaAbierta()
+            if (rApertura.ok && !rApertura.data) {
+                const abierta = await solicitarAperturaCaja()
+                if (!abierta) {
+                    return
+                }
+            } else if (!rApertura.ok) {
+                // Sin permiso para consultar el turno: no bloquear el pedido.
+                console.warn("No se pudo consultar la apertura de caja:", rApertura.error)
+            }
         }
 
         btnGuardar.disabled = true

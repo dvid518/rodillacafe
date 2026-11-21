@@ -35,10 +35,11 @@ export function limpiarActividad() {
     detenerVigilanciaInactividad()
 }
 
-/** true si ya pasaron los 10 minutos sin actividad (o nunca se registro actividad). */
+/** true si ya pasaron los 10 minutos sin actividad. Una sesión nueva sin actividad previa no está expirada. */
 export function sesionExpirada() {
     const ultima = ultimaActividadGuardada()
-    return ultima === null || Date.now() - ultima > LIMITE_INACTIVIDAD_MS
+    if (ultima === null) return false
+    return Date.now() - ultima > LIMITE_INACTIVIDAD_MS
 }
 
 let vigilanciaIniciada = false
@@ -195,7 +196,13 @@ function mostrarFalloConexion({ motivo, detalle }) {
     boton.addEventListener("click", () => window.location.reload())
 
     caja.append(h1, p, ayuda, boton)
-    document.body.replaceChildren(caja)
+
+    // No destruir el DOM existente (sidebar, navbar, etc.) para mostrar el aviso.
+    // Se inserta dentro de #app si existe, o se añade al body sin reemplazarlo.
+    const existente = document.querySelector(".fallo-conexion")
+    if (existente) existente.remove()
+    const contenedor = document.getElementById("app") || document.body
+    contenedor.appendChild(caja)
 }
 
 export async function guardSesion() {
@@ -222,15 +229,16 @@ export async function guardSesion() {
         window.location.href = "/index.html"
         return null
     }
+    // Esta carga cuenta como actividad (se registra ANTES de comprobar la
+    // expiracion para no marcar como expirada una sesion sin actividad previa).
+    registrarActividad()
+
     // Limite de inactividad: 10 minutos sin actividad. Superado el limite se
     // borra la sesion y se envia al login con aviso.
     if (sesionExpirada()) {
         await cerrarSesionPorInactividad()
         return null
     }
-    // Esta carga tambien cuenta como actividad y arranca la vigilancia para
-    // que la sesion se cierre sola si el usuario deja de interactuar.
-    registrarActividad()
     iniciarVigilanciaInactividad()
     return sesion.data
 }

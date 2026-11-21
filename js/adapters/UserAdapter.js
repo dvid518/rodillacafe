@@ -186,6 +186,92 @@ async function promoverAdminDirecto(email) {
 }
 
 /**
+ * Promueve un usuario a un rol operativo (CAJERO o MOZO).
+ * Misma lógica que usp_PromoverAdmin pero parametrizada por rol y tipo de
+ * usuario. No usa supabase.rpc porque el procedimiento SQL equivalente puede
+ * no estar desplegado; hace las mismas operaciones directamente vía
+ * Supabase client.
+ */
+async function promoverRolDirecto(email, nombreRol, idTipoUsuario) {
+    // 1) Localizar el usuario por Logeo
+    const { data: usuario, error: errUsuario } = await supabase
+        .from("USUARIO")
+        .select("ID_Usuario, ID_TipoUsuario, Logeo")
+        .eq("Logeo", email)
+        .maybeSingle()
+    if (errUsuario) return { ok: false, error: errUsuario }
+    if (!usuario) {
+        return { ok: false, error: { message: "Usuario no encontrado: " + email } }
+    }
+
+    // 2) Resolver ID_Rol del rol destino
+    const { data: rol, error: errRol } = await supabase
+        .from("ROL")
+        .select("ID_Rol")
+        .eq("N_Rol", nombreRol)
+        .eq("ESTADO", "1")
+        .maybeSingle()
+    if (errRol) return { ok: false, error: errRol }
+    if (!rol) {
+        return { ok: false, error: { message: `Rol ${nombreRol} no existe en la base de datos` } }
+    }
+
+    const ahora = new Date().toISOString()
+
+    // 3) Actualizar USUARIO: ID_TipoUsuario
+    const { error: errUpdate } = await supabase
+        .from("USUARIO")
+        .update({
+            ID_TipoUsuario: idTipoUsuario,
+            USUMOD: "ADMIN",
+            FECMOD: ahora,
+        })
+        .eq("ID_Usuario", usuario.ID_Usuario)
+    if (errUpdate) return { ok: false, error: errUpdate }
+
+    // 4) Upsert USUARIO_ROL: activar rol destino
+    const { error: errUpsert } = await supabase
+        .from("USUARIO_ROL")
+        .upsert(
+            {
+                ID_Usuario: usuario.ID_Usuario,
+                ID_Rol: rol.ID_Rol,
+                Vigente: "1",
+                ESTADO: "1",
+                USUCRE: "ADMIN",
+                FECMOD: ahora,
+            },
+            { onConflict: ["ID_Usuario", "ID_Rol"] }
+        )
+    if (errUpsert) return { ok: false, error: errUpsert }
+
+    // 5) Revocar cualquier otro rol vigente
+    const { error: errRevoke } = await supabase
+        .from("USUARIO_ROL")
+        .update({
+            Vigente: "0",
+            ESTADO: "0",
+            USUMOD: "ADMIN",
+            FECMOD: ahora,
+        })
+        .eq("ID_Usuario", usuario.ID_Usuario)
+        .neq("ID_Rol", rol.ID_Rol)
+    if (errRevoke) return { ok: false, error: errRevoke }
+
+    return { ok: true, data: { ID_Usuario: usuario.ID_Usuario, ID_Rol: rol.ID_Rol } }
+}
+
+async function promoverCajero(email) {
+    // CAJERO: ID_Rol = 2, ID_TipoUsuario = 2 (OPERATIVO)
+    return promoverRolDirecto(email, "CAJERO", 2)
+}
+
+async function promoverMozo(email) {
+    // MOZO: ID_Rol = 3, ID_TipoUsuario = 2 (OPERATIVO)
+    return promoverRolDirecto(email, "MOZO", 2)
+}
+
+/**
  * Busca una PERSONA por número de documento (DNI). Devuelve los datos de la
  * persona junto con su ID_TipoIdentidad, o null si no existe.
  */
@@ -381,6 +467,8 @@ export const UserAdapter = {
     listarUsuarios,
     listarClientes,
     promoverAdmin,
+    promoverCajero,
+    promoverMozo,
     buscarPersonaPorDNI,
     buscarUsuarioPorDNI,
     crearUsuarioManual,

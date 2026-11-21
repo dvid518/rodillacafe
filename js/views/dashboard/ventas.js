@@ -11,7 +11,9 @@ import { authService } from "../../services/authService.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
 import { escaparHTML, formatearPrecio, formatearFecha } from "../../utils/format.js"
+import { generarTicketTermico } from "../../utils/ticket.js"
 import { poblarClientes, nombreUsuario } from "./crud-comun.js"
+import { solicitarAperturaCaja } from "./aperturaCaja.js"
 import { unwrapEmbed } from "../../utils/supabaseHelpers.js"
 
 const ESTADO_VENTA = { E: "Emitida", X: "Anulada", A: "Anulada", P: "Pendiente", C: "Completada" }
@@ -118,8 +120,10 @@ export async function ventasController(contenedor) {
     /* Pedido seleccionado (con DETALLE_PEDIDO embebido) */
     let pedidoSeleccionado = null
 
-    /* Items del detalle de venta abierto (para descargar PDF) */
+    /* Items del detalle de venta abierto (para el ticket) */
     let itemsDetalleActual = []
+    /* Venta del detalle abierto: de aquí salen T_Pagado y Vuelto del ticket */
+    let ventaDetalleActual = null
 
     /* Cliente resuelto por DNI/RUC (se rellena al buscar) */
     let clientePorDocumento = null
@@ -162,8 +166,10 @@ export async function ventasController(contenedor) {
             `
             const btnAbrir = cajaEstado.querySelector("#ventas-abrir-caja")
             if (btnAbrir) {
-                btnAbrir.addEventListener("click", () => {
-                    notifyWarning("Abre un turno en la pestaña Caja antes de registrar una venta.")
+                btnAbrir.addEventListener("click", async () => {
+                    if (!(await solicitarAperturaCaja())) return
+                    await cargarCaja()
+                    selPedido.focus()
                 })
             }
         }
@@ -434,6 +440,8 @@ export async function ventasController(contenedor) {
                     PRODUCTO ( N_Producto )
             `)
             .eq("ID_Pedido", Number(idPedido))
+            .eq("ESTADO", "1")
+            .neq("Situacion", "X")
         if (errDetalles) {
             pedidoSeleccionado = null
             avisoSinPedido.hidden = false
@@ -531,6 +539,8 @@ export async function ventasController(contenedor) {
             console.warn("No se pudo cargar la caja al abrir el modal:", error)
         }
 
+        cambiarTipoDocumento()
+
         // Si venimos de "Guardar y procesar venta" desde Pedidos, preseleccionar ese pedido
         const idPedidoPreseleccionado = sessionStorage.getItem("rodilla:pedido_para_venta")
         if (idPedidoPreseleccionado) {
@@ -549,8 +559,6 @@ export async function ventasController(contenedor) {
             // (después de que cargarPedidosPendientes pobló las opciones)
             selPedido.value = idPedidoPreseleccionado
         }
-
-        cambiarTipoDocumento()
 
         modalEl.hidden = false
 
@@ -624,11 +632,16 @@ export async function ventasController(contenedor) {
     }
 
     async function cargarPedidosPendientes() {
-        const { data, error } = await supabase.from("PEDIDO").select(`ID_Pedido, ID_Cliente, Situacion, F_Pedido, Total, CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) )`).in("Situacion", ["P", "A"]).order("F_Pedido", { ascending: false })
+        const { data, error } = await supabase.from("PEDIDO").select(`ID_Pedido, ID_Cliente, Situacion, F_Pedido, Total, CLIENTE ( ID_Cliente, PERSONA ( Nombre, Ap_Paterno ) )`).eq("ESTADO", "1").in("Situacion", ["P", "A"]).order("F_Pedido", { ascending: false })
         if (error) throw error
+
+        /* Segunda barrera contra pedidos ya facturados. Si el rol no puede leer
+           VENTA (RLS), no debe tumbar el selector: Situacion 'F' ya los excluye. */
         const { data: ventasFacturadas, error: errorVentas } = await supabase.from("VENTA").select("ID_Pedido").not("ID_Pedido", "is", null)
-        if (errorVentas) throw errorVentas
-        const facturados = new Set((ventasFacturadas || []).map(v => Number(v.ID_Pedido)))
+        if (errorVentas) {
+            console.warn("No se pudo leer VENTA para excluir facturados:", errorVentas)
+        }
+        const facturados = new Set((errorVentas ? [] : ventasFacturadas || []).map(v => Number(v.ID_Pedido)))
         pedidosPendientes = (data || []).filter(p => !facturados.has(Number(p.ID_Pedido)))
         pedidosPorId.clear()
         for (const p of pedidosPendientes) pedidosPorId.set(Number(p.ID_Pedido), p)
@@ -674,11 +687,15 @@ export async function ventasController(contenedor) {
     async function buscarYMostrarClientePorPedido(pedido) {
         if (!pedido) return
 
+        const idCliente = pedido.ID_Cliente
         const clienteObj = unwrapEmbed(pedido.CLIENTE)
-        if (!clienteObj) return
 
-        const idCliente = clienteObj.ID_Cliente
-        const cliente = clientes.find(c => c.ID_Cliente === idCliente)
+        // Si el embed trae el cliente, usarlo directamente; si no, buscarlo en
+        // la colección local ya cargada por ID_Cliente sin consultar a Supabase.
+        let cliente = clienteObj && clienteObj.ID_Cliente == idCliente ? clienteObj : null
+        if (!cliente) {
+            cliente = clientes.find(c => c.ID_Cliente === idCliente)
+        }
 
         if (!cliente) {
             notifyWarning("El cliente no existe en la base de datos")
@@ -711,7 +728,7 @@ export async function ventasController(contenedor) {
         clienteNombreEl.textContent = tipoDoc === "ruc"
             ? (unwrapEmbed(cliente.EMPRESA)?.Razon_Social || "")
             : `${unwrapEmbed(cliente.PERSONA)?.Nombre || ""} ${unwrapEmbed(cliente.PERSONA)?.Ap_Paterno || ""}`.trim()
-        clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${documento}`
+        clienteDocEl.textContent = `${tipoDoc === "ruc" ? "RUC" : "DNI"}: ${documento}`
         if (avisoDocumento) {
             avisoDocumento.textContent = "Cliente encontrado en la base de datos"
             avisoDocumento.style.color = "var(--state-success)"
@@ -852,7 +869,10 @@ export async function ventasController(contenedor) {
 
     async function guardar() {
         if (!aperturaAbierta || !aperturaAbierta.ID_AperturaCaja) {
-            return notifyWarning("No hay una caja abierta. Abre un turno antes de registrar la venta.")
+            // Sin turno: abrir uno y dejar que el usuario vuelva a pulsar
+            // Registrar. No se continúa el cobro si cancela o falla.
+            if (await solicitarAperturaCaja()) await cargarCaja()
+            return
         }
         const idApertura = Number(aperturaAbierta.ID_AperturaCaja)
         const idPago = Number(selPago.value)
@@ -909,6 +929,11 @@ export async function ventasController(contenedor) {
 
         btnGuardar.disabled = true
         btnGuardar.textContent = "Registrando…"
+
+        /* Reservar la ventana del ticket dentro del gesto de usuario: si se abre
+           despues del primer await, el navegador la bloquea. */
+        const winTicket = window.open("", "_blank")
+
         let resultado
         try {
             resultado = await VentaAdapter.crear(datos)
@@ -920,6 +945,7 @@ export async function ventasController(contenedor) {
         }
 
         if (!resultado.ok) {
+            if (winTicket) winTicket.close()
             console.error("Error al crear venta:", resultado.error)
             return notifyError(resultado.error?.message || "No se pudo registrar la venta")
         }
@@ -928,10 +954,18 @@ export async function ventasController(contenedor) {
         cerrarModal()
         await recargar()
         await cargarCaja()
-        // Abrir el detalle de la venta recién creada y generar el PDF automáticamente
+        // Generar el ticket térmico en la ventana ya reservada.
         if (resultado.data?.ID_Venta) {
-            await verDetalle(resultado.data.ID_Venta)
-            await generarYAbrirPDF()
+            try {
+                await verDetalle(resultado.data.ID_Venta)
+                await generarYAbrirTicketTermico(winTicket)
+            } catch (error) {
+                if (winTicket) winTicket.close()
+                console.error("Error al generar ticket térmico:", error)
+                notifyError("No se pudo generar el ticket térmico")
+            }
+        } else if (winTicket) {
+            winTicket.close()
         }
     }
 
@@ -1015,6 +1049,7 @@ export async function ventasController(contenedor) {
         }
 
         itemsDetalleActual = itemsDet
+        ventaDetalleActual = venta
 
         detModalEl.hidden = false
         document.body.classList.add("sin-scroll")
@@ -1348,10 +1383,86 @@ export async function ventasController(contenedor) {
         window.open(pdfUrl, "_blank")
     }
 
-    /* Descargar PDF del detalle de venta */
-    const btnDetPDF = detModalEl.querySelector("#ventas-detalle-descargar-pdf")
-    if (btnDetPDF) {
-        btnDetPDF.addEventListener("click", generarYAbrirPDF)
+    /* Generar y abrir el ticket térmico de 80 mm del detalle de venta.
+       Si se recibe winPreabierta (desde el flujo de aprobación de venta), se
+       reutiliza esa ventana; si no (botón directo), se abre sincrónicamente
+       dentro del evento de clic para evitar el bloqueo de popups. */
+    async function generarYAbrirTicketTermico(winPreabierta) {
+        const { jsPDF } = window.jspdf || {}
+        if (!jsPDF) {
+            return notifyError("No se pudo cargar la librería de PDF")
+        }
+
+        const ventaId = detModalEl.querySelector("#det-venta-id").textContent.replace("#", "").trim()
+        const fecha = detModalEl.querySelector("#det-venta-fecha").textContent
+        const cliente = detModalEl.querySelector("#det-venta-cliente").textContent
+        const documento = detModalEl.querySelector("#det-venta-documento")?.textContent || "-"
+        const metodo = detModalEl.querySelector("#det-venta-metodo")?.textContent || "-"
+        const total = detModalEl.querySelector("#det-venta-total").textContent.replace("S/ ", "").trim()
+        const subTotal = detModalEl.querySelector("#det-subtotal").textContent.replace("S/ ", "").trim()
+        const igv = detModalEl.querySelector("#det-igv").textContent.replace("S/ ", "").trim()
+
+        const items = itemsDetalleActual.map(it => ({
+            id: it.ID_Producto,
+            nombre: unwrapEmbed(it.PRODUCTO)?.N_Producto || `Producto ${it.ID_Producto}`,
+            cantidad: Number(it.Cantidad || 0),
+            precio: Number(it.Precio || 0),
+            subtotal: Number(it.Sub_Total || 0),
+        }))
+
+        let efectivoRecibido = "-"
+        let vuelto = "-"
+
+        /* Solo se imprime efectivo/vuelto si el pago fue en efectivo. En el
+           detalle abierto desde la tabla, idMetodoEfectivo puede ser null
+           porque el modal de venta no se abrió: se usa el nombre del método. */
+        const ventaDet = ventaDetalleActual
+        const pagos = ventaDet?.PAGO_VENTA
+        const pagoDet = unwrapEmbed(Array.isArray(pagos) ? pagos[0] : pagos)
+        const esPagoEfectivo = Number(pagoDet?.ID_MetodoPago) === Number(idMetodoEfectivo)
+            || /efectivo/i.test(metodo)
+        if (ventaDet && esPagoEfectivo) {
+            efectivoRecibido = Number(ventaDet.T_Pagado || 0).toFixed(2)
+            vuelto = Number(ventaDet.Vuelto || 0).toFixed(2)
+        }
+
+        /* Reservar ventana sincrónicamente (o usar la ya abierta). */
+        const win = winPreabierta || window.open("", "_blank")
+        if (!win) {
+            return notifyWarning("El navegador bloqueó la ventana emergente. Permite ventanas emergentes para Rodilla e intenta de nuevo.")
+        }
+
+        try {
+            const blob = await generarTicketTermico({
+                ventaId,
+                fecha,
+                cliente,
+                documento,
+                metodoPago: metodo,
+                total,
+                subTotal,
+                igv,
+                items,
+                efectivoRecibido,
+                vuelto,
+            })
+            const pdfUrl = URL.createObjectURL(blob)
+            win.location.href = pdfUrl
+            win.focus()
+            // Intentar imprimir tras permitir que el visor renderice el PDF.
+            setTimeout(() => {
+                try { win.print() } catch (e) { /* visor PDF puede no exponer print() */ }
+            }, 800)
+        } catch (error) {
+            if (!winPreabierta) win.close()
+            console.error("Error al generar ticket térmico:", error)
+            notifyError("No se pudo generar el ticket térmico")
+        }
+    }
+
+    const btnDetTicket = detModalEl.querySelector("#ventas-detalle-imprimir-ticket")
+    if (btnDetTicket) {
+        btnDetTicket.addEventListener("click", generarYAbrirTicketTermico)
     }
 
     /* Si venimos de "Guardar y procesar venta" desde Pedidos,

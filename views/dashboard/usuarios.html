@@ -87,14 +87,17 @@
 
             <label class="modal-form__campo" for="usuarios-input-rol">
                 Rol
-                <select class="select" id="usuarios-input-rol"></select>
+                <div class="usuarios-promover__roles" id="usuarios-input-rol">
+                    <button type="button" class="btn btn--sm btn--ghost rol-btn active" data-rol="ADMINISTRADOR">Administrador</button>
+                    <button type="button" class="btn btn--sm btn--ghost rol-btn" data-rol="CAJERO">Cajero</button>
+                    <button type="button" class="btn btn--sm btn--ghost rol-btn" data-rol="MOZO">Mozo</button>
+                </div>
             </label>
 
             <p class="modal-nota modal-nota--peligro">
-                El único rol que se puede asignar desde aquí es ADMINISTRADOR.
                 Promover <strong>revoca</strong> cualquier otro rol vigente
-                (CLIENTE, CAJERO, MOZO) y no se puede deshacer desde la
-                aplicación.
+                (CLIENTE, CAJERO, MOZO o ADMINISTRADOR) y no se puede deshacer
+                desde la aplicación.
             </p>
 
             <div class="modal-form__acciones">

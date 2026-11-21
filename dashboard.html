@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="css/components/skeleton.css">
     <link rel="stylesheet" href="css/pages/dashboard.css">
     <link rel="manifest" href="/manifest.webmanifest">
+    <!-- Iconos PWA pendientes de archivo PNG (ver img/pwa/README.txt). -->
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <link rel="icon" href="/img/pwa/icon-192.png">
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
@@ -35,5 +38,12 @@
         </div>
     </div>
     <script type="module" src="js/controllers/dashboard.js"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").catch((err) => {
+                console.warn("[SW] Registro fallido:", err)
+            })
+        }
+    </script>
 </body>
 </html>

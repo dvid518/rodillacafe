@@ -336,6 +336,13 @@ async function realizarPedido() {
         return
     }
     try {
+        const idInvalido = carrito.find(p => !Number.isFinite(Number(p.id)) || Number(p.id) <= 0)
+        if (idInvalido) {
+            console.error("Producto inválido (id no numérico):", idInvalido)
+            notifyError(`Producto inválido: ${idInvalido.nombre || "desconocido"}`)
+            return
+        }
+
         const productos = carrito.map(producto => ({
             id_producto: Number(producto.id),
             cantidad: Number(producto.cantidad),

@@ -2,11 +2,31 @@
   "name": "Rodilla — Cafetería de especialidad",
   "short_name": "Rodilla",
   "description": "Sistema web de la cafetería Rodilla: menú, pedidos, reservas y contacto.",
-  "start_url": "/",
+  "start_url": "/dashboard.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#360e06",
   "theme_color": "#360e06",
-  "lang": "es-PE"
+  "lang": "es-PE",
+  "icons": [
+    {
+      "src": "/img/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/pwa/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }

@@ -123,11 +123,9 @@ async function crear(datos) {
     }
 
     /* ---------- 2. Llamada al procedimiento almacenado ---------- */
-    // facturar_venta valida: permiso admin/cajero, apertura abierta,
-    // existencia del pedido (P/A), tipo doc 01->cliente jurídico, genera
-    // Numero_Venta, calcula totales, inserta VENTA/DETALLE_VENTA/PAGO_VENTA,
-    // emite boleta/factura, descuenta Stock_Actual, registra movimiento de caja
-    // y cierra el pedido / libera la mesa.
+    // Mismo contrato que usp_FacturarPedido (sql/018_fixes.sql). PostgREST
+    // necesita una FUNCIÓN wrapper llamada facturar_venta; el repo solo trae
+    // el procedure, así que su existencia en la BD no se puede verificar aquí.
     const tipoDocumento = datos.TipoDocumento === "Factura" ? "01" : "03"
     const montorecibido = Number(datos.Monto_Recibido || datos.T_Pagado || 0)
 
@@ -145,6 +143,12 @@ async function crear(datos) {
 
     if (error) {
         console.error("Error en facturar_venta:", error)
+        if (error.code === "PGRST202") {
+            return {
+                ok: false,
+                error: { message: "La función facturar_venta no existe en la base de datos. Falta aplicarla antes de cobrar." }
+            }
+        }
         return { ok: false, error }
     }
 

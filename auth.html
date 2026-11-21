@@ -21,9 +21,19 @@
       <link rel="stylesheet" href="css/components/skeleton.css">
       <link rel="stylesheet" href="css/pages/auth.css">
       <link rel="manifest" href="/manifest.webmanifest">
+    <!-- Iconos PWA pendientes de archivo PNG (ver img/pwa/README.txt). -->
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <link rel="icon" href="/img/pwa/icon-192.png">
 </head>
 <body>
     <main id="app"></main>
     <script type="module" src="js/controllers/auth.js"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").catch((err) => {
+                console.warn("[SW] Registro fallido:", err)
+            })
+        }
+    </script>
 </body>
 </html>

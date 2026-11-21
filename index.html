@@ -34,11 +34,23 @@
     <link rel="stylesheet" href="css/components/skeleton.css">
     <link rel="stylesheet" href="css/pages/landing.css">
     <link rel="manifest" href="/manifest.webmanifest">
+    <!-- Iconos PWA pendientes de archivo PNG (ver img/pwa/README.txt). Se añaden
+         las referencias aunque los archivos aún no existan: producirán 404 hasta
+         que se proporcionen los PNG. -->
+    <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
+    <link rel="icon" href="/img/pwa/icon-192.png">
 </head>
 <body>
     <div id="navbar-root"></div>
     <main id="app"></main>
     <div id="footer-root"></div>
     <script type="module" src="js/controllers/landing.js"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").catch((err) => {
+                console.warn("[SW] Registro fallido:", err)
+            })
+        }
+    </script>
 </body>
 </html>
