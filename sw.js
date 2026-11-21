@@ -126,6 +126,11 @@ self.addEventListener("fetch", (event) => {
 
     const url = new URL(request.url)
 
+    // No interceptar esquemas no soportados por Cache Storage
+    // (chrome-extension:, about:, blob:, etc.). Solo http: y https:
+    // pueden almacenarse en caché.
+    if (url.protocol !== "http:" && url.protocol !== "https:") return
+
     // Supabase y API: siempre red, nunca caché (datos personales / backend).
     if (url.hostname.endsWith(".supabase.co") || url.hostname === "api.factiliza.com") {
         event.respondWith(fetch(request))

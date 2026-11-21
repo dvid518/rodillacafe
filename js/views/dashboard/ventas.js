@@ -1462,7 +1462,10 @@ export async function ventasController(contenedor) {
 
     const btnDetTicket = detModalEl.querySelector("#ventas-detalle-imprimir-ticket")
     if (btnDetTicket) {
-        btnDetTicket.addEventListener("click", generarYAbrirTicketTermico)
+        btnDetTicket.addEventListener("click", (e) => {
+            e.preventDefault()
+            generarYAbrirTicketTermico()
+        })
     }
 
     /* Si venimos de "Guardar y procesar venta" desde Pedidos,

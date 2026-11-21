@@ -248,7 +248,6 @@ export async function cajaController(contenedor) {
             const sistema = Number(a.Monto_Sistema || 0)
             const declarado = Number(a.Monto_Declarado || 0)
             const diferencia = Number(a.Diferencia || 0)
-            const esCuadrada = diferencia === 0
 
             const fechaApertura = formatearFecha(a.F_Apertura, { dateStyle: "short", timeStyle: "short" })
             const fechaCierre = formatearFecha(a.F_Cierre, { dateStyle: "short", timeStyle: "short" })
@@ -262,7 +261,7 @@ export async function cajaController(contenedor) {
                     <td>S/ ${formatearPrecio(egresos)}</td>
                     <td>S/ ${formatearPrecio(sistema)}</td>
                     <td>S/ ${formatearPrecio(declarado)}</td>
-                    <td style="color:${esCuadrada ? "var(--state-success)" : "var(--state-danger)"}; font-weight:600;">${diferencia >= 0 ? "+" : ""}${formatearPrecio(diferencia)}</td>
+                    <td style="color:${diferencia >= 0 ? "var(--state-success)" : "var(--state-danger)"}; font-weight:600;">${diferencia >= 0 ? "+" : ""}${formatearPrecio(diferencia)}</td>
                 </tr>
             `
         }).join("")
