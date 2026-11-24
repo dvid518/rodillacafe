@@ -1,0 +1,19 @@
+✔ dni: caller authentication, roles and allowlisted success (25.295ms)
+✔ ruc: caller authentication, roles and allowlisted success (2.3234ms)
+✔ exact CORS only; preflight never calls dependencies and CORS does not authorize (1.5224ms)
+✔ malformed documents never invoke the provider (1.5764ms)
+✔ fails closed on expired auth, role denial, malformed role and Auth outage (2.6324ms)
+✔ provider failures never rotate and only documented absence becomes 404 (7.1344ms)
+✔ documented RUC absence returns 404 only for the requested document (0.5833ms)
+✔ one bounded 503 retry can recover with a successful response (0.7372ms)
+✔ one bounded 503 retry on the same key, respecting Retry-After and budget (2.5809ms)
+✔ provider deadline covers response body and aborts without replay (0.7158ms)
+✔ total deadline caps Auth and can prevent a 503 retry late in the request (0.5839ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165.8605

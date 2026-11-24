@@ -1,0 +1,3 @@
+Check supabase/functions/consultar-dni/index.ts
+Check supabase/functions/consultar-ruc/index.ts
+Exit: 0
