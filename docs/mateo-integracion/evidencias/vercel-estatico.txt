@@ -1,0 +1,19 @@
+✔ Vercel excludes supabase/ (1.631ms)
+✔ Vercel excludes sql/ (0.3044ms)
+✔ Vercel excludes work/ (0.2079ms)
+✔ Vercel excludes graphify-out/ (0.1745ms)
+✔ Vercel excludes scripts/ (0.1748ms)
+✔ Vercel excludes tests/ (0.095ms)
+✔ Vercel excludes odd/ (0.0977ms)
+✔ Vercel excludes *.bak (0.0916ms)
+✔ Vercel excludes .env* (0.1901ms)
+✔ deployable client sources have no direct Factiliza endpoint or historical key array (38.1548ms)
+✔ deployable client sources have no private key signatures; allow public anon JWT in config only (31.9469ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 244.703

@@ -13,7 +13,7 @@
      transacciones en esta fase.
    ========================================================================== */
 
-const CACHE_NAME = "rodilla-v3"
+const CACHE_NAME = "rodilla-v4"
 const APP_SHELL = [
     "/",
     "/index.html",

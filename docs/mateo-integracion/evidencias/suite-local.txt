@@ -1,0 +1,42 @@
+✔ exact digits; invalid input does not call DB or Edge (2.4348ms)
+✔ DB-first uses a signal and preserves normalized contacts (1.2012ms)
+✔ DB failure is not absence, even if the response includes data (0.3864ms)
+✔ a clean miss calls only the Edge Function with the same deadline signal (0.7573ms)
+✔ reject mismatched or decorated document identities (0.5334ms)
+✔ normalize FunctionsHttpError JSON without exposing provider text (36.5802ms)
+✔ user DB failure cannot be bypassed by lookup or registration (0.9576ms)
+✔ deadline bounds a hung DB or SDK auth wait, aborting without retries (6.9823ms)
+✔ lookup UI guards duplicates and stale responses, and only fills untouched fields (2.2627ms)
+✔ dni: caller authentication, roles and allowlisted success (33.4816ms)
+✔ ruc: caller authentication, roles and allowlisted success (3.1013ms)
+✔ exact CORS only; preflight never calls dependencies and CORS does not authorize (1.8164ms)
+✔ malformed documents never invoke the provider (1.9851ms)
+✔ fails closed on expired auth, role denial, malformed role and Auth outage (2.8033ms)
+✔ provider failures never rotate and only documented absence becomes 404 (10.7435ms)
+✔ documented RUC absence returns 404 only for the requested document (0.7176ms)
+✔ one bounded 503 retry can recover with a successful response (0.9697ms)
+✔ one bounded 503 retry on the same key, respecting Retry-After and budget (2.6089ms)
+✔ provider deadline covers response body and aborts without replay (0.9308ms)
+✔ total deadline caps Auth and can prevent a 503 retry late in the request (0.8788ms)
+✔ dni: browser service, Edge and provider contract with synthetic transports (41.0806ms)
+✔ ruc: browser service, Edge and provider contract with synthetic transports (4.1619ms)
+✔ Vercel excludes supabase/ (1.4844ms)
+✔ Vercel excludes sql/ (0.237ms)
+✔ Vercel excludes work/ (0.1945ms)
+✔ Vercel excludes graphify-out/ (0.1921ms)
+✔ Vercel excludes scripts/ (0.2066ms)
+✔ Vercel excludes tests/ (0.114ms)
+✔ Vercel excludes odd/ (0.1292ms)
+✔ Vercel excludes docs/ (0.2127ms)
+✔ Vercel excludes *.bak (0.1697ms)
+✔ Vercel excludes .env* (0.2743ms)
+✔ deployable client sources have no direct Factiliza endpoint or historical key array (34.5593ms)
+✔ deployable client sources have no private key signatures; allow public anon JWT in config only (36.0925ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 257.9059
