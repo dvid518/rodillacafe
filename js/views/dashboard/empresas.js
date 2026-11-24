@@ -5,6 +5,8 @@ import { Modal } from "../../components/Modal.js"
 import { icono } from "../../components/Icon.js"
 import { notifySuccess, notifyError, notifyWarning, notifyInfo } from "../../utils/notify.js"
 import { escaparHTML } from "../../utils/format.js"
+import { exactDocument } from "../../services/documentLookup.js"
+import { createLookupGuard, trackLookupFields } from "./documentLookupUI.js"
 
 export async function empresasController(contenedor) {
     const [empresasR, sesion] = await Promise.all([
@@ -29,6 +31,28 @@ export async function empresasController(contenedor) {
     const btnCancelar = modalEl.querySelector("#empresas-modal-cancelar")
     const btnNuevo = contenedor.querySelector("#empresas-nuevo")
     const titulo = modalEl.querySelector("#empresas-modal-titulo")
+
+    let timeoutRuc = null
+    let duplicateRuc = null
+    let originalRuc = null
+    let buscandoRuc = false
+    let guardando = false
+    let lookupVigente = true
+    const fields = trackLookupFields([inRazon, inDireccion, inComercial, inTelefono, inEmail])
+    const textoGuardar = btnGuardar.textContent
+    function syncGuardar() {
+        btnGuardar.disabled = buscandoRuc || guardando || (duplicateRuc !== null && duplicateRuc === inRuc.value)
+        btnGuardar.textContent = buscandoRuc ? "Consultando RUC..." : textoGuardar
+    }
+    const lookup = createLookupGuard(busy => { buscandoRuc = busy; syncGuardar() })
+
+    function cancelarConsulta() {
+        clearTimeout(timeoutRuc)
+        timeoutRuc = null
+        lookup.invalidate()
+        duplicateRuc = null
+        syncGuardar()
+    }
 
     /* ---------- tabla ---------- */
 
@@ -60,6 +84,9 @@ export async function empresasController(contenedor) {
     /* ---------- modal ---------- */
 
     function abrirNuevo() {
+        cancelarConsulta()
+        fields.reset()
+        originalRuc = null
         editandoId = null
         titulo.textContent = "Nueva empresa"
         inRuc.value = ""
@@ -74,6 +101,9 @@ export async function empresasController(contenedor) {
     }
 
     function abrirEdicion(empresa) {
+        cancelarConsulta()
+        fields.reset()
+        originalRuc = String(empresa.RUC || "")
         editandoId = empresa.ID_Empresa
         titulo.textContent = `Editar empresa ${empresa.ID_Empresa}`
         inRuc.value = empresa.RUC || ""
@@ -88,14 +118,17 @@ export async function empresasController(contenedor) {
     }
 
     function cerrarModal() {
+        cancelarConsulta()
         modalEl.hidden = true
         editandoId = null
         document.body.classList.remove("sin-scroll")
     }
 
     async function guardar() {
-        const ruc = String(inRuc.value || "").trim()
-        if (!ruc) return notifyWarning("El RUC es obligatorio")
+        if (guardando || buscandoRuc || timeoutRuc !== null) return
+        const ruc = exactDocument(inRuc.value, 11)
+        if (!ruc) return notifyWarning("El RUC debe tener 11 dígitos")
+        if (duplicateRuc === ruc) return notifyWarning("Esta empresa ya está registrada")
 
         const datos = {
             RUC: ruc,
@@ -107,11 +140,19 @@ export async function empresasController(contenedor) {
             USUCRE: usucre
         }
 
-        btnGuardar.disabled = true
-        const resultado = editandoId
-            ? await empresaService.actualizarEmpresa(editandoId, datos)
-            : await empresaService.crearEmpresa(datos)
-        btnGuardar.disabled = false
+        guardando = true
+        syncGuardar()
+        let resultado
+        try {
+            resultado = editandoId
+                ? await empresaService.actualizarEmpresa(editandoId, datos)
+                : await empresaService.crearEmpresa(datos)
+        } catch {
+            return notifyError("No se pudo guardar la empresa")
+        } finally {
+            guardando = false
+            syncGuardar()
+        }
 
         if (!resultado.ok) {
             console.error("Error al guardar empresa:", resultado.error)
@@ -167,59 +208,36 @@ export async function empresasController(contenedor) {
 
     /* ---------- eventos ---------- */
 
-    /* ---------- autocompletado RUC (Factiliza) ---------- */
+    inRuc.addEventListener("input", () => {
+        cancelarConsulta()
+        fields.documentChanged()
+        const ruc = exactDocument(inRuc.value, 11)
+        if (!ruc || ruc === originalRuc || modalEl.hidden || !lookupVigente) return
 
-    let timeoutRuc = null
-    let ultimoRucConsultado = ""
-
-    inRuc.addEventListener("input", (e) => {
-        const ruc = String(e.target.value || "").replace(/\D/g, "")
-
-        // Solo buscar cuando tenga 11 dígitos
-        if (ruc.length !== 11) return
-        if (ruc === ultimoRucConsultado) return
-
-        // Debounce de 500ms
-        clearTimeout(timeoutRuc)
         timeoutRuc = setTimeout(async () => {
-            ultimoRucConsultado = ruc
-
-            // Feedback de carga: deshabilitar input y cambiar texto del botón
-            inRuc.disabled = true
-            const textoOriginal = btnGuardar.textContent
-            btnGuardar.textContent = "Consultando RUC..."
-
-            const resultado = await rucService.consultarRUC(ruc)
-
-            // Quitar feedback de carga
-            inRuc.disabled = false
-            btnGuardar.textContent = textoOriginal
-
-            if (!resultado.ok) {
-                notifyWarning(`No se pudo consultar el RUC: ${resultado.error.message}`)
-                btnGuardar.disabled = false
-                return
-            }
-
-            const data = resultado.data
-
-            // Solo rellenar si los campos están vacíos (no sobreescribir datos del usuario)
-            if (inRazon && !inRazon.value) {
-                inRazon.value = data.razonSocial || ""
-            }
-            if (inDireccion && !inDireccion.value) {
-                inDireccion.value = data.direccion || ""
-            }
-            if (inComercial && !inComercial.value && data.nombreComercial) {
-                inComercial.value = data.nombreComercial
-            }
-
-            if (data.yaExiste) {
-                notifyInfo("Esta empresa ya está registrada")
-                btnGuardar.disabled = true
-            } else {
-                notifySuccess(`Empresa encontrada en SUNAT: ${data.razonSocial || "sin nombre"}`)
-                btnGuardar.disabled = false
+            timeoutRuc = null
+            if (modalEl.hidden || inRuc.value !== ruc || !lookupVigente) return
+            const request = lookup.start(() => !modalEl.hidden && inRuc.value === ruc)
+            if (!request) return
+            try {
+                const resultado = await rucService.consultarRUC(ruc)
+                if (!request.current()) return
+                if (!resultado.ok) return notifyWarning(resultado.error.message)
+                const data = resultado.data
+                fields.fill([
+                    [inRazon, data.razonSocial], [inDireccion, data.direccion || data.direccionCompleta],
+                    [inComercial, data.nombreComercial], [inTelefono, data.telefono], [inEmail, data.email],
+                ])
+                if (data.yaExiste && ruc !== originalRuc) {
+                    duplicateRuc = ruc
+                    notifyInfo("Esta empresa ya está registrada")
+                } else {
+                    notifySuccess(`Empresa encontrada: ${data.razonSocial || "sin nombre"}`)
+                }
+            } catch {
+                if (request.current()) notifyWarning("No se pudo consultar el RUC")
+            } finally {
+                request.finish()
             }
         }, 500)
     })
@@ -247,6 +265,8 @@ export async function empresasController(contenedor) {
     document.addEventListener("keydown", onEscape)
 
     return () => {
+        lookupVigente = false
+        cancelarConsulta()
         document.removeEventListener("keydown", onEscape)
         document.body.classList.remove("sin-scroll")
     }

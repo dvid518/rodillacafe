@@ -2,6 +2,8 @@ import { guardRol } from "../../session/roleGuard.js"
 import { userService } from "../../services/userService.js"
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/notify.js"
 import { escaparHTML } from "../../utils/format.js"
+import { exactDocument } from "../../services/documentLookup.js"
+import { createLookupGuard, trackLookupFields } from "./documentLookupUI.js"
 import {
     abrirModal, cerrarModal, cerrarConEscape, filaVacia, filaError,
     rolesDe, nombreUsuario,
@@ -75,6 +77,12 @@ export async function usuariosController(contenedor) {
     let editando = null
     let filtroDNI = ""
     let timerBusqueda = null
+    let lookupVigente = true
+    let versionRegistro = 0
+    let guardandoRegistro = false
+    const lookupTabla = createLookupGuard(busy => { btnBuscarDNI.disabled = busy })
+    const lookupRegistro = createLookupGuard(busy => { btnConsultarDNI.disabled = busy || inputRegistroDNI.disabled })
+    const fields = trackLookupFields([inputNombres, inputApPaterno, inputApMaterno, inputEmail, inputCelular])
 
     const rUsuarios = await userService.listarUsuarios()
     usuarios = rUsuarios.ok ? rUsuarios.data : []
@@ -230,62 +238,39 @@ export async function usuariosController(contenedor) {
         pintarTabla()
     }
 
+    function completarRegistro(d) {
+        fields.fill([[inputNombres, d.nombre], [inputApPaterno, d.apPaterno], [inputApMaterno, d.apMaterno],
+            [inputEmail, d.email], [inputCelular, d.celular]])
+    }
+
     async function buscarDNIEnBD() {
-        if (!hayBuscador) return
-        const dni = inputDNI.value.trim()
-        if (!/^\d{8}$/.test(dni)) {
-            return notifyWarning("Ingresa un DNI valido de 8 digitos")
-        }
-
-        btnBuscarDNI.disabled = true
-        const resultado = await userService.buscarUsuarioPorDNI(dni)
-        btnBuscarDNI.disabled = false
-
-        if (!resultado.ok) {
-            console.error("Error al buscar usuario por DNI:", resultado.error)
-            return notifyError("No se pudo buscar el usuario por DNI")
-        }
-
-        if (resultado.data) {
-            // Se encontro en BD: mostrar solo ese usuario en la tabla
-            filtroDNI = dni
-            btnLimpiarDNI.hidden = false
-            pintarTabla()
-            notifySuccess(`Usuario encontrado: ${nombreUsuario(resultado.data)}`)
-            return
-        }
-
-        // No esta en BD: consultar servicio externo con fallback silencioso de claves API.
-        // El usuario no sabe que una clave individual fallo; solo se avisa si TODAS agotan.
-        btnBuscarDNI.disabled = true
-        const unificado = await userService.buscarORegistrarUsuarioPorDNI(dni)
-        btnBuscarDNI.disabled = false
-
-        if (!unificado.ok) {
-            console.error("Error al consultar DNI externo:", unificado.error)
-            return notifyError(unificado.error.message || "No se pudo consultar el DNI")
-        }
-
-        if (unificado.origen === "externo" && unificado.listoParaRegistrar) {
-            const d = unificado.data
-            // Abrir el modal de registro con los datos obtenidos precargados
-            inputRegistroDNI.value = d.nDocumento
-            inputNombres.value = d.nombre || ""
-            inputApPaterno.value = d.apPaterno || ""
-            inputApMaterno.value = d.apMaterno || ""
-            inputEmail.value = d.email || ""
-            inputCelular.value = d.celular || ""
-            inputRegistroDNI.disabled = true
-            btnConsultarDNI.disabled = true
-            btnGuardarRegistro.disabled = false
-            ocultarAvisoRegistro()
-            modalRegistro.hidden = false
-            document.body.classList.add("sin-scroll")
-            mostrarAvisoRegistro(
-                `DNI ${dni} no encontrado en la base de datos. Se obtuvieron datos del servicio externo. Revisa y completa los campos antes de registrar.`,
-                "info"
-            )
-            return
+        if (!hayBuscador || !lookupVigente) return
+        const dni = exactDocument(inputDNI.value, 8)
+        if (!dni) return notifyWarning("Ingresa un DNI valido de 8 digitos")
+        const request = lookupTabla.start(() => inputDNI.value === dni)
+        if (!request) return
+        clearTimeout(timerBusqueda)
+        try {
+            const resultado = await userService.buscarORegistrarUsuarioPorDNI(dni)
+            if (!request.current()) return
+            if (!resultado.ok) return notifyError(resultado.error.message)
+            if (resultado.origen === "bd") {
+                filtroDNI = dni
+                btnLimpiarDNI.hidden = false
+                pintarTabla()
+                notifySuccess(`Usuario encontrado: ${nombreUsuario(resultado.data)}`)
+            } else if (hayRegistro && modalRegistro.hidden && resultado.listoParaRegistrar) {
+                abrirRegistro()
+                inputRegistroDNI.value = dni
+                completarRegistro(resultado.data)
+                inputRegistroDNI.disabled = true
+                btnConsultarDNI.disabled = true
+                mostrarAvisoRegistro(`Revisa y completa los datos del DNI ${dni} antes de registrar.`, "info")
+            }
+        } catch {
+            if (request.current()) notifyError("No se pudo consultar el DNI")
+        } finally {
+            request.finish()
         }
     }
 
@@ -304,7 +289,11 @@ export async function usuariosController(contenedor) {
     }
 
     function abrirRegistro() {
-        if (!hayRegistro) return
+        if (!hayRegistro || !lookupVigente) return
+        lookupTabla.invalidate()
+        lookupRegistro.invalidate()
+        versionRegistro++
+        fields.reset()
         editando = null
         inputRegistroDNI.value = ""
         inputNombres.value = ""
@@ -315,7 +304,7 @@ export async function usuariosController(contenedor) {
         ocultarAvisoRegistro()
         inputRegistroDNI.disabled = false
         btnConsultarDNI.disabled = false
-        btnGuardarRegistro.disabled = false
+        btnGuardarRegistro.disabled = guardandoRegistro
         modalRegistro.hidden = false
         document.body.classList.add("sin-scroll")
         inputRegistroDNI.focus()
@@ -323,92 +312,74 @@ export async function usuariosController(contenedor) {
 
     function cerrarRegistro() {
         if (!hayRegistro) return
+        versionRegistro++
+        lookupRegistro.invalidate()
         modalRegistro.hidden = true
         document.body.classList.remove("sin-scroll")
         editando = null
     }
 
     async function consultarDNIExterno() {
-        if (!hayRegistro) return
-        const dni = inputRegistroDNI.value.trim()
-        if (!/^\d{8}$/.test(dni)) {
-            return notifyWarning("Ingresa un DNI valido de 8 digitos antes de consultar")
+        if (!hayRegistro || !lookupVigente || modalRegistro.hidden || inputRegistroDNI.disabled || guardandoRegistro) return
+        const dni = exactDocument(inputRegistroDNI.value, 8)
+        if (!dni) return notifyWarning("Ingresa un DNI valido de 8 digitos antes de consultar")
+        const request = lookupRegistro.start(() => !modalRegistro.hidden && inputRegistroDNI.value === dni)
+        if (!request) return
+        mostrarAvisoRegistro("Consultando DNI...", "info")
+        try {
+            const consulta = await userService.buscarORegistrarUsuarioPorDNI(dni)
+            if (!request.current()) return
+            if (!consulta.ok) return mostrarAvisoRegistro(consulta.error.message, "warning")
+            if (consulta.origen === "bd") {
+                return mostrarAvisoRegistro(`Este DNI ya esta registrado como usuario (${nombreUsuario(consulta.data)}).`, "warning")
+            }
+            completarRegistro(consulta.data)
+            mostrarAvisoRegistro(`Revisa y completa los datos del DNI ${dni} antes de registrar.`, "success")
+        } catch {
+            if (request.current()) mostrarAvisoRegistro("No se pudo consultar el DNI", "warning")
+        } finally {
+            request.finish()
         }
-
-        btnConsultarDNI.disabled = true
-        mostrarAvisoRegistro("Consultando DNI en servicios externos...", "info")
-
-        // 1) Primero se busca en la base de datos
-        const enBD = await userService.buscarUsuarioPorDNI(dni)
-        if (enBD.ok && enBD.data) {
-            btnConsultarDNI.disabled = false
-            return mostrarAvisoRegistro(
-                `Este DNI ya esta registrado como usuario (${nombreUsuario(enBD.data)}).`,
-                "warning"
-            )
-        }
-
-        // 2) Si no esta en BD, se consulta al token (API externa) con fallback de claves
-        const consulta = await userService.consultarDNIExterno(dni)
-        btnConsultarDNI.disabled = false
-
-        if (!consulta.ok) {
-            console.error("Error al consultar DNI externo:", consulta.error)
-            // Solo se notifica al usuario cuando TODAS las claves estan agotadas
-            const mensaje =
-                consulta.error?.message ||
-                (consulta.error?.agotadas ? `Todas las ${consulta.error.agotadas} claves de API estan agotadas` : "No se pudo consultar el DNI")
-            return notifyError(mensaje)
-        }
-
-        const d = consulta.data
-        inputNombres.value = d.nombres || ""
-        inputApPaterno.value = d.apellidoPaterno || ""
-        inputApMaterno.value = d.apellidoMaterno || ""
-        mostrarAvisoRegistro(
-            `Datos obtenidos del DNI ${dni}: ${d.nombres || ""} ${d.apellidoPaterno || ""} ${d.apellidoMaterno || ""}. Revisa y completa los campos antes de registrar.`,
-            "success"
-        )
     }
 
     async function guardarRegistro() {
-        if (!hayRegistro) return
-        const dni = inputRegistroDNI.value.trim()
+        if (!hayRegistro || !lookupVigente || modalRegistro.hidden || guardandoRegistro) return
+        const dni = exactDocument(inputRegistroDNI.value, 8)
         const nombres = inputNombres.value.trim()
         const apPaterno = inputApPaterno.value.trim()
         const apMaterno = inputApMaterno.value.trim()
         const email = inputEmail.value.trim()
         const celular = inputCelular.value.trim()
 
-        if (!/^\d{8}$/.test(dni)) {
+        if (!dni) {
             return notifyWarning("Ingresa un DNI valido de 8 digitos")
         }
         if (!nombres) {
             return notifyWarning("Ingresa los nombres")
         }
 
+        const version = versionRegistro
+        lookupRegistro.invalidate()
+        ocultarAvisoRegistro()
+        guardandoRegistro = true
         btnGuardarRegistro.disabled = true
-
-        // Verificar que no exista ya (doble comprobacion por si se registro entre tanto)
-        const enBD = await userService.buscarUsuarioPorDNI(dni)
-        if (enBD.ok && enBD.data) {
+        let resultado
+        try {
+            resultado = await userService.registrarUsuarioManual({
+                nDocumento: dni, nombre: nombres, apPaterno, apMaterno,
+                email: email || null, celular: celular || null, logeo: email || dni,
+            })
+        } catch {
+            resultado = { ok: false, error: { message: "No se pudo registrar el usuario" } }
+        } finally {
+            guardandoRegistro = false
             btnGuardarRegistro.disabled = false
-            return mostrarAvisoRegistro(
-                `El DNI ${dni} ya esta registrado en la base de datos.`,
-                "warning"
-            )
         }
-
-        const resultado = await userService.registrarUsuarioManual({
-            nDocumento: dni,
-            nombre: nombres,
-            apPaterno: apPaterno,
-            apMaterno: apMaterno,
-            email: email || null,
-            celular: celular || null,
-            logeo: email || dni,
-        })
-        btnGuardarRegistro.disabled = false
+        if (!lookupVigente) return
+        if (versionRegistro !== version || inputRegistroDNI.value !== dni) {
+            if (resultado.ok) await recargar()
+            return
+        }
 
         if (!resultado.ok) {
             console.error("Error al registrar usuario manual:", resultado.error)
@@ -440,11 +411,15 @@ export async function usuariosController(contenedor) {
     /* Busqueda por DNI: al teclear y al pulsar el boton */
     if (hayBuscador) {
         inputDNI.addEventListener("input", () => {
+            if (!lookupVigente) return
+            lookupTabla.invalidate()
             clearTimeout(timerBusqueda)
             timerBusqueda = setTimeout(ejecutarBusquedaDNI, 300)
         })
         btnBuscarDNI.addEventListener("click", buscarDNIEnBD)
         btnLimpiarDNI.addEventListener("click", () => {
+            clearTimeout(timerBusqueda)
+            lookupTabla.invalidate()
             inputDNI.value = ""
             filtroDNI = ""
             btnLimpiarDNI.hidden = true
@@ -458,11 +433,25 @@ export async function usuariosController(contenedor) {
         if (btnCancelarRegistro) btnCancelarRegistro.addEventListener("click", cerrarRegistro)
         if (btnGuardarRegistro) btnGuardarRegistro.addEventListener("click", guardarRegistro)
         if (btnConsultarDNI) btnConsultarDNI.addEventListener("click", consultarDNIExterno)
+        inputRegistroDNI.addEventListener("input", () => {
+            lookupRegistro.invalidate()
+            fields.documentChanged()
+            ocultarAvisoRegistro()
+        })
         modalRegistro.addEventListener("click", e => { if (e.target === modalRegistro) cerrarRegistro() })
     }
 
-    const cleanup = cerrarConEscape(modal, modalRegistro)
+    const cleanup = cerrarConEscape(modal)
+    const onEscape = e => { if (e.key === "Escape" && hayRegistro && !modalRegistro.hidden) cerrarRegistro() }
+    document.addEventListener("keydown", onEscape)
     pintarTabla()
 
-    return cleanup
+    return () => {
+        lookupVigente = false
+        clearTimeout(timerBusqueda)
+        lookupTabla.invalidate()
+        lookupRegistro.invalidate()
+        document.removeEventListener("keydown", onEscape)
+        cleanup()
+    }
 }
