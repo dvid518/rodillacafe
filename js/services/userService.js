@@ -1,6 +1,8 @@
 import { AuthAdapter } from "../adapters/AuthAdapter.js"
 import { UserAdapter } from "../adapters/UserAdapter.js"
+import { supabase } from "../lib/supabaseClient.js"
 import { dniService } from "./dniService.js"
+import { exactDocument, lookupFailure, readActiveDocument, readLookupRow, withLookupDeadline } from "./documentLookup.js"
 
 async function obtenerPerfilActual() {
     const sesion = await AuthAdapter.getSession()
@@ -55,128 +57,86 @@ async function listarClientes() {
     return UserAdapter.listarClientes()
 }
 
-/* ---------------------------------------------------------------
-   BÚSQUEDA DE USUARIO POR DNI
-   ---------------------------------------------------------------
-   1) Se busca el DNI en la base de datos (PERSONA -> CLIENTE -> USUARIO).
-   2) Si no está, se consulta al servicio externo de DNI con las claves de
-      API en fallback (solo se notifica al usuario si todas fallan).
-   3) Los datos devueltos por el DNI (nombres, apellidos) se guardan en BD
-      junto con el DNI al dar de alta manualmente.
-   --------------------------------------------------------------- */
+const personaFields = "ID_Persona, N_Documento, Nombre, Ap_Paterno, Ap_Materno, EMAIL, Celular"
+const dniInvalido = () => lookupFailure("VALIDATION", "El DNI debe tener 8 dígitos")
 
-/**
- * Busca un usuario por DNI en la base de datos.
- * Devuelve { ok: true, data: usuario | null }
- */
-async function buscarUsuarioPorDNI(nDocumento) {
-    const resultado = await UserAdapter.buscarUsuarioPorDNI(nDocumento)
-    if (!resultado.ok) return { ok: false, error: { message: resultado.error?.message || "Error al buscar el DNI" } }
-    return { ok: true, data: resultado.data }
+async function buscarPersona(doc, signal) {
+    const row = await readActiveDocument(supabase, "PERSONA", "N_Documento", personaFields, doc, signal)
+    if (!row.ok || row.data === null) return row
+    if (exactDocument(row.data?.N_Documento, 8) !== doc || row.data?.ID_Persona == null) {
+        return lookupFailure("INVALID_RESPONSE")
+    }
+    return row
 }
 
-/**
- * Consulta un DNI al servicio externo con fallback de claves API.
- * Devuelve { ok: true, data: { dni, nombres, apellidoPaterno, apellidoMaterno } }
- * o { ok: false, error: { message, agotadas } } si todas las claves fallan.
- */
-async function consultarDNIExterno(nDocumento) {
-    return dniService.consultarDNI(nDocumento)
+async function buscarUsuario(doc, signal) {
+    const persona = await buscarPersona(doc, signal)
+    if (!persona.ok || persona.data === null) return persona
+    const row = await readLookupRow(() => supabase.from("USUARIO")
+        .select("ID_Usuario, ID_TipoUsuario, ID_Cliente, auth_id, Logeo, Bloqueado, ESTADO, CLIENTE!inner(ID_Cliente, ID_Persona)")
+        .eq("CLIENTE.ID_Persona", persona.data.ID_Persona), signal)
+    if (!row.ok || row.data === null) return row
+    const cliente = Array.isArray(row.data.CLIENTE) ? row.data.CLIENTE[0] : row.data.CLIENTE
+    if (cliente?.ID_Persona == null || String(cliente.ID_Persona) !== String(persona.data.ID_Persona)) {
+        return lookupFailure("INVALID_RESPONSE")
+    }
+    return { ok: true, data: { ...row.data, CLIENTE: [{ ...cliente, PERSONA: [persona.data] }] } }
 }
 
-/**
- * Da de alta un usuario manualmente:
- * - DNI obligatorio.
- * - Si ya existe en BD, devuelve error con existe: true.
- * - Si no existe, crea PERSONA + CLIENTE + USUARIO + rol CLIENTE.
- */
+async function buscarUsuarioPorDNI(value) {
+    const doc = exactDocument(value, 8)
+    if (!doc) return dniInvalido()
+    return withLookupDeadline(signal => buscarUsuario(doc, signal))
+}
+
+const consultarDNIExterno = dniService.consultarDNI
+
 async function registrarUsuarioManual(datos) {
-    const resultado = await UserAdapter.crearUsuarioManual(datos)
-    if (!resultado.ok) {
-        return { ok: false, error: { message: resultado.error?.message || "No se pudo registrar el usuario", existe: resultado.error.existe } }
+    const doc = exactDocument(datos?.nDocumento, 8)
+    if (!doc) return dniInvalido()
+    // Check the DB explicitly before handing off to the adapter's write flow.
+    const persona = await withLookupDeadline(signal => buscarPersona(doc, signal))
+    if (!persona.ok) return persona
+    if (persona.data) return { ok: false, error: { message: "Ya existe una persona con ese DNI", existe: true } }
+    try {
+        const resultado = await UserAdapter.crearUsuarioManual({ ...datos, nDocumento: doc })
+        if (resultado.ok) return resultado
+        return { ok: false, error: { message: "No se pudo registrar el usuario", existe: resultado.error?.existe } }
+    } catch {
+        return lookupFailure("SUPABASE_UNAVAILABLE", "No se pudo registrar el usuario")
     }
-    return { ok: true, data: resultado.data }
 }
 
-/* ---------------------------------------------------------------
-   BÚSQUEDA Y REGISTRO UNIFICADO POR DNI (con fallback silencioso)
-   ---------------------------------------------------------------
-   Flujo completo:
-     1) Busca el DNI en la base de datos (PERSONA -> CLIENTE -> USUARIO).
-        Si existe, devuelve ese usuario (origen: "bd").
-     2) Si no existe, consulta el servicio externo de DNI probando las
-        claves de API en orden. Una clave que falle se descarta en
-        silencio y se prueba la siguiente. El usuario solo se entera si
-        TODAS las claves agotan (se devuelve el error; quien llama
-        decide qué mostrar).
-     3) Si se obtienen datos externos, los devuelve listos para registrar.
-        Si se pide `registrarAutomaticamente`, los guarda en BD.
-   --------------------------------------------------------------- */
-
-/**
- * @param {string} nDocumento - DNI de 8 dígitos
- * @param {object} [opciones]
- * @param {boolean} [opciones.registrarAutomaticamente=false] - si es true, crea
- *   el usuario en BD con los datos obtenidos del servicio externo
- * @param {object} [opciones.datosAdicionales] - campos extra para el registro
- *   (email, celular, logeo, usucre)
- * @returns {Promise<{ok: true, data, origen: "bd"|"externo", yaExistia: boolean, registrado?: boolean, listoParaRegistrar?: boolean}
- *          | {ok: false, error: {message, agotadas?}}}
- */
-async function buscarORegistrarUsuarioPorDNI(nDocumento, opciones = {}) {
+async function buscarORegistrarUsuarioPorDNI(value, opciones = {}) {
     const { registrarAutomaticamente = false, datosAdicionales = {} } = opciones
+    const doc = exactDocument(value, 8)
+    if (!doc) return dniInvalido()
 
-    const doc = String(nDocumento).trim()
-    if (!/^\d{8}$/.test(doc)) {
-        return { ok: false, error: { message: "El DNI debe tener 8 dígicos" } }
-    }
-
-    // 1) Buscar en la base de datos
-    const enBD = await buscarUsuarioPorDNI(doc)
-    if (!enBD.ok) {
-        return { ok: false, error: { message: enBD.error?.message || "Error al buscar el DNI en la base de datos" } }
-    }
-    if (enBD.data) {
-        return { ok: true, data: enBD.data, origen: "bd", yaExistia: true }
-    }
-
-    // 2) Consultar servicio externo con fallback silencioso de claves API
-    const consulta = await consultarDNIExterno(doc)
-    if (!consulta.ok) {
-        return {
-            ok: false,
-            error: {
-                message: consulta.error?.message || "No se pudo consultar el DNI en los servicios externos",
-                agotadas: consulta.error.agotadas,
-            },
-        }
-    }
+    const consulta = await withLookupDeadline(async signal => {
+        const enBD = await buscarUsuario(doc, signal)
+        if (!enBD.ok) return enBD
+        if (enBD.data) return { ...enBD, origen: "bd", yaExistia: true }
+        return consultarDNIExterno(doc, signal)
+    })
+    if (!consulta.ok || consulta.origen === "bd") return consulta
 
     const d = consulta.data
     const datosParaRegistrar = {
-        nDocumento: d.dni,
         nombre: d.nombres || "",
         apPaterno: d.apellidoPaterno || "",
         apMaterno: d.apellidoMaterno || "",
-        email: datosAdicionales.email || null,
-        celular: datosAdicionales.celular || null,
-        logeo: datosAdicionales.logeo || String(d.dni),
-        usucre: datosAdicionales.usucre || "WEB",
+        email: d.email || null,
+        celular: d.celular || null,
+        logeo: doc,
+        usucre: "WEB",
         ...datosAdicionales,
+        nDocumento: doc,
     }
-
-    // 3) Registrar automáticamente si se pide
     if (registrarAutomaticamente) {
         const registrado = await registrarUsuarioManual(datosParaRegistrar)
-        if (!registrado.ok) {
-            return {
-                ok: false,
-                error: { message: registrado.error?.message || "No se pudo registrar el usuario", existe: registrado.error.existe },
-            }
-        }
+        if (!registrado.ok) return registrado
         return { ok: true, data: registrado.data, origen: "externo", yaExistia: false, registrado: true }
     }
-
     return { ok: true, data: datosParaRegistrar, origen: "externo", yaExistia: false, listoParaRegistrar: true }
 }
 

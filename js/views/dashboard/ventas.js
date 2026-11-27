@@ -2,6 +2,8 @@ import { ventaService } from "../../services/ventaService.js"
 import { clientService } from "../../services/clientService.js"
 import { dniService } from "../../services/dniService.js"
 import { rucService } from "../../services/rucService.js"
+import { exactDocument, lookupFailure, readLookupRow, withLookupDeadline } from "../../services/documentLookup.js"
+import { createLookupGuard } from "./documentLookupUI.js"
 import { cajaService } from "../../services/cajaService.js"
 import { supabase } from "../../lib/supabaseClient.js"
 import { VentaAdapter } from "../../adapters/VentaAdapter.js"
@@ -127,6 +129,34 @@ export async function ventasController(contenedor) {
 
     /* Cliente resuelto por DNI/RUC (se rellena al buscar) */
     let clientePorDocumento = null
+    let documentoResuelto = null
+    let clienteDePedido = false
+    let versionDocumento = 0
+    let versionPedido = 0
+    let lookupVigente = true
+    let creandoCliente = false
+    const textoBuscarDocumento = btnBuscarDocumento?.textContent
+    const textoAgregarCliente = btnAgregarCliente?.textContent
+    const lookupDocumento = createLookupGuard(busy => {
+        btnBuscarDocumento.disabled = busy
+        btnBuscarDocumento.textContent = busy ? "Buscando..." : textoBuscarDocumento
+    })
+    const tipoDocumentoActivo = () => [...radiosTipoDoc].find(r => r.checked)?.value
+
+    function limpiarClienteDocumento() {
+        versionDocumento++
+        lookupDocumento.invalidate()
+        clientePorDocumento = null
+        documentoResuelto = null
+        clienteDePedido = false
+        clienteExternoPendiente = null
+        clienteIdInput.value = ""
+        clienteNombreEl.textContent = ""
+        clienteDocEl.textContent = ""
+        if (campoClienteEncontrado) campoClienteEncontrado.hidden = true
+        if (avisoDocumento) { avisoDocumento.textContent = ""; avisoDocumento.hidden = true }
+        if (avisoAgregarCliente) avisoAgregarCliente.hidden = true
+    }
 
     /* Modal de detalle */
     const detModalEl = contenedor.querySelector("#ventas-detalle-modal")
@@ -372,6 +402,12 @@ export async function ventasController(contenedor) {
     }
 
     async function seleccionarPedido(idPedido) {
+        const version = ++versionPedido
+        if (clienteDePedido && inDocumento.value === documentoResuelto) {
+            limpiarClienteDocumento()
+            inDocumento.value = ""
+        }
+        const docVersion = versionDocumento
         if (!idPedido) {
             pedidoSeleccionado = null
             listaPedido.replaceChildren()
@@ -410,6 +446,7 @@ export async function ventasController(contenedor) {
             .eq("ID_Pedido", Number(idPedido))
             .single()
 
+        if (!lookupVigente || version !== versionPedido) return
         if (error || !pedido) {
             console.error("Error cargando detalle del pedido:", error)
             notifyError("No se pudo cargar el detalle del pedido: " + (error?.message || "error desconocido"))
@@ -442,6 +479,7 @@ export async function ventasController(contenedor) {
             .eq("ID_Pedido", Number(idPedido))
             .eq("ESTADO", "1")
             .neq("Situacion", "X")
+        if (!lookupVigente || version !== versionPedido) return
         if (errDetalles) {
             pedidoSeleccionado = null
             avisoSinPedido.hidden = false
@@ -470,10 +508,7 @@ export async function ventasController(contenedor) {
         }
 
         // Si es boleta con DNI o factura y hay un pedido seleccionado, buscar el cliente automáticamente
-        const activoTipoDoc = [...radiosTipoDoc].find(r => r.checked)
-        if ((activoTipoDoc.value === "dni" || activoTipoDoc.value === "ruc") && pedido) {
-            buscarYMostrarClientePorPedido(pedido)
-        }
+        if (docVersion === versionDocumento && inDocumento.value === "") buscarYMostrarClientePorPedido(pedido)
     }
 
     /* Mapa ID_Pedido -> objeto pedido (con DETALLE_PEDIDO embebido).
@@ -486,7 +521,8 @@ export async function ventasController(contenedor) {
     /* ---------- modal ---------- */
 
     async function abrirNuevo() {
-
+        versionPedido++
+        limpiarClienteDocumento()
         editandoId = null
         titulo.textContent = "Nueva venta"
         selCliente.value = ""
@@ -652,21 +688,13 @@ export async function ventasController(contenedor) {
     /* ---------- tipo de documento y búsqueda por DNI/RUC ---------- */
 
     function cambiarTipoDocumento() {
-        const activo = [...radiosTipoDoc].find(r => r.checked)
-        const esConDocumento = activo && (activo.value === "dni" || activo.value === "ruc")
-        const esSimple = activo && activo.value === "simple"
+        const tipo = tipoDocumentoActivo()
+        const esConDocumento = tipo === "dni" || tipo === "ruc"
+        const esSimple = tipo === "simple"
 
         if (campoDocumento) campoDocumento.hidden = !esConDocumento
-        if (campoClienteEncontrado) campoClienteEncontrado.hidden = true
-
-        clientePorDocumento = null
-        clienteIdInput.value = ""
-        clienteNombreEl.textContent = ""
-        clienteDocEl.textContent = ""
+        limpiarClienteDocumento()
         inDocumento.value = ""
-        if (avisoDocumento) avisoDocumento.textContent = ""
-        if (avisoAgregarCliente) avisoAgregarCliente.hidden = true
-        clienteExternoPendiente = null
 
         // Aviso informativo de Consumidor Final (solo boleta simple)
         const avisoCF = document.getElementById("venta-aviso-consumidor-final")
@@ -679,13 +707,14 @@ export async function ventasController(contenedor) {
 
         // Si se selecciona boleta con DNI o factura y hay un pedido seleccionado,
         // buscar automáticamente el cliente del pedido
-        if ((activo.value === "dni" || activo.value === "ruc") && pedidoSeleccionado) {
+        if (esConDocumento && pedidoSeleccionado) {
             buscarYMostrarClientePorPedido(pedidoSeleccionado)
         }
     }
 
-    async function buscarYMostrarClientePorPedido(pedido) {
-        if (!pedido) return
+    function buscarYMostrarClientePorPedido(pedido) {
+        const tipo = tipoDocumentoActivo()
+        if (!pedido || (tipo !== "dni" && tipo !== "ruc")) return
 
         const idCliente = pedido.ID_Cliente
         const clienteObj = unwrapEmbed(pedido.CLIENTE)
@@ -703,8 +732,8 @@ export async function ventasController(contenedor) {
         }
 
         // Determinar el documento y tipo según sea persona o empresa
-        const persona = cliente.PERSONA?.[0]
-        const empresa = cliente.EMPRESA?.[0]
+        const persona = unwrapEmbed(cliente.PERSONA)
+        const empresa = unwrapEmbed(cliente.EMPRESA)
 
         let documento = ""
         let tipoDoc = ""
@@ -717,12 +746,12 @@ export async function ventasController(contenedor) {
             tipoDoc = "ruc"
         }
 
-        if (!documento) {
-            notifyWarning("El cliente no tiene documento asociado")
-            return
-        }
+        documento = exactDocument(documento, tipo === "ruc" ? 11 : 8)
+        if (!documento || tipoDoc !== tipo) return
 
-        // Llenar datos del cliente encontrado
+        inDocumento.value = documento
+        documentoResuelto = documento
+        clienteDePedido = true
         clientePorDocumento = cliente
         clienteIdInput.value = idCliente
         clienteNombreEl.textContent = tipoDoc === "ruc"
@@ -732,40 +761,45 @@ export async function ventasController(contenedor) {
         if (avisoDocumento) {
             avisoDocumento.textContent = "Cliente encontrado en la base de datos"
             avisoDocumento.style.color = "var(--state-success)"
+            avisoDocumento.hidden = false
         }
         if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
     }
 
     async function buscarDocumento() {
-        const doc = String(inDocumento.value || "").trim()
-        if (!doc) {
-            notifyWarning("Ingresa un número de documento")
-            return
-        }
-
-        const esRUC = doc.length === 11
-        const esDNI = doc.length === 8
-
-        if (!esRUC && !esDNI) {
-            notifyWarning("El documento debe tener 8 dígitos (DNI) o 11 (RUC)")
-            return
-        }
-
-        btnBuscarDocumento.disabled = true
-        btnBuscarDocumento.textContent = "Buscando..."
+        if (!lookupVigente || modalEl.hidden || btnBuscarDocumento.disabled || creandoCliente) return
+        const tipo = tipoDocumentoActivo()
+        if (tipo !== "dni" && tipo !== "ruc") return
+        const esRUC = tipo === "ruc"
+        const doc = exactDocument(inDocumento.value, esRUC ? 11 : 8)
+        if (!doc) return notifyWarning(esRUC ? "El RUC debe tener 11 dígitos" : "El DNI debe tener 8 dígitos")
+        limpiarClienteDocumento()
+        const request = lookupDocumento.start(() => !modalEl.hidden && tipoDocumentoActivo() === tipo && inDocumento.value === doc)
+        if (!request) return
 
         try {
-            let resultado
-            if (esRUC) {
-                resultado = await rucService.consultarRUC(doc)
-            } else {
-                resultado = await dniService.consultarDNI(doc)
-            }
+            let clienteEncontrado
+            const resultado = await withLookupDeadline(async signal => {
+                const consulta = await (esRUC ? rucService.consultarRUC : dniService.consultarDNI)(doc, signal)
+                if (!consulta.ok || !consulta.data.yaExiste) return consulta
+                const embed = esRUC ? "EMPRESA!inner(RUC, Razon_Social)" : "PERSONA!inner(N_Documento, Nombre, Ap_Paterno)"
+                const cliente = await readLookupRow(() => supabase.from("CLIENTE").select(`ID_Cliente, Tipo_Cliente, ${embed}`)
+                    .eq("ESTADO", "1").eq(esRUC ? "EMPRESA.RUC" : "PERSONA.N_Documento", doc), signal)
+                if (!cliente.ok) return cliente
+                clienteEncontrado = cliente.data
+                if (clienteEncontrado) {
+                    const identidad = esRUC ? unwrapEmbed(clienteEncontrado.EMPRESA)?.RUC : unwrapEmbed(clienteEncontrado.PERSONA)?.N_Documento
+                    if (exactDocument(identidad, esRUC ? 11 : 8) !== doc) return lookupFailure("INVALID_RESPONSE")
+                }
+                return consulta
+            })
+            if (!request.current()) return
 
             if (!resultado.ok) {
                 if (avisoDocumento) {
                     avisoDocumento.textContent = resultado.error?.message || "No se encontró el documento"
                     avisoDocumento.style.color = "var(--state-danger)"
+                    avisoDocumento.hidden = false
                 }
                 notifyError(resultado.error?.message || "No se encontró el documento")
                 return
@@ -774,18 +808,6 @@ export async function ventasController(contenedor) {
             const data = resultado.data
 
             if (data.yaExiste) {
-                // Ya está en BD: necesitamos resolver el ID_Cliente
-                const clientes = await clientService.listarClientes()
-                let clienteEncontrado = null
-                if (clientes.ok) {
-                    clienteEncontrado = (clientes.data || []).find(c => {
-                        const persona = unwrapEmbed(c.PERSONA)
-                        const empresa = unwrapEmbed(c.EMPRESA)
-                        if (esRUC && empresa) return empresa.RUC === doc
-                        if (esDNI && persona) return persona.N_Documento === doc
-                        return false
-                    })
-                }
                 if (!clienteEncontrado) {
                     if (avisoDocumento) {
                         avisoDocumento.textContent = "El documento existe en la base de datos pero no tiene cliente asociado"
@@ -796,6 +818,7 @@ export async function ventasController(contenedor) {
                     return
                 }
                 clientePorDocumento = clienteEncontrado
+                documentoResuelto = doc
                 clienteIdInput.value = clienteEncontrado.ID_Cliente
                 const persona = unwrapEmbed(clienteEncontrado.PERSONA)
                 const empresa = unwrapEmbed(clienteEncontrado.EMPRESA)
@@ -811,25 +834,23 @@ export async function ventasController(contenedor) {
                 }
                 if (campoClienteEncontrado) campoClienteEncontrado.hidden = false
                 notifySuccess("Cliente encontrado")
-                avisoAgregarCliente?.classList.add("hidden")
+                if (avisoAgregarCliente) avisoAgregarCliente.hidden = true
             } else {
                 // No existe en BD: mostrar aviso HTML debajo del documento
                 const nombre = esRUC
                     ? data.razonSocial || data.nombreComercial || ""
                     : `${data.nombres || ""} ${data.apellidoPaterno || ""} ${data.apellidoMaterno || ""}`.trim()
 
-                clienteExternoPendiente = {
-                    esRUC,
-                    doc,
-                    nombre,
-                    data
-                }
+                // A RUC is not a natural person. Use the existing company/client
+                // registration screens instead of adding a coupled write to lookup.
+                clienteExternoPendiente = esRUC ? null : { doc, data }
+                if (btnAgregarCliente) btnAgregarCliente.hidden = esRUC
 
                 if (avisoAgregarTitulo) avisoAgregarTitulo.textContent = "Cliente no registrado en la base de datos"
                 if (avisoAgregarMensaje) {
                     avisoAgregarMensaje.innerHTML = `
                         Se encontró: <strong>${escaparHTML(nombre)}</strong> (${esRUC ? "RUC" : "DNI"}: ${doc}).<br>
-                        Al continuar, el cliente se agregará a la base de datos automáticamente.
+                        ${esRUC ? "Solicita a un administrador que registre la empresa y su cliente jurídico antes de continuar." : "Usa «Agregar cliente» para registrarlo antes de continuar."}
                     `
                 }
                 if (avisoAgregarCliente) avisoAgregarCliente.hidden = false
@@ -837,16 +858,16 @@ export async function ventasController(contenedor) {
                 if (campoClienteEncontrado) campoClienteEncontrado.hidden = true
                 return
             }
-        } catch (err) {
-            console.error("Error buscando documento:", err)
-            notifyError("Error al consultar el documento")
+        } catch {
+            if (request.current()) notifyError("Error al consultar el documento")
         } finally {
-            btnBuscarDocumento.disabled = false
-            btnBuscarDocumento.textContent = "Buscar"
+            request.finish()
         }
     }
 
     function cerrarModal() {
+        versionPedido++
+        limpiarClienteDocumento()
         modalEl.hidden = true
         editandoId = null
         modalEl.querySelector("form")?.reset()
@@ -889,7 +910,7 @@ export async function ventasController(contenedor) {
         /* Resolver ID_Cliente según tipo de documento */
         let idCliente = null
         if (tipoDocRaw === "dni" || tipoDocRaw === "ruc") {
-            if (!clientePorDocumento) {
+            if (!clientePorDocumento || documentoResuelto !== inDocumento.value) {
                 return notifyWarning("Busca y selecciona un cliente por DNI/RUC antes de continuar")
             }
             idCliente = clientePorDocumento.ID_Cliente
@@ -1259,55 +1280,51 @@ export async function ventasController(contenedor) {
 
     inPagado.addEventListener("input", calcularVuelto)
 
+    inDocumento.addEventListener("input", limpiarClienteDocumento)
     btnBuscarDocumento.addEventListener("click", buscarDocumento)
 
     btnAgregarCliente?.addEventListener("click", async () => {
-        if (!clienteExternoPendiente) return
-        const { esRUC, doc, nombre, data } = clienteExternoPendiente
-
+        const pendiente = clienteExternoPendiente
+        if (!lookupVigente || !pendiente || creandoCliente) return
+        const { doc, data } = pendiente
+        const vigente = () => lookupVigente && !modalEl.hidden && clienteExternoPendiente === pendiente &&
+            inDocumento.value === doc && tipoDocumentoActivo() === "dni"
+        if (!vigente()) return
+        creandoCliente = true
         btnAgregarCliente.disabled = true
         btnAgregarCliente.textContent = "Agregando..."
 
-        const datosCliente = {
-            nombre: esRUC ? "" : (data.nombres || ""),
-            apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
-            apMaterno: esRUC ? "" : (data.apellidoMaterno || ""),
-            nDocumento: esRUC ? null : doc,
-            email: esRUC ? (data.email || "") : (data.email || ""),
-            celular: esRUC ? (data.telefono || "") : "",
-            usucre: usucre
+        let nuevo
+        try {
+            const cliente = await clientService.crearClienteNatural({
+                nDocumento: doc, nombre: data.nombres, apPaterno: data.apellidoPaterno,
+                apMaterno: data.apellidoMaterno, email: data.email, celular: data.celular, usucre,
+            })
+            if (cliente.ok) nuevo = cliente.data
+        } catch {
+            // Keep public feedback independent of database error text.
+        } finally {
+            creandoCliente = false
+            btnAgregarCliente.disabled = false
+            btnAgregarCliente.textContent = textoAgregarCliente
         }
-
-        const rCrear = await clientService.crearClienteNatural({
-            ...datosCliente,
-            nDocumento: esRUC ? null : doc,
-            nombre: esRUC ? data.razonSocial || data.nombreComercial || "" : (data.nombres || ""),
-            apPaterno: esRUC ? "" : (data.apellidoPaterno || ""),
-            apMaterno: esRUC ? "" : (data.apellidoMaterno || "")
-        })
-
-        btnAgregarCliente.disabled = false
-        btnAgregarCliente.textContent = "Agregar cliente a la base de datos"
-
-        if (!rCrear.ok) {
-            if (avisoAgregarMensaje) avisoAgregarMensaje.textContent = rCrear.error?.message || "No se pudo crear el cliente"
-            if (avisoAgregarMensaje) avisoAgregarMensaje.style.color = "var(--state-danger)"
-            notifyError(rCrear.error?.message || "No se pudo crear el cliente")
+        if (!vigente()) return
+        if (nuevo?.ID_Cliente == null) {
+            if (avisoAgregarMensaje) avisoAgregarMensaje.textContent = "No se pudo crear el cliente"
+            notifyError("No se pudo crear el cliente")
             return
         }
 
-        const nuevo = rCrear.data
+        documentoResuelto = doc
         clientePorDocumento = {
             ID_Cliente: nuevo.ID_Cliente,
-            Tipo_Cliente: esRUC ? "J" : "N",
-            PERSONA: esRUC ? null : [{ Nombre: data.nombres || "", Ap_Paterno: data.apellidoPaterno || "", Ap_Materno: data.apellidoMaterno || "", N_Documento: doc }],
-            EMPRESA: esRUC ? [{ RUC: doc, Razon_Social: data.razonSocial || "", Nombre_Comercial: data.nombreComercial || "" }] : null
+            Tipo_Cliente: "N",
+            PERSONA: [{ Nombre: data.nombres || "", Ap_Paterno: data.apellidoPaterno || "", Ap_Materno: data.apellidoMaterno || "", N_Documento: doc }],
+            EMPRESA: null
         }
         clienteIdInput.value = nuevo.ID_Cliente
-        clienteNombreEl.textContent = esRUC
-            ? (data.razonSocial || data.nombreComercial || "")
-            : `${data.nombres || ""} ${data.apellidoPaterno || ""}`.trim()
-        clienteDocEl.textContent = `${esRUC ? "RUC" : "DNI"}: ${doc}`
+        clienteNombreEl.textContent = `${data.nombres || ""} ${data.apellidoPaterno || ""}`.trim()
+        clienteDocEl.textContent = `DNI: ${doc}`
         if (avisoDocumento) {
             avisoDocumento.textContent = "Cliente creado y listo para facturar"
             avisoDocumento.style.color = "var(--state-success)"
@@ -1475,6 +1492,9 @@ export async function ventasController(contenedor) {
     }
 
     return () => {
+        lookupVigente = false
+        versionPedido++
+        limpiarClienteDocumento()
         window.removeEventListener("keydown", onEscape)
         document.body.classList.remove("sin-scroll")
     }

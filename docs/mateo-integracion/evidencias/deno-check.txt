@@ -1,0 +1,7 @@
+error: unexpected argument '--no-color' found
+
+  tip: a similar argument exists: '--no-lock'
+
+Usage: deno check --no-lock [file]...
+
+Exit: 1

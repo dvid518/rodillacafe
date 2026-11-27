@@ -1,0 +1,9 @@
+e95707d js/config.js: API_KEYS_DNI=41, JWT anon=0, JWT no anon=0
+fa5d79a js/config.js: API_KEYS_DNI=10, JWT anon=0, JWT no anon=0
+45815e8 js/config.js: API_KEYS_DNI=ausente, JWT anon=0, JWT no anon=0
+bebb1b9 js/config.js: API_KEYS_DNI=ausente, JWT anon=0, JWT no anon=0
+Alcance: commits localizados con git log --all -G; no se validaron credenciales ni se cambió el historial.
+e95707d js/config.js: entradas literales largas en arreglo=3 (valores omitidos)
+fa5d79a js/config.js: entradas literales largas en arreglo=3 (valores omitidos)
+sw.js.bak: URL externa de consulta=false, patrón de secreto Supabase/JWT=false
+js/config.js: clave pública publishable=true

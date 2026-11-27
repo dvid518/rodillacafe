@@ -1,23 +1,5 @@
 import { supabase } from "../lib/supabaseClient.js"
 
-/**
- * TODO (Parte C1): autocompletado de RUC vía Factiliza.
- *
- * No se pudo confirmar el endpoint exacto de Factiliza para RUC (A3) ni se
- * valido que exista `supabase/functions/` para el proxy de CORS (A4). Por eso
- * esta funcion queda como TODO y no se conecta a ninguna API. Cuando se
- * disponga del endpoint y del token, descomentar y configurar el secret
- * `FACTILIZA_TOKEN` en Supabase.
- *
- * async function consultarRuc(ruc) {
- *     const { data, error } = await supabase.functions.invoke('consultar-ruc', {
- *         body: { ruc }
- *     })
- *     if (error) return { ok: false, error }
- *     return { ok: true, data }
- * }
- */
-
 async function listar() {
     const { data, error } = await supabase
         .from("EMPRESA")

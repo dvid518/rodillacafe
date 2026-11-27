@@ -9,5 +9,10 @@ firebase.json
 firebase-debug.log
 supabase/
 node_modules/
-.env
-.env.local
+graphify-out/
+scripts/
+tests/
+odd/
+docs/
+*.bak
+.env*
