@@ -249,6 +249,60 @@
 }
 
 /* --------------------------------------------------------------------------
+   Botón de carrito (navbar / topbar landing)
+   -------------------------------------------------------------------------- */
+.boton-carrito {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin: 0 12px;
+    padding: 8px 10px 8px 14px;
+    border: 1px solid var(--text);
+    border-radius: 30px;
+    background-color: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.boton-carrito:hover {
+    padding: 8px 14px 8px 18px;
+    background-color: var(--text);
+    color: var(--bg);
+    transform: scale(1.05);
+}
+
+.boton-carrito svg,
+.boton-carrito re-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.cantidad-carrito {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 10px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 20px;
+    background-color: var(--text);
+    color: var(--bg);
+    font-size: 12px;
+    font-weight: bold;
+    transition: all var(--transition);
+}
+
+.boton-carrito:hover .cantidad-carrito {
+    background-color: var(--bg);
+    color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
    3. Controles de formulario
    -------------------------------------------------------------------------- */
 .input,

@@ -77,7 +77,12 @@ function actualizarBotonPWA() {
         : instruccionesInstalacion()
 }
 
-async function instalarPWA() {
+/** Expone el estado de instalación para otros componentes (ej. topbar). */
+export function estaPWAInstalada() {
+    return pwaInstalada
+}
+
+export async function instalarPWA() {
     if (pwaInstalada) return
 
     if (!promptPWA) {

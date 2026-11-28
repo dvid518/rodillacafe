@@ -6,6 +6,50 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   Layout: sidebar lateral + topbar + main (igual que dashboard)
+   -------------------------------------------------------------------------- */
+body.landing {
+    height: 100vh;
+    overflow: hidden;
+}
+
+.landing-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.landing-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* La topbar no se mueve con el scroll del contenido. */
+.topbar {
+    flex-shrink: 0;
+}
+
+/* Solo el contenido de #app hace scroll. */
+#app {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 2rem;
+    scroll-behavior: smooth;
+}
+
+@media (max-width: 900px) {
+    .landing-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --------------------------------------------------------------------------
    Utilidades
    -------------------------------------------------------------------------- */
 .visualmente-oculto {

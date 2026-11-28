@@ -1,6 +1,6 @@
 import { Router } from "../lib/router.js"
 import { iniciarAnalytics } from "../lib/analytics.js"
-import { Sidebar } from "../components/Sidebar.js"
+import { Sidebar, instalarPWA } from "../components/Sidebar.js"
 import { Topbar } from "../components/Topbar.js"
 import { guardSesion } from "../session/guard.js"
 import { authService } from "../services/authService.js"
@@ -133,6 +133,7 @@ async function iniciar() {
             onLogout: cerrarSesion,
             onToggleSidebar: alternarSidebar,
             onToggleTheme: alternarTema,
+            onInstallPWA: instalarPWA,
         })
         raizTopbar.replaceChildren(topbar.render())
     }

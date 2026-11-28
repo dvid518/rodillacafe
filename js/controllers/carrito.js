@@ -392,6 +392,8 @@ function configurarEventosCarrito() {
         }
     })
 
+    document.addEventListener("rodilla:abrir-carrito", abrirCarrito)
+
     document.addEventListener("keydown", function (evento) {
         if (evento.key === "Escape") {
             cerrarCarrito()

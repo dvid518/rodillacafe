@@ -52,6 +52,7 @@ const MAPA_REICON = {
     "circle-user": "user-circle",
     "clock": "clock",
     "coffee": "coffee",
+    "download2": "download2",
     "eye": "eye",
     "info": "info-circle",
     "layout-dashboard": "layout",

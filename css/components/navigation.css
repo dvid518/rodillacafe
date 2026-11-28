@@ -124,45 +124,198 @@
     transform: scale(1.05);
 }
 
+/* --- Botón hamburguesa (solo móvil) -------------------------------------- */
 .menu-toggle {
+    position: relative;
+    z-index: var(--z-nav);
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     display: none;
-    width: 40px;
-    height: 40px;
+    place-items: center;
     border: none;
-    background: none;
-    font-size: 2rem;
+    border-radius: var(--radius-full);
+    background-color: var(--surface);
+    color: var(--text);
     cursor: pointer;
+    transition: background-color var(--transition), transform var(--transition);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
+.menu-toggle:hover {
+    background-color: var(--surface-strong);
+}
+
+.menu-toggle svg {
+    width: 22px;
+    height: 22px;
+    transition: transform var(--transition);
+}
+
+.navbar--menu-abierto .menu-toggle svg {
+    transform: rotate(90deg);
+}
+
+/* Cuando el menú está abierto, el botón sube por encima del menú
+   para seguir siendo clickeable y cerrarlo desde la esquina. */
+.navbar--menu-abierto .menu-toggle {
+    position: fixed;
+    z-index: calc(var(--z-fullscreen) + 1);
+    top: var(--space-md);
+    right: var(--space-md);
+}
+
+/* Backdrop semitransparente detrás del drawer móvil */
+.nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--z-fullscreen) - 1);
+    background: var(--overlay);
+    opacity: 0;
+    transition: opacity var(--transition-slow);
+    pointer-events: none;
+}
+
+.nav-backdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Botón cerrar (X) dentro del drawer móvil */
+.drawer-close {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: var(--radius-full);
+    background-color: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: background-color var(--transition), transform var(--transition);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.drawer-close:hover {
+    background-color: var(--surface-strong);
+}
+
+.drawer-close svg {
+    width: 22px;
+    height: 22px;
+    transition: transform var(--transition);
+}
+
+.navbar--menu-abierto .drawer-close svg {
+    transform: rotate(90deg);
+}
+
+/* --- Menú hamburguesa fullscreen glass (móvil) ---------------------------- */
 @media (max-width: 900px) {
     .menu-toggle {
-        display: block;
+        display: grid;
     }
 
     .nav-menu {
-        position: absolute;
-        top: 90px;
-        left: 0;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: var(--z-fullscreen);
+        display: flex;
         flex-direction: column;
         align-items: center;
-        display: none;
+        justify-content: center;
+        gap: var(--space-md);
+        padding: var(--space-xl);
+        background: var(--glass-strong);
+        backdrop-filter: blur(24px) saturate(1.1);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid var(--border);
+        color: var(--text);
+        text-align: center;
+        transform: translateY(100%);
+        opacity: 0;
+        pointer-events: none;
+        transition: transform var(--transition-slow), opacity var(--transition-slow);
+        overflow-y: auto;
+    }
+
+    .navbar--menu-abierto .nav-menu {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
     }
 
     .nav-menu a {
-        margin: 0;
-        font-size: 1.2rem;
-    }
-
-    .btn {
-        display: none;
-    }
-
-    .btn.active {
-        display: flex;
+        display: block;
+        width: 100%;
+        max-width: min(520px, 92vw);
+        padding: 18px 24px;
+        margin: var(--space-xs) 0;
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: var(--text-subtle);
+        background: var(--surface-strong);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        text-align: center;
+        cursor: pointer;
         opacity: 0;
-        visibility: hidden;
-        text-shadow: 0 5px 10px var(--text-shadow);
-        transition: all var(--transition-slow);
+        transform: translateY(14px);
+        transition: opacity var(--transition), transform var(--transition),
+            color var(--transition), background var(--transition), border-color var(--transition);
+    }
+
+    .navbar--menu-abierto .nav-menu a {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .navbar--menu-abierto .nav-menu a:nth-of-type(1) { transition-delay: 0.06s; }
+    .navbar--menu-abierto .nav-menu a:nth-of-type(2) { transition-delay: 0.12s; }
+    .navbar--menu-abierto .nav-menu a:nth-of-type(3) { transition-delay: 0.18s; }
+    .navbar--menu-abierto .nav-menu a:nth-of-type(4) { transition-delay: 0.24s; }
+    .navbar--menu-abierto .nav-menu a:nth-of-type(5) { transition-delay: 0.3s; }
+    .navbar--menu-abierto .nav-menu a:nth-of-type(6) { transition-delay: 0.36s; }
+    .navbar--menu-abierto .nav-menu a:nth-of-type(7) { transition-delay: 0.42s; }
+
+    .nav-menu a:hover {
+        background: var(--surface-hover);
+        color: var(--link);
+        transform: translateY(0) scale(1.02);
+    }
+
+    /* "Reservar ahora" visible en móvil como CTA destacado */
+    .btn {
+        display: block;
+        width: 100%;
+        max-width: min(520px, 92vw);
+        margin: var(--space-md) auto 0;
+    }
+    .btn a {
+        display: block;
+        width: 100%;
+        padding: 18px 24px;
+        border: none;
+        border-radius: var(--radius-lg);
+        background: var(--accent);
+        color: var(--accent-text);
+        font-weight: 700;
+        font-size: 1.4rem;
+        text-align: center;
+    }
+    .btn a:hover {
+        background: var(--accent-hover);
+        color: var(--accent-text);
+        padding: 18px 24px;
+        transform: scale(1.02);
     }
 }
 

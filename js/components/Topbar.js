@@ -1,4 +1,5 @@
 import { icon } from "./Icon.js"
+import { estaPWAInstalada } from "./Sidebar.js"
 
 /* ==========================================================================
    TOPBAR — cabecera del dashboard
@@ -18,12 +19,14 @@ export class Topbar {
         onLogout = null,
         onToggleSidebar = null,
         onToggleTheme = null,
+        onInstallPWA = null,
     } = {}) {
         this.user = user
         this.titulo = titulo
         this.onLogout = onLogout
         this.onToggleSidebar = onToggleSidebar
         this.onToggleTheme = onToggleTheme
+        this.onInstallPWA = onInstallPWA
     }
 
     /** Nombre legible del usuario, con degradaciones. */
@@ -81,6 +84,17 @@ export class Topbar {
         if (this.onToggleTheme) botonTema.addEventListener("click", this.onToggleTheme)
 
         derecha.append(usuario, botonTema)
+
+        if (this.onInstallPWA && !estaPWAInstalada()) {
+            const instalar = document.createElement("button")
+            instalar.className = "topbar__accion"
+            instalar.type = "button"
+            instalar.setAttribute("aria-label", "Instalar aplicación")
+            const icInstalar = icon("download2", { size: 20 })
+            if (icInstalar) instalar.appendChild(icInstalar)
+            instalar.addEventListener("click", this.onInstallPWA)
+            derecha.appendChild(instalar)
+        }
 
         if (this.onLogout) {
             const salir = document.createElement("button")

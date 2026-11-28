@@ -29,7 +29,8 @@
     <link rel="stylesheet" href="css/base/typography.css">
     <link rel="stylesheet" href="css/components/components.css">
     <link rel="stylesheet" href="css/components/hero.css">
-    <link rel="stylesheet" href="css/components/navigation.css">
+    <link rel="stylesheet" href="css/components/sidebar.css">
+    <link rel="stylesheet" href="css/components/topbar.css">
     <link rel="stylesheet" href="css/components/modal.css">
     <link rel="stylesheet" href="css/components/skeleton.css">
     <link rel="stylesheet" href="css/pages/landing.css">
@@ -40,10 +41,15 @@
     <link rel="apple-touch-icon" href="/img/pwa/icon-192.png">
     <link rel="icon" href="/img/pwa/icon-192.png">
 </head>
-<body>
-    <div id="navbar-root"></div>
-    <main id="app"></main>
-    <div id="footer-root"></div>
+<body class="landing">
+    <div class="landing-layout">
+        <div id="sidebar-root"></div>
+        <div class="landing-main">
+            <div id="topbar-root"></div>
+            <main id="app"></main>
+            <div id="footer-root"></div>
+        </div>
+    </div>
     <script type="module" src="js/controllers/landing.js"></script>
     <script>
         if ("serviceWorker" in navigator) {

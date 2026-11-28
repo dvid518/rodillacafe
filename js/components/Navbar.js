@@ -189,6 +189,18 @@ export class Navbar {
             }
         }
 
+        // Botón cerrar (X) dentro del drawer móvil (solo modo hash)
+        if (this.modoHash) {
+            const cerrarDrawer = document.createElement("button")
+            cerrarDrawer.className = "drawer-close item"
+            cerrarDrawer.type = "button"
+            cerrarDrawer.setAttribute("aria-label", "Cerrar menú")
+            const icCerrar = icon("x", { size: 28 })
+            if (icCerrar) cerrarDrawer.appendChild(icCerrar)
+            cerrarDrawer.addEventListener("click", () => abrirCerrarMenu(true))
+            nav.prepend(cerrarDrawer)
+        }
+
         // --- derecha ---
         const derecha = document.createElement("div")
         derecha.className = "right"
@@ -221,12 +233,51 @@ export class Navbar {
         const icMenu = icon("menu", { size: 26 })
         if (icMenu) toggle.appendChild(icMenu)
 
+        // Backdrop (se crea bajo demanda)
+        let backdrop = null
+
         // En modo hash el burger despliega los links. En modo paginas lo
         // abre layout.js para mostrar el menu fullscreen.
+        const abrirCerrarMenu = (forzarCerrar = false) => {
+            const abierto = forzarCerrar ? false : header.classList.toggle("navbar--menu-abierto")
+            if (forzarCerrar) header.classList.remove("navbar--menu-abierto")
+            toggle.setAttribute("aria-expanded", abierto ? "true" : "false")
+
+            if (abierto) {
+                // Crear backdrop
+                backdrop = document.createElement("div")
+                backdrop.className = "nav-backdrop"
+                backdrop.addEventListener("click", () => abrirCerrarMenu(true))
+                document.body.appendChild(backdrop)
+                // Forzar reflow para transición
+                requestAnimationFrame(() => backdrop.classList.add("visible"))
+                // Scroll lock
+                document.body.classList.add("sin-scroll")
+                // Focus en primer enlace
+                const primerEnlace = nav.querySelector("a")
+                primerEnlace?.focus()
+            } else {
+                // Cerrar
+                backdrop?.classList.remove("visible")
+                backdrop?.addEventListener("transitionend", () => backdrop?.remove(), { once: true })
+                document.body.classList.remove("sin-scroll")
+                toggle.focus() // Devolver foco al botón
+            }
+        }
+
+        // Tecla Escape
+        const onEscape = (e) => {
+            if (e.key === "Escape" && header.classList.contains("navbar--menu-abierto")) {
+                abrirCerrarMenu(true)
+            }
+        }
+        document.addEventListener("keydown", onEscape)
+
         if (this.modoHash) {
-            toggle.addEventListener("click", () => {
-                const abierto = header.classList.toggle("navbar--menu-abierto")
-                toggle.setAttribute("aria-expanded", abierto ? "true" : "false")
+            toggle.addEventListener("click", () => abrirCerrarMenu())
+            // al elegir un enlace se cierra el drawer móvil
+            nav.querySelectorAll("a").forEach((a) => {
+                a.addEventListener("click", () => abrirCerrarMenu(true))
             })
         }
 
